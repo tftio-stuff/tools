@@ -1,5 +1,5 @@
+use todoer::models::{Status, Task};
 use todoer::output::render_task_table;
-use todoer::models::{Task, Status};
 
 #[test]
 fn table_renders_header_and_row() {

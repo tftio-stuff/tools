@@ -7,8 +7,7 @@ use tempfile::TempDir;
 fn get_binary_path() -> std::path::PathBuf {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     // In a workspace, target/ is at the workspace root (two levels up from crates/unvenv/)
-    std::path::Path::new(manifest_dir)
-        .join("../../target/debug/unvenv")
+    std::path::Path::new(manifest_dir).join("../../target/debug/unvenv")
 }
 
 /// Test that the binary exists and compiles
