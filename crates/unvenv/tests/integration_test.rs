@@ -10,6 +10,19 @@ fn get_binary_path() -> std::path::PathBuf {
     std::path::Path::new(manifest_dir).join("../../target/debug/unvenv")
 }
 
+/// Clear git environment variables that interfere with subprocess git operations.
+/// When run inside a git hook (e.g. via `prek`), `GIT_DIR` is set to the project repo,
+/// causing subprocess `git init` to target the wrong directory and the binary
+/// to discover the hook's repo instead of the temp dir's repo.
+fn clear_git_env(mut cmd: Command) -> Command {
+    cmd.env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE")
+        .env_remove("GIT_INDEX_FILE")
+        .env_remove("GIT_OBJECT_DIRECTORY")
+        .env_remove("GIT_COMMON_DIR");
+    cmd
+}
+
 /// Test that the binary exists and compiles
 #[test]
 fn test_binary_exists() {
@@ -56,7 +69,7 @@ fn test_no_git_repo() {
     let temp_dir = TempDir::new().expect("Failed to create temp directory");
     let binary_path = get_binary_path();
 
-    let output = Command::new(binary_path)
+    let output = clear_git_env(Command::new(binary_path))
         .current_dir(temp_dir.path())
         .output()
         .expect("Failed to execute binary");
@@ -71,7 +84,7 @@ fn test_scan_no_git_repo() {
     let temp_dir = TempDir::new().expect("Failed to create temp directory");
     let binary_path = get_binary_path();
 
-    let output = Command::new(binary_path)
+    let output = clear_git_env(Command::new(binary_path))
         .arg("scan")
         .current_dir(temp_dir.path())
         .output()
@@ -87,7 +100,7 @@ fn test_detect_unignored_venv() {
     let temp_dir = TempDir::new().expect("Failed to create temp directory");
 
     // Initialize Git repository
-    let init_output = Command::new("git")
+    let init_output = clear_git_env(Command::new("git"))
         .args(["init"])
         .current_dir(temp_dir.path())
         .output()
@@ -107,7 +120,7 @@ fn test_detect_unignored_venv() {
 
     // Run unvenv - should detect the unignored file
     let binary_path = get_binary_path();
-    let output = Command::new(binary_path)
+    let output = clear_git_env(Command::new(binary_path))
         .current_dir(temp_dir.path())
         .output()
         .expect("Failed to execute binary");
@@ -127,7 +140,7 @@ fn test_scan_detect_unignored_venv() {
     let temp_dir = TempDir::new().expect("Failed to create temp directory");
 
     // Initialize Git repository
-    let init_output = Command::new("git")
+    let init_output = clear_git_env(Command::new("git"))
         .args(["init"])
         .current_dir(temp_dir.path())
         .output()
@@ -144,7 +157,7 @@ fn test_scan_detect_unignored_venv() {
 
     // Run unvenv scan - should detect the unignored file
     let binary_path = get_binary_path();
-    let output = Command::new(binary_path)
+    let output = clear_git_env(Command::new(binary_path))
         .arg("scan")
         .current_dir(temp_dir.path())
         .output()
@@ -164,7 +177,7 @@ fn test_ignored_venv() {
     let temp_dir = TempDir::new().expect("Failed to create temp directory");
 
     // Initialize Git repository
-    let init_output = Command::new("git")
+    let init_output = clear_git_env(Command::new("git"))
         .args(["init"])
         .current_dir(temp_dir.path())
         .output()
@@ -185,7 +198,7 @@ fn test_ignored_venv() {
 
     // Run unvenv - should NOT detect the ignored file
     let binary_path = get_binary_path();
-    let output = Command::new(binary_path)
+    let output = clear_git_env(Command::new(binary_path))
         .current_dir(temp_dir.path())
         .output()
         .expect("Failed to execute binary");
@@ -200,7 +213,7 @@ fn test_multiple_venvs() {
     let temp_dir = TempDir::new().expect("Failed to create temp directory");
 
     // Initialize Git repository
-    let init_output = Command::new("git")
+    let init_output = clear_git_env(Command::new("git"))
         .args(["init"])
         .current_dir(temp_dir.path())
         .output()
@@ -219,7 +232,7 @@ fn test_multiple_venvs() {
 
     // Run unvenv - should detect all unignored files
     let binary_path = get_binary_path();
-    let output = Command::new(binary_path)
+    let output = clear_git_env(Command::new(binary_path))
         .current_dir(temp_dir.path())
         .output()
         .expect("Failed to execute binary");
@@ -239,7 +252,7 @@ fn test_no_venv_files() {
     let temp_dir = TempDir::new().expect("Failed to create temp directory");
 
     // Initialize Git repository
-    let init_output = Command::new("git")
+    let init_output = clear_git_env(Command::new("git"))
         .args(["init"])
         .current_dir(temp_dir.path())
         .output()
@@ -254,7 +267,7 @@ fn test_no_venv_files() {
 
     // Run unvenv - should find no issues
     let binary_path = get_binary_path();
-    let output = Command::new(binary_path)
+    let output = clear_git_env(Command::new(binary_path))
         .current_dir(temp_dir.path())
         .output()
         .expect("Failed to execute binary");

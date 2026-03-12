@@ -16,7 +16,7 @@ rust-version = "1.94.0"
 
 [workspace.dependencies]
 # Internal
-tftio-cli-common = { path = "crates/cli-common", version = "0.4.1" }
+tftio-cli-common = { path = "crates/cli-common", version = "0.5.0" }
 
 # External - centralized versions
 anyhow = "1"
