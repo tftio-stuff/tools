@@ -1,0 +1,19 @@
+[package]
+name = "tftio-cli-common"
+version = "0.4.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Common functionality for tftio Rust CLI tools"
+keywords = ["cli", "utilities", "tftio"]
+categories = ["command-line-utilities", "development-tools"]
+
+[lints]
+workspace = true
+
+[dependencies]
+clap.workspace = true
+clap_complete.workspace = true
+colored.workspace = true
+is-terminal.workspace = true

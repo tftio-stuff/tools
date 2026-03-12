@@ -1,0 +1,29 @@
+[package]
+name = "tftio-unvenv"
+version = "1.6.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Detect Python virtual environments not ignored by Git"
+keywords = ["cli", "python", "virtualenv", "git"]
+categories = ["command-line-utilities", "development-tools"]
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "unvenv"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+clap_complete.workspace = true
+colored.workspace = true
+git2.workspace = true
+walkdir.workspace = true
+tftio-cli-common.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

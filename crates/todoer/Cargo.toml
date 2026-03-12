@@ -1,0 +1,61 @@
+[package]
+name = "tftio-todoer"
+version = "1.0.5"
+edition.workspace = true
+rust-version.workspace = true
+license = "CC0-1.0"
+repository.workspace = true
+description = "A command line tool for managing a global todo list, designed for LLM agents."
+
+[lints.rust]
+unsafe_code = "warn"
+missing_docs = "allow"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+enum_glob_use = "deny"
+wildcard_imports = "deny"
+# Inherited from workspace
+multiple_crate_versions = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+too_many_arguments = "allow"
+too_many_lines = "allow"
+cargo_common_metadata = "allow"
+# Todoer-specific allows (pre-existing, fix incrementally)
+must_use_candidate = "allow"
+use_self = "allow"
+needless_pass_by_value = "allow"
+missing_const_for_fn = "allow"
+format_push_string = "allow"
+uninlined_format_args = "allow"
+collapsible_if = "allow"
+manual_let_else = "allow"
+redundant_closure_for_method_calls = "allow"
+branches_sharing_code = "allow"
+useless_conversion = "allow"
+
+[lib]
+name = "todoer"
+path = "src/lib.rs"
+
+[[bin]]
+name = "todoer"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+chrono = { workspace = true, features = ["serde", "clock"] }
+clap.workspace = true
+dirs.workspace = true
+rusqlite.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

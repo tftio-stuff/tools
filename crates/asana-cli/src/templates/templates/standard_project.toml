@@ -1,0 +1,12 @@
+name = "Standard Project"
+description = "Generic project template with placeholders for names and ownership."
+tags = ["default", "standard"]
+
+[project]
+name = "{{project_name}}"
+workspace = "{{workspace_gid}}"
+team = "{{team_gid}}"
+notes = "Project owned by {{owner_name}}"
+public = true
+color = "light-teal"
+members = ["{{owner_email}}"]

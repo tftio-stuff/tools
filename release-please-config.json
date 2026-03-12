@@ -1,0 +1,37 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    "crates/cli-common": {
+      "release-type": "rust",
+      "component": "cli-common",
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true,
+      "package-name": "tftio-cli-common"
+    },
+    "crates/prompter": {
+      "release-type": "rust",
+      "component": "prompter",
+      "changelog-path": "CHANGELOG.md",
+      "package-name": "tftio-prompter"
+    },
+    "crates/unvenv": {
+      "release-type": "rust",
+      "component": "unvenv",
+      "changelog-path": "CHANGELOG.md",
+      "package-name": "tftio-unvenv"
+    },
+    "crates/asana-cli": {
+      "release-type": "rust",
+      "component": "asana-cli",
+      "changelog-path": "CHANGELOG.md",
+      "package-name": "tftio-asana-cli"
+    },
+    "crates/todoer": {
+      "release-type": "rust",
+      "component": "todoer",
+      "changelog-path": "CHANGELOG.md",
+      "package-name": "tftio-todoer"
+    }
+  },
+  "separate-pull-requests": true
+}

@@ -1,0 +1,34 @@
+[package]
+name = "tftio-prompter"
+version = "2.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "A CLI tool for composing reusable prompt snippets from a library using TOML profiles"
+keywords = ["cli", "prompt", "snippets", "llm", "toml"]
+categories = ["command-line-utilities", "development-tools"]
+
+[lints]
+workspace = true
+
+[lib]
+name = "prompter"
+path = "src/lib.rs"
+
+[[bin]]
+name = "prompter"
+path = "src/main.rs"
+
+[dependencies]
+chrono = { workspace = true, features = ["clock"] }
+clap.workspace = true
+clap_complete.workspace = true
+colored.workspace = true
+dirs.workspace = true
+indicatif.workspace = true
+is-terminal.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+tftio-cli-common.workspace = true

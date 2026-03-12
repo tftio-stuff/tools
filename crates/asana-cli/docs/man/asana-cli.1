@@ -1,0 +1,116 @@
+.TH ASANA-CLI 1 "October 2025" "asana-cli 0.1.9" "Asana CLI Manual"
+.SH NAME
+asana-cli \- command-line interface for Asana
+.SH SYNOPSIS
+.B asana-cli
+[\fIglobal-options\fR] \fIsubcommand\fR [\fIsubcommand-options\fR]
+.br
+.B asana-cli completions
+\fIshell\fR
+.br
+.B asana-cli manpage
+[\fB--dir\fR \fIPATH\fR]
+.SH DESCRIPTION
+.B asana-cli
+is a Rust-based CLI that surfaces common Asana workflows from the terminal,
+including configuration, project management, task automation, and bulk
+operations. The tool embraces the Unix subcommand pattern and supports
+multi-format output, caching, and script-friendly behaviours.
+.SH GLOBAL OPTIONS
+.TP
+.B --help
+Print help information for the binary or the selected subcommand.
+.TP
+.B --version
+Display semantic version information.
+.SH SUBCOMMAND OVERVIEW
+.TP
+.B config
+Manage persisted configuration values such as the Personal Access Token.
+Supports \fBset\fR, \fBget\fR, and \fBtest\fR subcommands.
+.br
+Use \fBconfig set workspace --workspace <gid>\fR (or \fB--clear\fR) to
+control the default workspace, and \fBconfig set assignee --assignee <id>\fR to
+resolve the \fBme\fR alias in task commands.
+.TP
+.B project
+List, inspect, create, update, and delete projects, including member
+management. Supports filtering, sorting, and multiple output formats.
+.TP
+.B task
+Comprehensive task workflows including CRUD operations, subtasks,
+relationships, bulk JSON/CSV processing, and fuzzy search.
+.TP
+.B completions
+Generate shell completion scripts for Bash, Zsh, Fish, or PowerShell.
+.TP
+.B manpage
+Render this manual page to stdout or write it to the directory specified via
+\fB--dir\fR.
+.TP
+.B doctor
+Run environment health checks and report tooling status.
+.TP
+.B update
+Download and install the latest published release.
+.SH TASK SUBCOMMAND HIGHLIGHTS
+.TP
+.B task list
+List tasks assigned to the current user (default) or scoped via
+workspace/project filters. Supports \fB--output\fR table|json|csv|markdown.
+.TP
+.B task create
+Create tasks with natural language dates, project assignments, and custom
+field values.
+.TP
+.B task update
+Modify existing tasks, toggle completion, change assignees, or adjust
+relationships.
+.TP
+.B task create-batch
+Process JSON or CSV payloads to create many tasks at once. Use
+\fB--continue-on-error\fR to skip failures.
+.TP
+.B task search
+Perform fuzzy matching across recent and fetched tasks. Supports interactive
+selection when attached to a TTY.
+.SH CONFIGURATION FILES
+.TP
+.B ~/.config/asana-cli/config.toml
+Primary configuration file storing defaults (workspace, assignee) and the
+encrypted Personal Access Token when persisted via \fBconfig set token\fR.
+.TP
+.B ~/.local/share/asana-cli/cache/
+Disk-backed API cache enabling offline access and fast replays.
+.TP
+.B ~/.local/share/asana-cli/templates/
+User-editable project templates.
+.SH ENVIRONMENT VARIABLES
+.TP
+.B ASANA_PAT
+Override the Personal Access Token for the current invocation.
+.TP
+.B ASANA_BASE_URL
+Point the client at an alternative API endpoint (useful for mocks).
+.TP
+.B ASANA_WORKSPACE
+Provide a default workspace gid when creating resources.
+.TP
+.B ASANA_CLI_CONFIG_HOME, ASANA_CLI_DATA_HOME
+Override the configuration and data directories, respectively.
+.SH COMPLETION & MANPAGE GENERATION
+Generate completions or the man page from source to keep local artefacts in
+sync with the binary:
+.PP
+.nf
+just completions
+just manpage
+.fi
+.SH EXIT STATUS
+Zero on success; non-zero on failure.
+.SH SEE ALSO
+.BR asana (1),
+.BR git (1),
+.BR just (1)
+.SH AUTHOR
+Workhelix Engineering <engineering@workhelix.com>
