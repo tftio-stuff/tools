@@ -1,4 +1,4 @@
-use todoer::models::{normalize_project_key, Status};
+use todoer::models::{Status, normalize_project_key};
 
 #[test]
 fn normalize_project_key_lowercases_and_trims() {

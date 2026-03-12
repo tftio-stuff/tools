@@ -1,7 +1,10 @@
-use todoer::repo::{ensure_project, insert_task, list_tasks_by_project, add_note, get_task_status, update_task_status, get_task_with_notes};
-use todoer::models::Status;
-use todoer::db::{open_db, init_db};
 use tempfile::tempdir;
+use todoer::db::{init_db, open_db};
+use todoer::models::Status;
+use todoer::repo::{
+    add_note, ensure_project, get_task_status, get_task_with_notes, insert_task,
+    list_tasks_by_project, update_task_status,
+};
 
 #[test]
 fn insert_and_list_task() {

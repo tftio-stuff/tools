@@ -1,7 +1,7 @@
 use crate::config::{Config, resolve_db_path};
 use crate::db::open_db;
-use crate::repo::{get_task_status, update_task_status, add_note, get_task_with_notes};
 use crate::models::{Status, TaskNote};
+use crate::repo::{add_note, get_task_status, get_task_with_notes, update_task_status};
 
 pub struct StatusResult {
     pub description: String,
@@ -35,10 +35,18 @@ fn open_conn(config: &Config) -> anyhow::Result<rusqlite::Connection> {
 pub fn run_status(config: &Config, id: &str) -> anyhow::Result<StatusResult> {
     let conn = open_conn(config)?;
     let (desc, status, created_at) = get_task_status(&conn, id)?;
-    Ok(StatusResult { description: desc, status, created_at })
+    Ok(StatusResult {
+        description: desc,
+        status,
+        created_at,
+    })
 }
 
-pub fn run_update_status(config: &Config, id: &str, status: Status) -> anyhow::Result<UpdateStatusResult> {
+pub fn run_update_status(
+    config: &Config,
+    id: &str,
+    status: Status,
+) -> anyhow::Result<UpdateStatusResult> {
     let conn = open_conn(config)?;
     update_task_status(&conn, id, status.clone())?;
     Ok(UpdateStatusResult { status })
@@ -53,5 +61,10 @@ pub fn run_note(config: &Config, id: &str, note: &str) -> anyhow::Result<NoteRes
 pub fn run_show(config: &Config, id: &str) -> anyhow::Result<ShowResult> {
     let conn = open_conn(config)?;
     let (desc, status, created_at, notes) = get_task_with_notes(&conn, id)?;
-    Ok(ShowResult { description: desc, status, created_at, notes })
+    Ok(ShowResult {
+        description: desc,
+        status,
+        created_at,
+        notes,
+    })
 }

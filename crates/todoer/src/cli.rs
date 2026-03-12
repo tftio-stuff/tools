@@ -1,5 +1,5 @@
-use clap::{Parser, Subcommand};
 use crate::models::Status;
+use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
 #[command(name = "todoer")]
@@ -41,9 +41,16 @@ pub enum Command {
 
 #[derive(Subcommand, Debug)]
 pub enum TaskCommand {
-    Status { id: String },
-    Show { id: String },
-    Note { id: String, note: String },
+    Status {
+        id: String,
+    },
+    Show {
+        id: String,
+    },
+    Note {
+        id: String,
+        note: String,
+    },
     Update {
         #[command(subcommand)]
         command: TaskUpdateCommand,
