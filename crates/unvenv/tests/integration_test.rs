@@ -11,7 +11,7 @@ fn get_binary_path() -> std::path::PathBuf {
 }
 
 /// Clear git environment variables that interfere with subprocess git operations.
-/// When run inside a git hook (e.g. via prek), GIT_DIR is set to the project repo,
+/// When run inside a git hook (e.g. via `prek`), `GIT_DIR` is set to the project repo,
 /// causing subprocess `git init` to target the wrong directory and the binary
 /// to discover the hook's repo instead of the temp dir's repo.
 fn clear_git_env(mut cmd: Command) -> Command {

@@ -560,7 +560,7 @@ another malformed line
     fn test_scan_for_venvs_no_violations() -> Result<()> {
         let temp_dir = TempDir::new()?;
 
-        // Initialize git repo — clear git env vars so GIT_DIR set by hooks doesn't hijack init
+        // Initialize git repo — clear git env vars so `GIT_DIR` set by hooks doesn't hijack init
         std::process::Command::new("git")
             .args(["init"])
             .current_dir(temp_dir.path())
@@ -590,7 +590,7 @@ another malformed line
     fn test_scan_for_venvs_with_violations() -> Result<()> {
         let temp_dir = TempDir::new()?;
 
-        // Initialize git repo — clear git env vars so GIT_DIR set by hooks doesn't hijack init
+        // Initialize git repo — clear git env vars so `GIT_DIR` set by hooks doesn't hijack init
         std::process::Command::new("git")
             .args(["init"])
             .current_dir(temp_dir.path())
