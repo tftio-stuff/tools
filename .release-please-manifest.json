@@ -3,5 +3,5 @@
   "crates/prompter": "2.1.0",
   "crates/unvenv": "1.6.0",
   "crates/asana-cli": "1.2.0",
-  "crates/todoer": "1.0.5"
+  "crates/todoer": "1.1.0"
 }
