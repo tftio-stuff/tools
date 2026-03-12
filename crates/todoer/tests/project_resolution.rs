@@ -1,6 +1,6 @@
-use todoer::project::{resolve_project, resolve_init_project};
 use std::fs;
 use tempfile::tempdir;
+use todoer::project::{resolve_init_project, resolve_project};
 
 #[test]
 fn resolves_project_from_todoer_file() {

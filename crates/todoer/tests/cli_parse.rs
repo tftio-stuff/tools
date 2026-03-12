@@ -1,5 +1,5 @@
-use todoer::cli::{Cli, Command, TaskCommand, TaskUpdateCommand};
 use clap::Parser;
+use todoer::cli::{Cli, Command, TaskCommand, TaskUpdateCommand};
 
 #[test]
 fn parse_list_all_flag() {
@@ -26,7 +26,7 @@ fn parse_task_update_status() {
                         assert_eq!(id, "123");
                         assert_eq!(status.as_str(), "COMPLETED");
                     }
-                }
+                },
                 _ => panic!("expected update status"),
             }
         }

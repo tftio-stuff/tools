@@ -3,11 +3,18 @@ use serde_json::json;
 use std::io::Read;
 
 use todoer::cli::{Cli, Command, TaskCommand, TaskUpdateCommand};
-use todoer::commands::{init::run_init, list::run_list, new::run_new, task::{run_note, run_show, run_status, run_update_status}};
+use todoer::commands::{
+    init::run_init,
+    list::run_list,
+    new::run_new,
+    task::{run_note, run_show, run_status, run_update_status},
+};
 use todoer::config::load_config;
 use todoer::input::resolve_input;
 use todoer::output::{err_response, ok_response, render_task_table};
-use todoer::project::{find_project_file, load_project_name, resolve_init_project, resolve_project};
+use todoer::project::{
+    find_project_file, load_project_name, resolve_init_project, resolve_project,
+};
 
 fn main() {
     let cli = Cli::parse();
@@ -31,18 +38,22 @@ fn run(cli: Cli) -> i32 {
                 None => return print_error("init", json, anyhow::anyhow!("no home dir")),
             };
             let git_name = git_repo_name(&cwd);
-            let proj = match resolve_init_project(project.as_deref(), &cwd, &home, git_name.as_deref()) {
-                Ok(p) => p,
-                Err(e) => return print_error("init", json, e),
-            };
+            let proj =
+                match resolve_init_project(project.as_deref(), &cwd, &home, git_name.as_deref()) {
+                    Ok(p) => p,
+                    Err(e) => return print_error("init", json, e),
+                };
             match run_init(&config, &proj) {
                 Ok(result) => {
                     if json {
-                        let out = ok_response("init", json!({
-                            "project": {"name": proj.name, "key": proj.key},
-                            "db_path": result.db_path,
-                            "schema_created": result.schema_created
-                        }));
+                        let out = ok_response(
+                            "init",
+                            json!({
+                                "project": {"name": proj.name, "key": proj.key},
+                                "db_path": result.db_path,
+                                "schema_created": result.schema_created
+                            }),
+                        );
                         println!("{}", out);
                     } else {
                         println!("project: {}", proj.name);
@@ -53,7 +64,11 @@ fn run(cli: Cli) -> i32 {
                 Err(e) => print_error("init", json, e),
             }
         }
-        Command::New { project, description, json } => {
+        Command::New {
+            project,
+            description,
+            json,
+        } => {
             let config = match load_config() {
                 Ok(c) => c,
                 Err(e) => return print_error("new", json, e),
@@ -71,7 +86,13 @@ fn run(cli: Cli) -> i32 {
                 Err(e) => return print_error("new", json, e),
             };
             let git_name = git_repo_name(&cwd);
-            let proj = match resolve_project(project.as_deref(), discovered, &cwd, &home, git_name.as_deref()) {
+            let proj = match resolve_project(
+                project.as_deref(),
+                discovered,
+                &cwd,
+                &home,
+                git_name.as_deref(),
+            ) {
                 Ok(p) => p,
                 Err(e) => return print_error("new", json, e),
             };
@@ -85,7 +106,12 @@ fn run(cli: Cli) -> i32 {
                         let out = ok_response("new", json!({"task": result.task}));
                         println!("{}", out);
                     } else {
-                        println!("{} {} {}", result.task.id, result.task.status.as_str(), result.task.description);
+                        println!(
+                            "{} {} {}",
+                            result.task.id,
+                            result.task.status.as_str(),
+                            result.task.description
+                        );
                     }
                     0
                 }
@@ -113,7 +139,13 @@ fn run(cli: Cli) -> i32 {
                     Err(e) => return print_error("list", json, e),
                 };
                 let git_name = git_repo_name(&cwd);
-                match resolve_project(project.as_deref(), discovered, &cwd, &home, git_name.as_deref()) {
+                match resolve_project(
+                    project.as_deref(),
+                    discovered,
+                    &cwd,
+                    &home,
+                    git_name.as_deref(),
+                ) {
                     Ok(p) => Some(p),
                     Err(e) => return print_error("list", json, e),
                 }
@@ -132,104 +164,124 @@ fn run(cli: Cli) -> i32 {
                 Err(e) => print_error("list", json, e),
             }
         }
-        Command::Task { command, json } => {
-            match command {
-                TaskCommand::Status { id } => {
-                    let config = match load_config() {
-                        Ok(c) => c,
-                        Err(e) => return print_error("task.status", json, e),
-                    };
-                    match run_status(&config, &id) {
-                        Ok(result) => {
-                            if json {
-                                let out = ok_response("task.status", json!({
+        Command::Task { command, json } => match command {
+            TaskCommand::Status { id } => {
+                let config = match load_config() {
+                    Ok(c) => c,
+                    Err(e) => return print_error("task.status", json, e),
+                };
+                match run_status(&config, &id) {
+                    Ok(result) => {
+                        if json {
+                            let out = ok_response(
+                                "task.status",
+                                json!({
                                     "description": result.description,
                                     "status": result.status,
                                     "created_at": result.created_at
-                                }));
-                                println!("{}", out);
-                            } else {
-                                println!("{}\n{}\n{}", result.description, result.status.as_str(), result.created_at);
-                            }
-                            0
+                                }),
+                            );
+                            println!("{}", out);
+                        } else {
+                            println!(
+                                "{}\n{}\n{}",
+                                result.description,
+                                result.status.as_str(),
+                                result.created_at
+                            );
                         }
-                        Err(e) => print_error("task.status", json, e),
+                        0
                     }
+                    Err(e) => print_error("task.status", json, e),
                 }
-                TaskCommand::Show { id } => {
-                    let config = match load_config() {
-                        Ok(c) => c,
-                        Err(e) => return print_error("task.show", json, e),
-                    };
-                    match run_show(&config, &id) {
-                        Ok(result) => {
-                            if json {
-                                let out = ok_response("task.show", json!({
+            }
+            TaskCommand::Show { id } => {
+                let config = match load_config() {
+                    Ok(c) => c,
+                    Err(e) => return print_error("task.show", json, e),
+                };
+                match run_show(&config, &id) {
+                    Ok(result) => {
+                        if json {
+                            let out = ok_response(
+                                "task.show",
+                                json!({
                                     "description": result.description,
                                     "status": result.status,
                                     "created_at": result.created_at,
                                     "notes": result.notes
-                                }));
-                                println!("{}", out);
-                            } else {
-                                println!("{}\n{}\n{}", result.description, result.status.as_str(), result.created_at);
-                                for note in result.notes {
-                                    println!("- {}", note.note);
-                                }
+                                }),
+                            );
+                            println!("{}", out);
+                        } else {
+                            println!(
+                                "{}\n{}\n{}",
+                                result.description,
+                                result.status.as_str(),
+                                result.created_at
+                            );
+                            for note in result.notes {
+                                println!("- {}", note.note);
                             }
-                            0
                         }
-                        Err(e) => print_error("task.show", json, e),
+                        0
                     }
+                    Err(e) => print_error("task.show", json, e),
                 }
-                TaskCommand::Note { id, note } => {
+            }
+            TaskCommand::Note { id, note } => {
+                let config = match load_config() {
+                    Ok(c) => c,
+                    Err(e) => return print_error("task.note", json, e),
+                };
+                let note = match read_input(&note) {
+                    Ok(n) => n,
+                    Err(e) => return print_error("task.note", json, e),
+                };
+                match run_note(&config, &id, &note) {
+                    Ok(result) => {
+                        if json {
+                            let out = ok_response("task.note", json!({"note": result.note}));
+                            println!("{}", out);
+                        } else {
+                            println!("note added: {}", result.note.id);
+                        }
+                        0
+                    }
+                    Err(e) => print_error("task.note", json, e),
+                }
+            }
+            TaskCommand::Update { command } => match command {
+                TaskUpdateCommand::Status { id, status } => {
                     let config = match load_config() {
                         Ok(c) => c,
-                        Err(e) => return print_error("task.note", json, e),
+                        Err(e) => return print_error("task.update.status", json, e),
                     };
-                    let note = match read_input(&note) {
-                        Ok(n) => n,
-                        Err(e) => return print_error("task.note", json, e),
-                    };
-                    match run_note(&config, &id, &note) {
+                    match run_update_status(&config, &id, status) {
                         Ok(result) => {
                             if json {
-                                let out = ok_response("task.note", json!({"note": result.note}));
+                                let out = ok_response(
+                                    "task.update.status",
+                                    json!({"status": result.status}),
+                                );
                                 println!("{}", out);
                             } else {
-                                println!("note added: {}", result.note.id);
+                                println!("{}", result.status.as_str());
                             }
                             0
                         }
-                        Err(e) => print_error("task.note", json, e),
+                        Err(e) => print_error("task.update.status", json, e),
                     }
                 }
-                TaskCommand::Update { command } => match command {
-                    TaskUpdateCommand::Status { id, status } => {
-                        let config = match load_config() {
-                            Ok(c) => c,
-                            Err(e) => return print_error("task.update.status", json, e),
-                        };
-                        match run_update_status(&config, &id, status) {
-                            Ok(result) => {
-                                if json {
-                                    let out = ok_response("task.update.status", json!({"status": result.status}));
-                                    println!("{}", out);
-                                } else {
-                                    println!("{}", result.status.as_str());
-                                }
-                                0
-                            }
-                            Err(e) => print_error("task.update.status", json, e),
-                        }
-                    }
-                },
-            }
-        }
+            },
+        },
     }
 }
 
-fn discover_project_name(cwd: &std::path::Path, home: &std::path::Path) -> anyhow::Result<Option<String>> {
+fn discover_project_name(
+    cwd: &std::path::Path,
+    home: &std::path::Path,
+) -> anyhow::Result<Option<String>> {
     if let Some(path) = find_project_file(cwd, home)? {
         let name = load_project_name(&path)?;
         return Ok(Some(name));

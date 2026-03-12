@@ -1,6 +1,6 @@
-use todoer::project::find_project_file;
 use std::fs;
 use std::path::PathBuf;
+use todoer::project::find_project_file;
 
 #[test]
 fn finds_todoer_toml_in_parent() {

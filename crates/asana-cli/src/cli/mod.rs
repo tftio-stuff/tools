@@ -25,10 +25,10 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 use tag::TagCommand;
 use task::TaskCommand;
+use tftio_cli_common::{DoctorCheck, DoctorChecks, LicenseType, RepoInfo};
 use tokio::runtime::Builder as RuntimeBuilder;
 use tracing::{debug, info};
 use user::UserCommand;
-use tftio_cli_common::{DoctorCheck, DoctorChecks, LicenseType, RepoInfo};
 use workspace::WorkspaceCommand;
 
 const MANPAGE_SOURCE: &str = include_str!("../../docs/man/asana-cli.1");

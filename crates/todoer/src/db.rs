@@ -28,6 +28,6 @@ pub fn init_db(conn: &Connection) -> Result<()> {
             note TEXT NOT NULL,
             FOREIGN KEY(task_id) REFERENCES tasks(id)
         );
-        "
+        ",
     )
 }

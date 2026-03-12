@@ -1,7 +1,7 @@
+use crate::models::{Status, Task, TaskNote};
+use chrono::Utc;
 use rusqlite::{Connection, params};
 use uuid::Uuid;
-use chrono::Utc;
-use crate::models::{Task, TaskNote, Status};
 
 pub fn ensure_project(conn: &Connection, key: &str, name: &str) -> rusqlite::Result<()> {
     conn.execute(
@@ -11,7 +11,11 @@ pub fn ensure_project(conn: &Connection, key: &str, name: &str) -> rusqlite::Res
     Ok(())
 }
 
-pub fn insert_task(conn: &Connection, project_key: &str, description: &str) -> rusqlite::Result<Task> {
+pub fn insert_task(
+    conn: &Connection,
+    project_key: &str,
+    description: &str,
+) -> rusqlite::Result<Task> {
     let id = Uuid::new_v4().to_string();
     let created_at = Utc::now().to_rfc3339();
     let status = Status::New;
@@ -19,7 +23,13 @@ pub fn insert_task(conn: &Connection, project_key: &str, description: &str) -> r
         "INSERT INTO tasks (id, project_key, created_at, description, status) VALUES (?1, ?2, ?3, ?4, ?5)",
         params![id, project_key, created_at, description, status.as_str()],
     )?;
-    Ok(Task { id, project_key: project_key.to_string(), created_at, description: description.to_string(), status })
+    Ok(Task {
+        id,
+        project_key: project_key.to_string(),
+        created_at,
+        description: description.to_string(),
+        status,
+    })
 }
 
 pub fn list_tasks_by_project(conn: &Connection, project_key: &str) -> rusqlite::Result<Vec<Task>> {
@@ -37,7 +47,9 @@ pub fn list_tasks_by_project(conn: &Connection, project_key: &str) -> rusqlite::
         })
     })?;
     let mut tasks = Vec::new();
-    for t in rows { tasks.push(t?); }
+    for t in rows {
+        tasks.push(t?);
+    }
     Ok(tasks)
 }
 
@@ -56,7 +68,9 @@ pub fn list_tasks_all(conn: &Connection) -> rusqlite::Result<Vec<Task>> {
         })
     })?;
     let mut tasks = Vec::new();
-    for t in rows { tasks.push(t?); }
+    for t in rows {
+        tasks.push(t?);
+    }
     Ok(tasks)
 }
 
@@ -86,10 +100,18 @@ pub fn add_note(conn: &Connection, id: &str, note: &str) -> rusqlite::Result<Tas
         params![id, created_at, note],
     )?;
     let note_id = conn.last_insert_rowid();
-    Ok(TaskNote { id: note_id, task_id: id.to_string(), created_at, note: note.to_string() })
+    Ok(TaskNote {
+        id: note_id,
+        task_id: id.to_string(),
+        created_at,
+        note: note.to_string(),
+    })
 }
 
-pub fn get_task_with_notes(conn: &Connection, id: &str) -> rusqlite::Result<(String, Status, String, Vec<TaskNote>)> {
+pub fn get_task_with_notes(
+    conn: &Connection,
+    id: &str,
+) -> rusqlite::Result<(String, Status, String, Vec<TaskNote>)> {
     let (desc, status, created_at) = get_task_status(conn, id)?;
     let mut stmt = conn.prepare(
         "SELECT id, task_id, created_at, note FROM task_notes WHERE task_id = ?1 ORDER BY created_at DESC"
@@ -103,6 +125,8 @@ pub fn get_task_with_notes(conn: &Connection, id: &str) -> rusqlite::Result<(Str
         })
     })?;
     let mut notes = Vec::new();
-    for n in rows { notes.push(n?); }
+    for n in rows {
+        notes.push(n?);
+    }
     Ok((desc, status, created_at, notes))
 }

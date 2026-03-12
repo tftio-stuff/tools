@@ -1,14 +1,18 @@
 use crate::config::{Config, resolve_db_path};
-use crate::project::ResolvedProject;
 use crate::db::open_db;
-use crate::repo::{insert_task, ensure_project};
 use crate::models::Task;
+use crate::project::ResolvedProject;
+use crate::repo::{ensure_project, insert_task};
 
 pub struct NewResult {
     pub task: Task,
 }
 
-pub fn run_new(config: &Config, project: &ResolvedProject, description: &str) -> anyhow::Result<NewResult> {
+pub fn run_new(
+    config: &Config,
+    project: &ResolvedProject,
+    description: &str,
+) -> anyhow::Result<NewResult> {
     let db_path = resolve_db_path(config)?;
     if !db_path.exists() {
         anyhow::bail!("database not initialized");

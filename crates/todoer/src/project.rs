@@ -48,7 +48,10 @@ pub fn resolve_project(
 ) -> anyhow::Result<ResolvedProject> {
     if let Some(p) = project_override {
         let key = crate::models::normalize_project_key(p);
-        return Ok(ResolvedProject { name: p.to_string(), key });
+        return Ok(ResolvedProject {
+            name: p.to_string(),
+            key,
+        });
     }
     if let Some(p) = discovered {
         let key = crate::models::normalize_project_key(&p);
@@ -61,7 +64,10 @@ pub fn resolve_project(
     }
     if let Some(g) = git_name {
         let key = crate::models::normalize_project_key(g);
-        return Ok(ResolvedProject { name: g.to_string(), key });
+        return Ok(ResolvedProject {
+            name: g.to_string(),
+            key,
+        });
     }
     anyhow::bail!("no project")
 }
@@ -74,7 +80,10 @@ pub fn resolve_init_project(
 ) -> anyhow::Result<ResolvedProject> {
     if let Some(p) = project_override {
         let key = crate::models::normalize_project_key(p);
-        return Ok(ResolvedProject { name: p.to_string(), key });
+        return Ok(ResolvedProject {
+            name: p.to_string(),
+            key,
+        });
     }
     if let Some(path) = find_project_file(cwd, home)? {
         let name = load_project_name(&path)?;
@@ -83,7 +92,10 @@ pub fn resolve_init_project(
     }
     if let Some(g) = git_name {
         let key = crate::models::normalize_project_key(g);
-        return Ok(ResolvedProject { name: g.to_string(), key });
+        return Ok(ResolvedProject {
+            name: g.to_string(),
+            key,
+        });
     }
     anyhow::bail!("no project")
 }

@@ -1,17 +1,22 @@
 use tempfile::tempdir;
-use todoer::commands::task::{run_status, run_update_status, run_note, run_show};
+use todoer::commands::task::{run_note, run_show, run_status, run_update_status};
 use todoer::config::Config;
-use todoer::db::{open_db, init_db};
-use todoer::repo::{ensure_project, insert_task};
-use todoer::project::ResolvedProject;
+use todoer::db::{init_db, open_db};
 use todoer::models::Status;
+use todoer::project::ResolvedProject;
+use todoer::repo::{ensure_project, insert_task};
 
 #[test]
 fn status_and_update() {
     let dir = tempdir().unwrap();
     let db = dir.path().join("todoer.db");
-    let config = Config { db_path: Some(db.to_string_lossy().to_string()) };
-    let project = ResolvedProject { name: "Test".to_string(), key: "test".to_string() };
+    let config = Config {
+        db_path: Some(db.to_string_lossy().to_string()),
+    };
+    let project = ResolvedProject {
+        name: "Test".to_string(),
+        key: "test".to_string(),
+    };
 
     let conn = open_db(&db).unwrap();
     init_db(&conn).unwrap();
@@ -29,8 +34,13 @@ fn status_and_update() {
 fn note_and_show() {
     let dir = tempdir().unwrap();
     let db = dir.path().join("todoer.db");
-    let config = Config { db_path: Some(db.to_string_lossy().to_string()) };
-    let project = ResolvedProject { name: "Test".to_string(), key: "test".to_string() };
+    let config = Config {
+        db_path: Some(db.to_string_lossy().to_string()),
+    };
+    let project = ResolvedProject {
+        name: "Test".to_string(),
+        key: "test".to_string(),
+    };
 
     let conn = open_db(&db).unwrap();
     init_db(&conn).unwrap();

@@ -14,8 +14,8 @@ use std::{
     path::{Path, PathBuf},
     process,
 };
-use walkdir::WalkDir;
 use tftio_cli_common::{DoctorCheck, DoctorChecks, LicenseType, RepoInfo};
+use walkdir::WalkDir;
 
 /// Application version from Cargo.toml
 const VERSION: &str = env!("CARGO_PKG_VERSION");
