@@ -1,7 +1,7 @@
 #![allow(unsafe_code)]
 
-use todoer::config::{resolve_config_path, resolve_db_path, Config};
 use std::path::PathBuf;
+use todoer::config::{Config, resolve_config_path, resolve_db_path};
 
 #[test]
 fn config_path_respects_xdg_config_home() {

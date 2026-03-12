@@ -1,9 +1,9 @@
-use std::path::PathBuf;
-use rusqlite::Connection;
 use crate::config::{Config, resolve_db_path};
 use crate::db::init_db;
-use crate::repo::ensure_project;
 use crate::project::ResolvedProject;
+use crate::repo::ensure_project;
+use rusqlite::Connection;
+use std::path::PathBuf;
 
 pub struct InitResult {
     pub db_path: PathBuf,
@@ -18,5 +18,8 @@ pub fn run_init(config: &Config, project: &ResolvedProject) -> anyhow::Result<In
     let conn = Connection::open(&db_path)?;
     init_db(&conn)?;
     ensure_project(&conn, &project.key, &project.name)?;
-    Ok(InitResult { db_path, schema_created: true })
+    Ok(InitResult {
+        db_path,
+        schema_created: true,
+    })
 }

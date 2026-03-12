@@ -1,16 +1,21 @@
 use tempfile::tempdir;
 use todoer::commands::list::run_list;
 use todoer::config::Config;
+use todoer::db::{init_db, open_db};
 use todoer::project::ResolvedProject;
-use todoer::db::{open_db, init_db};
 use todoer::repo::{ensure_project, insert_task};
 
 #[test]
 fn list_by_project() {
     let dir = tempdir().unwrap();
     let db = dir.path().join("todoer.db");
-    let config = Config { db_path: Some(db.to_string_lossy().to_string()) };
-    let project = ResolvedProject { name: "Test".to_string(), key: "test".to_string() };
+    let config = Config {
+        db_path: Some(db.to_string_lossy().to_string()),
+    };
+    let project = ResolvedProject {
+        name: "Test".to_string(),
+        key: "test".to_string(),
+    };
 
     let conn = open_db(&db).unwrap();
     init_db(&conn).unwrap();
@@ -26,9 +31,17 @@ fn list_by_project() {
 fn list_all_projects() {
     let dir = tempdir().unwrap();
     let db = dir.path().join("todoer.db");
-    let config = Config { db_path: Some(db.to_string_lossy().to_string()) };
-    let project1 = ResolvedProject { name: "Test".to_string(), key: "test".to_string() };
-    let project2 = ResolvedProject { name: "Other".to_string(), key: "other".to_string() };
+    let config = Config {
+        db_path: Some(db.to_string_lossy().to_string()),
+    };
+    let project1 = ResolvedProject {
+        name: "Test".to_string(),
+        key: "test".to_string(),
+    };
+    let project2 = ResolvedProject {
+        name: "Other".to_string(),
+        key: "other".to_string(),
+    };
 
     let conn = open_db(&db).unwrap();
     init_db(&conn).unwrap();
