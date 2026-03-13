@@ -4,6 +4,6 @@
 repo = "local"
 hooks = [
     { id = "lint", name = "cargo clippy", language = "system", entry = "just lint", pass_filenames = false, stages = ["pre-commit"] },
-    { id = "msrv", name = "MSRV check", language = "system", entry = "cargo +1.94.0 check --workspace", pass_filenames = false, stages = ["pre-push"] },
+    { id = "msrv", name = "MSRV check", language = "system", entry = "cargo +1.94.0 check --workspace --locked", pass_filenames = false, stages = ["pre-push"] },
     { id = "ci", name = "full CI", language = "system", entry = "just ci", pass_filenames = false, stages = ["pre-push"] },
 ]
