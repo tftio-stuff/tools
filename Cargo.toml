@@ -6,6 +6,7 @@ members = [
     "crates/unvenv",
     "crates/asana-cli",
     "crates/todoer",
+    "crates/silent-critic",
 ]
 
 [workspace.package]
@@ -17,6 +18,7 @@ rust-version = "1.94.0"
 [workspace.dependencies]
 # Internal
 tftio-cli-common = { path = "crates/cli-common", version = "0.5.0" }
+tftio-prompter = { path = "crates/prompter", version = "2.1.0" }
 
 # External - centralized versions
 anyhow = "1"
