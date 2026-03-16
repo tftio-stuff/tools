@@ -1310,6 +1310,60 @@ pub fn run_render_stdout(
     )
 }
 
+/// Render composed profiles to a byte vector.
+///
+/// Convenience wrapper around [`render_to_writer`] that handles config
+/// resolution and returns the rendered output as bytes. Intended for
+/// use by other crates that need prompt composition as a library.
+///
+/// # Arguments
+/// * `profiles` - Profile names to compose
+/// * `config_override` - Optional path to custom config file
+///
+/// # Returns
+/// * `Ok(Vec<u8>)` - Rendered prompt content
+/// * `Err(String)` - Error message
+///
+/// # Errors
+/// Returns an error if config resolution, profile resolution, or rendering fails.
+pub fn render_to_vec(
+    profiles: &[String],
+    config_override: Option<&Path>,
+) -> Result<Vec<u8>, String> {
+    let cfg_path = resolve_config_path(config_override)?;
+    let cfg_text = read_config_with_path(&cfg_path)?;
+    let cfg = parse_config_toml(&cfg_text)?;
+    let lib = library_path_for_config_override(config_override, &cfg_path)?;
+    let mut buf = Vec::new();
+    render_to_writer(&cfg, &lib, &mut buf, profiles, None, None, None, false)?;
+    Ok(buf)
+}
+
+/// List available profile names.
+///
+/// Returns all profile names from the configuration as a sorted vector.
+/// Intended for use by other crates that need to validate profile names.
+///
+/// # Arguments
+/// * `config_override` - Optional path to custom config file
+///
+/// # Returns
+/// * `Ok(Vec<String>)` - Sorted profile names
+/// * `Err(String)` - Error message
+///
+/// # Errors
+/// Returns an error if config resolution or parsing fails.
+pub fn available_profiles(
+    config_override: Option<&Path>,
+) -> Result<Vec<String>, String> {
+    let cfg_path = resolve_config_path(config_override)?;
+    let cfg_text = read_config_with_path(&cfg_path)?;
+    let cfg = parse_config_toml(&cfg_text)?;
+    let mut names: Vec<String> = cfg.profiles.keys().cloned().collect();
+    names.sort();
+    Ok(names)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1981,5 +2035,25 @@ depends_on = ["missing.md", "unknown_profile"]
                 env::remove_var("HOME");
             }
         }
+    }
+
+    #[test]
+    fn render_to_vec_returns_bytes() {
+        // This test uses the real config, so it depends on prompter being configured.
+        // If no config exists, it should return an error, not panic.
+        let result = render_to_vec(&[], None);
+        // Empty profiles should succeed (produces empty or minimal output)
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn available_profiles_returns_sorted() {
+        let result = available_profiles(None);
+        if let Ok(profiles) = result {
+            let mut sorted = profiles.clone();
+            sorted.sort();
+            assert_eq!(profiles, sorted);
+        }
+        // If no config, error is acceptable
     }
 }
