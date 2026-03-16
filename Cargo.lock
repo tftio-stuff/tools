@@ -2339,10 +2339,13 @@ dependencies = [
  "clap",
  "dirs",
  "git2",
+ "serde",
+ "serde_json",
  "tempfile",
  "tftio-cli-common",
  "tftio-prompter",
  "thiserror 2.0.18",
+ "toml",
 ]
 
 [[package]]

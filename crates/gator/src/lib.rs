@@ -8,6 +8,7 @@ pub mod cli;
 pub mod config;
 pub mod prompt;
 pub mod sandbox;
+pub mod session;
 pub mod worktree;
 
 use cli::Cli;
@@ -29,18 +30,38 @@ pub fn run(cli: &Cli) -> Result<(), String> {
         }
     }
 
-    // 2. Resolve workdir
-    let workdir = config::resolve_workdir(cli.workdir.as_deref())?;
+    // Branch: session mode vs non-session mode
+    let (workdir, extras, denies, wt_info) = if let Some(session_id) = &cli.session {
+        // Session mode: contract is sole authority
+        let sandbox = session::fetch_session_sandbox(session_id)?;
+        let (workdir, extras, denies) = session::into_sandbox_parts(sandbox);
+        let wt_info = worktree::WorktreeInfo::default(); // no auto-detection
+        (workdir, extras, denies, wt_info)
+    } else {
+        // Non-session mode: implicit resolution
+        let workdir = config::resolve_workdir(cli.workdir.as_deref())?;
 
-    // 3. Load .safehouse + merge CLI extra dirs
-    let safehouse_extras = config::load_safehouse_config(&workdir);
-    let extras = config::merge_extra_dirs(safehouse_extras, &cli.add_dirs, &cli.add_dirs_ro);
+        let mut safehouse_extras = config::load_safehouse_config(&workdir);
 
-    // 4. Detect worktrees
-    let wt_info = worktree::detect_worktrees(&workdir);
+        // Load named policies
+        let denies = if cli.policies.is_empty() {
+            Vec::new()
+        } else {
+            let (policy_extras, policy_denies) =
+                config::load_policies(&cli.policies, &workdir)?;
+            safehouse_extras.rw.extend(policy_extras.rw);
+            safehouse_extras.ro.extend(policy_extras.ro);
+            policy_denies
+        };
+
+        let extras =
+            config::merge_extra_dirs(safehouse_extras, &cli.add_dirs, &cli.add_dirs_ro);
+        let wt_info = worktree::detect_worktrees(&workdir);
+        (workdir, extras, denies, wt_info)
+    };
 
     // 5. Assemble sandbox policy
-    let policy = sandbox::assemble_policy(&workdir, &wt_info, &extras, &[])
+    let policy = sandbox::assemble_policy(&workdir, &wt_info, &extras, &denies)
         .map_err(|e| format!("policy assembly failed: {e}"))?;
 
     // 6. Dry-run: print policy and exit
