@@ -1,6 +1,6 @@
 {
   "crates/cli-common": "0.5.0",
-  "crates/prompter": "2.1.0",
+  "crates/prompter": "2.2.0",
   "crates/unvenv": "1.8.0",
   "crates/asana-cli": "1.2.0",
   "crates/todoer": "1.1.0",
