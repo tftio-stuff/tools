@@ -373,7 +373,7 @@ pub fn run_compose_from(
         session_id: session.id.clone(),
         goal: input.goal,
         created_at: now.clone(),
-        sandbox: None,
+        sandbox: input.sandbox.clone(),
     };
     db::insert_contract(conn, &contract)?;
     db::update_session_contract(conn, &session.id, &contract_id)?;
@@ -552,7 +552,7 @@ fn generate_token() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{Criterion, EvaluatorType, SessionStatus};
+    use crate::models::{ComposeFromInput, Criterion, EvaluatorType, SessionStatus};
 
     fn test_db() -> rusqlite::Connection {
         let conn = rusqlite::Connection::open_in_memory().unwrap();
@@ -696,6 +696,55 @@ mod tests {
         let updated = db::get_criterion(&conn, &existing.id).unwrap().unwrap();
         assert_eq!(updated.claim, "Updated claim");
         assert_eq!(updated.check_spec, "cargo test --all");
+    }
+
+    #[test]
+    fn compose_from_input_with_sandbox() {
+        let json = r#"{
+            "goal": "test goal",
+            "criteria": [],
+            "sandbox": {
+                "workdir": "/tmp/test",
+                "rw": ["/tmp/test"],
+                "denies": ["~/.aws"]
+            }
+        }"#;
+        let input: ComposeFromInput = serde_json::from_str(json).unwrap();
+        assert!(input.sandbox.is_some());
+        let sb = input.sandbox.unwrap();
+        assert_eq!(sb.workdir, Some("/tmp/test".to_owned()));
+        assert_eq!(sb.rw, vec!["/tmp/test"]);
+        assert_eq!(sb.denies, vec!["~/.aws"]);
+    }
+
+    #[test]
+    fn compose_from_input_without_sandbox() {
+        let json = r#"{"goal": "test goal", "criteria": []}"#;
+        let input: ComposeFromInput = serde_json::from_str(json).unwrap();
+        assert!(input.sandbox.is_none());
+    }
+
+    #[test]
+    fn compose_from_passes_sandbox_to_contract() {
+        let conn = test_db();
+        let _session = create_composing_session(&conn);
+
+        let input = r#"{
+            "goal": "Sandbox test",
+            "criteria": [],
+            "sandbox": {
+                "workdir": "/tmp/work",
+                "rw": ["/tmp/work"],
+                "denies": ["~/.ssh"]
+            }
+        }"#;
+
+        let result = run_compose_from(&conn, input).unwrap();
+        assert!(result.contract.sandbox.is_some());
+        let sb = result.contract.sandbox.unwrap();
+        assert_eq!(sb.workdir, Some("/tmp/work".to_owned()));
+        assert_eq!(sb.rw, vec!["/tmp/work"]);
+        assert_eq!(sb.denies, vec!["~/.ssh"]);
     }
 
     #[test]

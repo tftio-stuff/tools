@@ -635,6 +635,9 @@ pub struct ComposeFromInput {
     pub goal: String,
     /// The criteria to bind to the contract.
     pub criteria: Vec<ComposeFromCriterion>,
+    /// Optional sandbox configuration for the contract.
+    #[serde(default)]
+    pub sandbox: Option<ContractSandbox>,
 }
 
 /// A criterion definition within a compose-from input.
