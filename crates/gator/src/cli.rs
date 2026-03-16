@@ -42,6 +42,17 @@ pub struct Cli {
     #[arg(long = "add-dirs-ro", value_name = "PATH")]
     pub add_dirs_ro: Vec<PathBuf>,
 
+    /// Named policy profile (repeatable). Loaded from
+    /// `<workdir>/.gator/policies/<name>.toml` or `~/.config/gator/policies/<name>.toml`
+    #[arg(long = "policy", value_name = "NAME")]
+    pub policies: Vec<String>,
+
+    /// Silent-critic session ID. When set, the contract is the sole
+    /// authority on sandbox grants. Incompatible with `--workdir`,
+    /// `--add-dirs`, `--add-dirs-ro`, and `--policy`.
+    #[arg(long, value_name = "ID")]
+    pub session: Option<String>,
+
     /// Skip prompter integration
     #[arg(long)]
     pub no_prompt: bool,
@@ -57,6 +68,37 @@ pub struct Cli {
     /// Arguments forwarded to the agent command (after --)
     #[arg(last = true)]
     pub agent_args: Vec<String>,
+}
+
+impl Cli {
+    /// Validate mutual exclusivity of session mode vs non-session flags.
+    ///
+    /// # Errors
+    /// Returns an error if `--session` is combined with incompatible flags.
+    pub fn validate(&self) -> Result<(), String> {
+        if self.session.is_some() {
+            let mut conflicts = Vec::new();
+            if self.workdir.is_some() {
+                conflicts.push("--workdir");
+            }
+            if !self.add_dirs.is_empty() {
+                conflicts.push("--add-dirs");
+            }
+            if !self.add_dirs_ro.is_empty() {
+                conflicts.push("--add-dirs-ro");
+            }
+            if !self.policies.is_empty() {
+                conflicts.push("--policy");
+            }
+            if !conflicts.is_empty() {
+                return Err(format!(
+                    "--session is incompatible with: {}",
+                    conflicts.join(", ")
+                ));
+            }
+        }
+        Ok(())
+    }
 }
 
 impl std::fmt::Display for Agent {
@@ -121,6 +163,42 @@ mod tests {
     fn parse_dry_run() {
         let cli = Cli::parse_from(["gator", "gemini", "--dry-run"]);
         assert!(cli.dry_run);
+    }
+
+    #[test]
+    fn parse_with_policy() {
+        let cli = Cli::parse_from(["gator", "claude", "--policy=audit", "--policy=extra"]);
+        assert_eq!(cli.policies, vec!["audit", "extra"]);
+    }
+
+    #[test]
+    fn parse_with_session() {
+        let cli = Cli::parse_from(["gator", "claude", "--session=abc-123"]);
+        assert_eq!(cli.session, Some("abc-123".to_owned()));
+    }
+
+    #[test]
+    fn validate_session_exclusive_with_workdir() {
+        let cli = Cli::parse_from(["gator", "claude", "--session=abc", "--workdir=/tmp"]);
+        assert!(cli.validate().is_err());
+    }
+
+    #[test]
+    fn validate_session_exclusive_with_policy() {
+        let cli = Cli::parse_from(["gator", "claude", "--session=abc", "--policy=audit"]);
+        assert!(cli.validate().is_err());
+    }
+
+    #[test]
+    fn validate_session_alone_ok() {
+        let cli = Cli::parse_from(["gator", "claude", "--session=abc"]);
+        assert!(cli.validate().is_ok());
+    }
+
+    #[test]
+    fn validate_no_session_ok() {
+        let cli = Cli::parse_from(["gator", "claude", "--policy=audit"]);
+        assert!(cli.validate().is_ok());
     }
 
     #[test]
