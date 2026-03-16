@@ -40,7 +40,7 @@ pub fn run(cli: &Cli) -> Result<(), String> {
     let wt_info = worktree::detect_worktrees(&workdir);
 
     // 5. Assemble sandbox policy
-    let policy = sandbox::assemble_policy(&workdir, &wt_info, &extras)
+    let policy = sandbox::assemble_policy(&workdir, &wt_info, &extras, &[])
         .map_err(|e| format!("policy assembly failed: {e}"))?;
 
     // 6. Dry-run: print policy and exit

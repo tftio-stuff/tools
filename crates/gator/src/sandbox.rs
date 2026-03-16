@@ -60,6 +60,16 @@ fn emit_ro_grant(path: &Path, out: &mut String) {
     .unwrap();
 }
 
+/// Emit an SBPL deny rule for a path.
+fn emit_deny(path: &Path, out: &mut String) {
+    writeln!(
+        out,
+        "(deny file-read* file-write* (subpath \"{}\"))",
+        path.display()
+    )
+    .unwrap();
+}
+
 /// Assemble the complete sandbox policy.
 ///
 /// Reads the static base profile and appends dynamic rules for the
@@ -71,6 +81,7 @@ pub fn assemble_policy(
     workdir: &Path,
     worktree_info: &WorktreeInfo,
     extra_dirs: &ExtraDirs,
+    deny_paths: &[PathBuf],
 ) -> Result<String, io::Error> {
     let base_path = base_profile_path();
     let mut policy = fs::read_to_string(&base_path)?;
@@ -115,6 +126,15 @@ pub fn assemble_policy(
         writeln!(policy, ";; Extra RO: {}", dir.display()).unwrap();
         emit_ancestors(dir, &mut policy);
         emit_ro_grant(dir, &mut policy);
+    }
+
+    // Policy denies
+    if !deny_paths.is_empty() {
+        writeln!(policy, "\n;; Policy denies").unwrap();
+        for dir in deny_paths {
+            writeln!(policy, ";; Deny: {}", dir.display()).unwrap();
+            emit_deny(dir, &mut policy);
+        }
     }
 
     Ok(policy)
@@ -168,9 +188,36 @@ mod tests {
         let wt = WorktreeInfo::default();
         let extras = ExtraDirs::default();
 
-        let policy = assemble_policy(workdir, &wt, &extras).unwrap();
+        let policy = assemble_policy(workdir, &wt, &extras, &[]).unwrap();
         assert!(policy.contains("(deny default)"));
         assert!(policy.contains("Dynamic rules"));
         assert!(policy.contains("/Users/jfb/Projects/test"));
+    }
+
+    #[test]
+    fn emit_deny_format() {
+        let mut out = String::new();
+        emit_deny(Path::new("/Users/jfb/.aws"), &mut out);
+        assert_eq!(
+            out,
+            "(deny file-read* file-write* (subpath \"/Users/jfb/.aws\"))\n"
+        );
+    }
+
+    #[test]
+    fn assemble_policy_with_denies() {
+        let base = dirs::home_dir().unwrap().join(DEFAULT_PROFILE_PATH);
+        if !base.exists() {
+            return;
+        }
+
+        let workdir = Path::new("/Users/jfb/Projects/test");
+        let wt = WorktreeInfo::default();
+        let extras = ExtraDirs::default();
+        let denies = vec![PathBuf::from("/Users/jfb/.secret")];
+
+        let policy = assemble_policy(workdir, &wt, &extras, &denies).unwrap();
+        assert!(policy.contains("Policy denies"));
+        assert!(policy.contains("(deny file-read* file-write* (subpath \"/Users/jfb/.secret\"))"));
     }
 }
