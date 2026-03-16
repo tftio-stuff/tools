@@ -24,10 +24,12 @@ path = "src/main.rs"
 clap.workspace = true
 dirs.workspace = true
 git2.workspace = true
+serde.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
 tftio-cli-common.workspace = true
 tftio-prompter.workspace = true
+toml.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
