@@ -7,6 +7,7 @@ members = [
     "crates/asana-cli",
     "crates/todoer",
     "crates/silent-critic",
+    "crates/gator",
 ]
 
 [workspace.package]

@@ -2333,6 +2333,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "tftio-gator"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "dirs",
+ "git2",
+ "tempfile",
+ "tftio-cli-common",
+ "tftio-prompter",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "tftio-prompter"
 version = "2.1.0"
 dependencies = [
