@@ -1,0 +1,65 @@
+[package]
+name = "tftio-silent-critic"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Silent Critic: a supervision framework for agentic software development"
+
+[lints.rust]
+unsafe_code = "warn"
+missing_docs = "allow"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+enum_glob_use = "deny"
+wildcard_imports = "deny"
+multiple_crate_versions = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+too_many_arguments = "allow"
+too_many_lines = "allow"
+cargo_common_metadata = "allow"
+must_use_candidate = "allow"
+use_self = "allow"
+needless_pass_by_value = "allow"
+missing_const_for_fn = "allow"
+uninlined_format_args = "allow"
+collapsible_if = "allow"
+manual_let_else = "allow"
+redundant_closure_for_method_calls = "allow"
+branches_sharing_code = "allow"
+significant_drop_tightening = "allow"
+format_push_string = "allow"
+format_collect = "allow"
+
+[lib]
+name = "silent_critic"
+path = "src/lib.rs"
+
+[[bin]]
+name = "silent-critic"
+path = "src/main.rs"
+
+[dependencies]
+tftio-cli-common.workspace = true
+anyhow.workspace = true
+chrono = { workspace = true, features = ["serde", "clock"] }
+clap.workspace = true
+colored.workspace = true
+directories.workspace = true
+git2.workspace = true
+rusqlite.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+toml.workspace = true
+uuid.workspace = true
+walkdir.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

@@ -31,6 +31,13 @@
       "component": "todoer",
       "changelog-path": "CHANGELOG.md",
       "package-name": "tftio-todoer"
+    },
+    "crates/silent-critic": {
+      "release-type": "rust",
+      "component": "silent-critic",
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true,
+      "package-name": "tftio-silent-critic"
     }
   },
   "separate-pull-requests": true

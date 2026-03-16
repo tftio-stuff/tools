@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Workspace Overview
 
-Cargo workspace monorepo (`tools/`) containing 5 Rust CLI tools:
+Cargo workspace monorepo (`tools/`) containing 6 Rust CLI tools:
 
 | Crate | Package | Version | Description |
 |-------|---------|---------|-------------|
@@ -13,6 +13,7 @@ Cargo workspace monorepo (`tools/`) containing 5 Rust CLI tools:
 | `unvenv` | `tftio-unvenv` | 1.8.0 | Detect Python venvs ignored by Git |
 | `asana-cli` | `tftio-asana-cli` | 1.2.0 | Asana API interface |
 | `todoer` | `tftio-todoer` | 1.1.0 | Global todo manager for LLM agents |
+| `silent-critic` | `tftio-silent-critic` | 0.1.0 | Supervision framework for agentic development |
 
 See [`CRATES.md`](/Users/jfb/Projects/tools/feature/gator/CRATES.md) for expanded crate documentation.
 
@@ -53,7 +54,8 @@ tools/
     ├── prompter/       # binary + lib (TOML profile prompt composition)
     ├── unvenv/         # binary (git venv detection)
     ├── asana-cli/      # binary + lib (Asana API with async, multipart, tracing)
-    └── todoer/         # binary + lib (SQLite-backed todo manager)
+    ├── todoer/         # binary + lib (SQLite-backed todo manager)
+    └── silent-critic/  # binary + lib (supervision framework for agentic dev)
 ```
 
 See [`CRATES.md`](/Users/jfb/Projects/tools/feature/gator/CRATES.md) for the full crate structure.
@@ -76,7 +78,7 @@ See [`CRATES.md`](/Users/jfb/Projects/tools/feature/gator/CRATES.md) for the ful
 - `clippy.wildcard_imports = "deny"`
 - `clippy.enum_glob_use = "deny"`
 
-**Per-crate overrides**: `todoer` disables `missing_docs` locally.
+**Per-crate overrides**: `todoer` and `silent-critic` disable `missing_docs` locally.
 
 ### Code Organization Patterns
 
@@ -158,6 +160,42 @@ crates/NAMESPACE/
 - CLI commands: `new`, `list`, `init`
 - Uses `rusqlite` (bundled), `uuid`, `chrono`
 - License: CC0-1.0 (exception in workspace)
+
+### `tftio-silent-critic`
+
+- Supervision framework for agentic software development
+- Binary: `silent-critic`, lib: `silent_critic`
+- SQLite-backed state at `~/.local/share/silent-critic/<project-hash>/db.sqlite`
+- Config at `~/.config/silent-critic/config.toml`
+- Session state machine: discovering -> composing -> ready -> executing -> awaiting_adjudication -> adjudicated
+- Uses `dialoguer` for interactive contract composition (dialectic)
+- Uses `git2` for repo discovery, `sha2` for project hashing
+- Worker auth via opaque session tokens (`SILENT_CRITIC_TOKEN` env var)
+- Evidence model: tool executes check_spec commands (notary model)
+- Export: JSON canonical + markdown decision logs
+
+**Build & test:**
+```bash
+cargo build -p tftio-silent-critic        # debug build
+cargo test -p tftio-silent-critic         # run tests (15 unit tests)
+cargo clippy -p tftio-silent-critic       # lint
+cargo run -p tftio-silent-critic -- --help  # show CLI help
+```
+
+**Commands:**
+```bash
+silent-critic project init [--name <name>]       # initialize project
+silent-critic criterion create --namespace <ns> --name <n> --claim <c> --evaluator-type automated --check-spec <cmd>
+silent-critic criterion list [--namespace <ns>]
+silent-critic session new --worktree <path>       # start session
+silent-critic session discover [--doc <path>...]  # gather context
+silent-critic session compose                     # interactive contract
+silent-critic session go [--command <cmd>]        # launch worker
+silent-critic session status                      # check progress
+silent-critic session end                         # compute residuals
+silent-critic decide --contract <id> --type accept --basis "reason"
+silent-critic log <contract-id> [--format json|markdown]
+```
 
 ## The Silent Critic Framework
 
