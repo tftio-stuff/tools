@@ -3,8 +3,8 @@ use rusqlite::{Connection, params};
 use std::path::Path;
 
 use crate::models::{
-    AuditEvent, Contract, ContractCriterion, Criterion, Decision, DiscoveryContext, Evidence,
-    Project, Session, SessionStatus,
+    AuditEvent, Contract, ContractCriterion, ContractSandbox, Criterion, Decision,
+    DiscoveryContext, Evidence, Project, Session, SessionStatus,
 };
 
 pub fn open_db(path: &Path) -> Result<Connection> {
@@ -59,6 +59,7 @@ pub fn init_db(conn: &Connection) -> Result<()> {
             id TEXT PRIMARY KEY,
             session_id TEXT NOT NULL,
             goal TEXT NOT NULL,
+            sandbox_json TEXT,
             created_at TEXT NOT NULL,
             FOREIGN KEY(session_id) REFERENCES sessions(id)
         );
@@ -396,25 +397,26 @@ fn row_to_session(row: &rusqlite::Row<'_>) -> Result<Session> {
 // ── Contract CRUD ───────────────────────────────────────────────────
 
 pub fn insert_contract(conn: &Connection, c: &Contract) -> Result<()> {
+    let sandbox_json = c
+        .sandbox
+        .as_ref()
+        .map(serde_json::to_string)
+        .transpose()
+        .context("serializing contract sandbox")?;
     conn.execute(
-        "INSERT INTO contracts (id, session_id, goal, created_at) VALUES (?1, ?2, ?3, ?4)",
-        params![c.id, c.session_id, c.goal, c.created_at],
+        "INSERT INTO contracts (id, session_id, goal, sandbox_json, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![c.id, c.session_id, c.goal, sandbox_json, c.created_at],
     )?;
     Ok(())
 }
 
 pub fn get_contract(conn: &Connection, id: &str) -> Result<Option<Contract>> {
     let mut stmt = conn.prepare(
-        "SELECT id, session_id, goal, created_at FROM contracts WHERE id = ?1",
+        "SELECT id, session_id, goal, sandbox_json, created_at FROM contracts WHERE id = ?1",
     )?;
     let mut rows = stmt.query(params![id])?;
     if let Some(row) = rows.next()? {
-        Ok(Some(Contract {
-            id: row.get(0)?,
-            session_id: row.get(1)?,
-            goal: row.get(2)?,
-            created_at: row.get(3)?,
-        }))
+        Ok(Some(row_to_contract(row)?))
     } else {
         Ok(None)
     }
@@ -422,19 +424,29 @@ pub fn get_contract(conn: &Connection, id: &str) -> Result<Option<Contract>> {
 
 pub fn get_contract_by_session(conn: &Connection, session_id: &str) -> Result<Option<Contract>> {
     let mut stmt = conn.prepare(
-        "SELECT id, session_id, goal, created_at FROM contracts WHERE session_id = ?1",
+        "SELECT id, session_id, goal, sandbox_json, created_at FROM contracts WHERE session_id = ?1",
     )?;
     let mut rows = stmt.query(params![session_id])?;
     if let Some(row) = rows.next()? {
-        Ok(Some(Contract {
-            id: row.get(0)?,
-            session_id: row.get(1)?,
-            goal: row.get(2)?,
-            created_at: row.get(3)?,
-        }))
+        Ok(Some(row_to_contract(row)?))
     } else {
         Ok(None)
     }
+}
+
+fn row_to_contract(row: &rusqlite::Row<'_>) -> Result<Contract> {
+    let sandbox_json: Option<String> = row.get(3)?;
+    let sandbox: Option<ContractSandbox> = sandbox_json
+        .map(|j| serde_json::from_str(&j))
+        .transpose()
+        .context("deserializing contract sandbox")?;
+    Ok(Contract {
+        id: row.get(0)?,
+        session_id: row.get(1)?,
+        goal: row.get(2)?,
+        created_at: row.get(4)?,
+        sandbox,
+    })
 }
 
 // ── ContractCriterion CRUD ──────────────────────────────────────────

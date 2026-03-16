@@ -373,6 +373,7 @@ pub fn run_compose_from(
         session_id: session.id.clone(),
         goal: input.goal,
         created_at: now.clone(),
+        sandbox: None,
     };
     db::insert_contract(conn, &contract)?;
     db::update_session_contract(conn, &session.id, &contract_id)?;

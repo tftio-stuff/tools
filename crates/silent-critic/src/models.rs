@@ -502,12 +502,34 @@ pub struct Criterion {
     pub deprecated_at: Option<String>,
 }
 
+/// Sandbox configuration for a contract.
+///
+/// Declares the complete sandbox boundary for the worker.
+/// When present, this is the sole authority on filesystem access.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ContractSandbox {
+    /// Working directory for the worker.
+    pub workdir: Option<String>,
+    /// Named policy template to use as baseline.
+    pub policy: Option<String>,
+    /// Read-write directory grants.
+    #[serde(default)]
+    pub rw: Vec<String>,
+    /// Read-only directory grants.
+    #[serde(default)]
+    pub ro: Vec<String>,
+    /// Paths to explicitly deny.
+    #[serde(default)]
+    pub denies: Vec<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Contract {
     pub id: String,
     pub session_id: String,
     pub goal: String,
     pub created_at: String,
+    pub sandbox: Option<ContractSandbox>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -703,6 +725,42 @@ mod tests {
             let parsed: DecisionType = s.parse().unwrap();
             assert_eq!(dt, parsed);
         }
+    }
+
+    #[test]
+    fn contract_sandbox_roundtrip() {
+        let sandbox = ContractSandbox {
+            workdir: Some("/Users/jfb/Projects/test".to_owned()),
+            policy: Some("audit".to_owned()),
+            rw: vec!["/Users/jfb/Projects/test".to_owned()],
+            ro: vec!["/Users/jfb/Projects/other".to_owned()],
+            denies: vec!["~/.aws".to_owned()],
+        };
+        let json = serde_json::to_string(&sandbox).unwrap();
+        let parsed: ContractSandbox = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.workdir, sandbox.workdir);
+        assert_eq!(parsed.rw, sandbox.rw);
+        assert_eq!(parsed.ro, sandbox.ro);
+        assert_eq!(parsed.denies, sandbox.denies);
+    }
+
+    #[test]
+    fn contract_sandbox_none_roundtrip() {
+        let sandbox: Option<ContractSandbox> = None;
+        let json = serde_json::to_string(&sandbox).unwrap();
+        assert_eq!(json, "null");
+        let parsed: Option<ContractSandbox> = serde_json::from_str(&json).unwrap();
+        assert!(parsed.is_none());
+    }
+
+    #[test]
+    fn contract_sandbox_default_is_empty() {
+        let sandbox = ContractSandbox::default();
+        assert!(sandbox.workdir.is_none());
+        assert!(sandbox.policy.is_none());
+        assert!(sandbox.rw.is_empty());
+        assert!(sandbox.ro.is_empty());
+        assert!(sandbox.denies.is_empty());
     }
 
     #[test]
