@@ -181,6 +181,16 @@ pub enum SessionCommand {
         #[arg(long)]
         criterion: String,
     },
+    /// Output resolved sandbox specification for a session's contract
+    Sandbox {
+        /// Session ID (defaults to current session for the worktree)
+        #[arg(value_name = "SESSION_ID")]
+        session_id: Option<String>,
+
+        /// Output format
+        #[arg(long, default_value = "json")]
+        format: String,
+    },
     /// Create contract from JSON input (stdin)
     ComposeFrom,
     /// Generate worker prompt and transition to executing

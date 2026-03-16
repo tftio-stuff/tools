@@ -305,6 +305,22 @@ fn dispatch(cli: Cli) -> anyhow::Result<String> {
                         Ok(out)
                     }
                 }
+                SessionCommand::Sandbox {
+                    session_id,
+                    format: _,
+                } => {
+                    let sid = if let Some(ref id) = session_id {
+                        id.clone()
+                    } else {
+                        // Fall back to active session
+                        let active = silent_critic::db::get_active_session(&conn)?
+                            .ok_or_else(|| anyhow::anyhow!("no active session and no session ID provided"))?;
+                        active.id
+                    };
+                    let output = session::run_session_sandbox(&conn, &sid)?;
+                    // Output is already JSON, return directly
+                    Ok(output)
+                }
                 SessionCommand::ComposeFrom => {
                     let mut input = String::new();
                     std::io::Read::read_to_string(&mut std::io::stdin(), &mut input)?;

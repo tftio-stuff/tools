@@ -331,6 +331,32 @@ pub fn run_submit(
     Ok(evidence)
 }
 
+/// Output the resolved sandbox specification for a session's contract as JSON.
+pub fn run_session_sandbox(conn: &rusqlite::Connection, session_id: &str) -> Result<String> {
+    let session = db::get_session(conn, session_id)?
+        .ok_or_else(|| anyhow::anyhow!("session not found: {session_id}"))?;
+    let contract_id = session
+        .contract_id
+        .ok_or_else(|| anyhow::anyhow!("session has no contract"))?;
+    let contract = db::get_contract(conn, &contract_id)?
+        .ok_or_else(|| anyhow::anyhow!("contract not found: {contract_id}"))?;
+    let sandbox = contract
+        .sandbox
+        .ok_or_else(|| anyhow::anyhow!("contract has no sandbox configuration"))?;
+
+    let output = json!({
+        "workdir": sandbox.workdir,
+        "grants": {
+            "rw": sandbox.rw,
+            "ro": sandbox.ro,
+        },
+        "denies": sandbox.denies,
+    });
+
+    serde_json::to_string_pretty(&output)
+        .map_err(|e| anyhow::anyhow!("JSON serialization failed: {e}"))
+}
+
 fn get_active_session_in_status(
     conn: &rusqlite::Connection,
     expected: &SessionStatus,
@@ -745,6 +771,77 @@ mod tests {
         assert_eq!(sb.workdir, Some("/tmp/work".to_owned()));
         assert_eq!(sb.rw, vec!["/tmp/work"]);
         assert_eq!(sb.denies, vec!["~/.ssh"]);
+    }
+
+    #[test]
+    fn session_sandbox_output_format() {
+        let conn = test_db();
+        let session = create_composing_session(&conn);
+
+        let input = r#"{
+            "goal": "Sandbox output test",
+            "criteria": [],
+            "sandbox": {
+                "workdir": "/tmp/test",
+                "rw": ["/tmp/test"],
+                "ro": ["/tmp/other"],
+                "denies": ["~/.aws"]
+            }
+        }"#;
+
+        run_compose_from(&conn, input).unwrap();
+
+        // Session is now in ready state with a contract
+        let updated = db::get_session(&conn, &session.id).unwrap().unwrap();
+        assert!(updated.contract_id.is_some());
+
+        let output = run_session_sandbox(&conn, &session.id).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+
+        assert_eq!(parsed["workdir"], "/tmp/test");
+        assert_eq!(parsed["grants"]["rw"][0], "/tmp/test");
+        assert_eq!(parsed["grants"]["ro"][0], "/tmp/other");
+        assert_eq!(parsed["denies"][0], "~/.aws");
+    }
+
+    #[test]
+    fn session_sandbox_missing_sandbox() {
+        let conn = test_db();
+        let session = create_composing_session(&conn);
+
+        let input = r#"{
+            "goal": "No sandbox test",
+            "criteria": []
+        }"#;
+
+        run_compose_from(&conn, input).unwrap();
+
+        let result = run_session_sandbox(&conn, &session.id);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("no sandbox"));
+    }
+
+    #[test]
+    fn session_sandbox_missing_contract() {
+        let conn = test_db();
+
+        // Create a session in discovering state (no contract)
+        let now = chrono::Utc::now().to_rfc3339();
+        let session = Session {
+            id: uuid::Uuid::new_v4().to_string(),
+            contract_id: None,
+            worktree_path: "/tmp/test-worktree".to_string(),
+            status: SessionStatus::Discovering,
+            worker_token: None,
+            operator_token: generate_token(),
+            started_at: now,
+            ended_at: None,
+        };
+        db::insert_session(&conn, &session).unwrap();
+
+        let result = run_session_sandbox(&conn, &session.id);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("no contract"));
     }
 
     #[test]
