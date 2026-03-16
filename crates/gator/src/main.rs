@@ -4,8 +4,15 @@ use clap::Parser;
 use gator::cli::Cli;
 
 fn main() {
-    let _cli = Cli::parse();
-    // Dispatch will be implemented in Task 7
-    eprintln!("gator: not yet implemented");
-    std::process::exit(1);
+    let cli = Cli::parse();
+    let json = cli.json;
+
+    if let Err(e) = gator::run(&cli) {
+        if json {
+            eprintln!(r#"{{"error":"{}"}}"#, e.replace('"', "\\\""));
+        } else {
+            eprintln!("gator: {e}");
+        }
+        std::process::exit(1);
+    }
 }
