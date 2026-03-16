@@ -4,6 +4,6 @@
   "crates/unvenv": "1.8.0",
   "crates/asana-cli": "1.2.0",
   "crates/todoer": "1.1.0",
-  "crates/silent-critic": "0.1.0",
+  "crates/silent-critic": "0.2.0",
   "crates/gator": "0.2.0"
 }
