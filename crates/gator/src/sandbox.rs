@@ -75,6 +75,10 @@ fn emit_deny(path: &Path, out: &mut String) {
 /// Reads the static base profile and appends dynamic rules for the
 /// working directory, worktrees, and extra directory grants.
 ///
+/// `ungated_siblings` are siblings detected by worktree enumeration that were
+/// NOT granted read access (because `--share-worktrees` was absent). They are
+/// emitted as SBPL comments for dry-run diagnostics rather than actual grants.
+///
 /// # Errors
 /// Returns an error if the base profile cannot be read.
 pub fn assemble_policy(
@@ -82,6 +86,7 @@ pub fn assemble_policy(
     worktree_info: &WorktreeInfo,
     extra_dirs: &ExtraDirs,
     deny_paths: &[PathBuf],
+    ungated_siblings: &[PathBuf],
 ) -> Result<String, io::Error> {
     let base_path = base_profile_path();
     let mut policy = fs::read_to_string(&base_path)?;
@@ -111,6 +116,19 @@ pub fn assemble_policy(
         writeln!(policy, ";; Sibling worktree: {}", sibling.display()).unwrap();
         emit_ancestors(sibling, &mut policy);
         emit_ro_grant(sibling, &mut policy);
+        policy.push('\n');
+    }
+
+    // Detected-but-not-granted siblings (dry-run diagnostic)
+    for sibling in ungated_siblings {
+        writeln!(
+            policy,
+            ";; Sibling worktree (not granted): {}",
+            sibling.display()
+        )
+        .unwrap();
+    }
+    if !ungated_siblings.is_empty() {
         policy.push('\n');
     }
 
@@ -188,7 +206,7 @@ mod tests {
         let wt = WorktreeInfo::default();
         let extras = ExtraDirs::default();
 
-        let policy = assemble_policy(workdir, &wt, &extras, &[]).unwrap();
+        let policy = assemble_policy(workdir, &wt, &extras, &[], &[]).unwrap();
         assert!(policy.contains("(deny default)"));
         assert!(policy.contains("Dynamic rules"));
         assert!(policy.contains("/Users/jfb/Projects/test"));
@@ -216,8 +234,71 @@ mod tests {
         let extras = ExtraDirs::default();
         let denies = vec![PathBuf::from("/Users/jfb/.secret")];
 
-        let policy = assemble_policy(workdir, &wt, &extras, &denies).unwrap();
+        let policy = assemble_policy(workdir, &wt, &extras, &denies, &[]).unwrap();
         assert!(policy.contains("Policy denies"));
         assert!(policy.contains("(deny file-read* file-write* (subpath \"/Users/jfb/.secret\"))"));
+    }
+
+    #[test]
+    fn assemble_policy_no_siblings_by_default() {
+        let base = dirs::home_dir().unwrap().join(DEFAULT_PROFILE_PATH);
+        if !base.exists() {
+            return;
+        }
+
+        let workdir = Path::new("/Users/jfb/Projects/test");
+        let wt = WorktreeInfo {
+            siblings: vec![],
+            common_dir: Some(PathBuf::from("/Users/jfb/Projects/test/.git")),
+        };
+        let extras = ExtraDirs::default();
+        let ungated_siblings = vec![PathBuf::from("/Users/jfb/Projects/sibling")];
+
+        let policy = assemble_policy(workdir, &wt, &extras, &[], &ungated_siblings).unwrap();
+        // Should NOT contain a read grant for the sibling
+        assert!(!policy.contains("(allow file-read* (subpath \"/Users/jfb/Projects/sibling\"))"));
+        // Should contain a diagnostic comment for the not-granted sibling
+        assert!(policy.contains(";; Sibling worktree (not granted): /Users/jfb/Projects/sibling"));
+        // Should contain RW grant for common_dir
+        assert!(policy.contains(
+            "(allow file-read* file-write* (subpath \"/Users/jfb/Projects/test/.git\"))"
+        ));
+    }
+
+    #[test]
+    fn assemble_policy_with_siblings_granted() {
+        let base = dirs::home_dir().unwrap().join(DEFAULT_PROFILE_PATH);
+        if !base.exists() {
+            return;
+        }
+
+        let workdir = Path::new("/Users/jfb/Projects/test");
+        let wt = WorktreeInfo {
+            siblings: vec![PathBuf::from("/Users/jfb/Projects/sibling")],
+            common_dir: None,
+        };
+        let extras = ExtraDirs::default();
+
+        let policy = assemble_policy(workdir, &wt, &extras, &[], &[]).unwrap();
+        // Should contain a read grant for the sibling
+        assert!(policy.contains("(allow file-read* (subpath \"/Users/jfb/Projects/sibling\"))"));
+    }
+
+    #[test]
+    fn assemble_policy_common_dir_rw_preserved() {
+        let base = dirs::home_dir().unwrap().join(DEFAULT_PROFILE_PATH);
+        if !base.exists() {
+            return;
+        }
+
+        let workdir = Path::new("/Users/jfb/Projects/test");
+        let wt = WorktreeInfo {
+            siblings: vec![],
+            common_dir: Some(PathBuf::from("/common")),
+        };
+        let extras = ExtraDirs::default();
+
+        let policy = assemble_policy(workdir, &wt, &extras, &[], &[]).unwrap();
+        assert!(policy.contains("(allow file-read* file-write* (subpath \"/common\"))"));
     }
 }
