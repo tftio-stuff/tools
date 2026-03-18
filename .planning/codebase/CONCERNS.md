@@ -2,172 +2,196 @@
 
 **Analysis Date:** 2026-03-17
 
-## Tech Debt
+## Unsafe Code Usage
 
-**Asana doctor command is a stub:**
-- Issue: `tool_specific_checks()` returns an empty `Vec::new()` with a TODO comment
-- Files: `crates/asana-cli/src/doctor.rs` (line 39)
-- Impact: `asana-cli doctor` performs no tool-specific health checks despite the framework being present. Token validation, config file existence, and network connectivity are unchecked.
-- Fix approach: Implement checks for PAT presence, config file validity, and reachability of `app.asana.com`.
-
-**Todoer `status.parse().unwrap()` in production DB layer:**
-- Issue: Row-to-model mapping in the SQLite query layer calls `.parse().unwrap()` on status strings read from the database
-- Files: `crates/todoer/src/repo.rs` (lines 46, 67, 83)
-- Impact: If the database contains an unrecognized status string (manual edit, schema migration, or future enum change), the process panics rather than returning an error to the caller.
-- Fix approach: Use `.parse().map_err(|e| rusqlite::Error::FromSqlConversionFailure(...))` to propagate errors through the `rusqlite::Result` chain.
-
-**Multiple independent tokio runtimes in asana-cli:**
-- Issue: Each CLI subcommand creates its own `tokio::Runtime` via `RuntimeBuilder`
-- Files: `crates/asana-cli/src/cli/task.rs`, `crates/asana-cli/src/cli/project.rs`, `crates/asana-cli/src/cli/tag.rs`, `crates/asana-cli/src/cli/mod.rs`
-- Impact: No shared runtime context; resource overhead and inconsistent configuration per subcommand. Makes tracing/span propagation across subcommands impossible.
-- Fix approach: Create a single runtime in `main.rs` and pass `async fn` handlers into `.block_on()`. All subcommands share one runtime.
-
-**Asana CLI cache directory creation silently succeeds on failure:**
-- Issue: `fs::create_dir_all(parent).await.ok()` in `write_cache()` swallows directory creation errors
-- Files: `crates/asana-cli/src/api/client.rs` (line 848)
-- Impact: If the cache directory cannot be created (permissions, disk full), the write silently fails and caching is permanently disabled without any user-visible signal.
-- Fix approach: Log a warning when cache directory creation fails.
-
-**Asana CLI operator token stored as plain `String` not `SecretString`:**
-- Issue: `FileConfig.personal_access_token` is `Option<String>`, not `Option<SecretString>`
-- Files: `crates/asana-cli/src/config.rs` (line 43)
-- Impact: The PAT can appear in debug output, serialization logs, and crash reports. `secrecy` is already a dependency but not applied to the persisted field.
-- Fix approach: Store as `Option<SecretString>` in `FileConfig`. The `Debug` impl already redacts the value but the type does not enforce it.
-
-## Known Bugs
-
-**Asana CSV output panics on in-memory CSV writer error:**
-- Symptoms: If the in-memory `csv::Writer` encounters an encoding error, `wtr.into_inner().unwrap()` panics
-- Files: `crates/asana-cli/src/cli/task.rs` (lines 2311-2314)
-- Trigger: Rare; would require CSV writer internal error (UTF-8 violation in task name)
-- Workaround: Only affects `--format csv` output path
-
-## Security Considerations
-
-**Asana PAT stored in plaintext config file:**
-- Risk: Personal Access Token written to `~/.config/asana-cli/config.toml` as plain text
-- Files: `crates/asana-cli/src/config.rs` (line 43, file write path)
-- Current mitigation: `Debug` impl redacts the token with "REDACTED"; file permissions rely on system umask
-- Recommendations:
-  1. Verify config file is written with `0600` permissions (check `save()` implementation)
-  2. Document the security trade-off
-  3. Consider macOS Keychain / Linux Secret Service as an alternative
-
-**Silent-critic worker and operator tokens stored as plaintext in SQLite:**
-- Risk: Session tokens stored unencrypted in `~/.local/share/silent-critic/<hash>/db.sqlite`
-- Files: `crates/silent-critic/src/db.rs` (lines 51-52, 282-295)
-- Current mitigation: None; file permissions not explicitly set to `0600`
-- Recommendations:
-  1. Set database file permissions to `0600` on creation
-  2. Consider encrypting token columns or using SQLCipher
-  3. Add token rotation documentation
-
-**Gator SBPL policy: unescaped paths injected directly into S-expression:**
-- Risk: Path strings from config are interpolated directly into SBPL policy via `path.display()` without escaping special characters (spaces, quotes, backslashes, unicode)
-- Files: `crates/gator/src/sandbox.rs` (lines 47-70)
-- Current mitigation: None; no sanitization of path strings before embedding in policy
-- Recommendations:
-  1. Validate that all path strings contain only characters safe for SBPL literal/subpath rules
-  2. Reject or escape paths containing `"`, `\`, or non-ASCII characters
-  3. Add regression test with a path containing spaces or special characters
-
-**Unsafe `std::env::set_var()` in production path:**
-- Risk: Environment mutation is unsafe in multi-threaded programs; Rust 2024 edition makes this a hard `unsafe` requirement
+**Gator environment variable mutation:**
+- Issue: Unsafe `std::env::set_var()` used to prepend clankers to PATH
 - Files: `crates/gator/src/lib.rs` (lines 27-29)
-- Current mitigation: SAFETY comment states gator is single-threaded and sets PATH before spawning. This holds for current architecture.
-- Recommendations:
-  1. Pass the modified PATH explicitly to the spawned `Command` via `.env("PATH", ...)` instead of mutating the process environment
-  2. Remove the `unsafe` block entirely
+- Impact: Sets environment variables in a single-threaded context before spawning agents. While documented as safe with a SAFETY comment, environment mutation is inherently fragile if code organization changes.
+- Fix approach: Consider using a thread-local or passing PATH modifications through command-line arguments instead of environment mutation. This would make the contract explicit and eliminate the unsafe block.
 
-## Performance Bottlenecks
+**Sandbox policy file path handling:**
+- Issue: `.expect()` calls in sandbox.rs when reading base profile
+- Files: `crates/gator/src/sandbox.rs` (line 18)
+- Impact: If `dirs::home_dir()` returns None, the application panics. macOS-only tool, but no home directory is a critical failure state.
+- Fix approach: Return a proper error instead of panicking. Provide helpful diagnostics about missing home directory.
 
-**Asana CLI subtask N+1 fetching:**
-- Problem: For each task returned by a list query, a separate API request is made to fetch subtasks
-- Files: `crates/asana-cli/src/api/tasks.rs`
-- Cause: Asana API's `opt_expand=subtasks` is unreliable; subtask counts require per-task calls
-- Improvement path:
-  1. Add `--no-subtasks` flag to skip subtask fetching entirely
-  2. Batch concurrent requests (async join) rather than sequential fetching
-  3. Cache subtask data with same TTL as parent tasks
+## Error Handling Gaps
 
-**In-memory API response cache without eviction:**
-- Problem: `HashMap`-backed in-memory cache in `ApiClient` has no size cap or eviction policy
-- Files: `crates/asana-cli/src/api/client.rs` (field `memory_cache: Arc<RwLock<HashMap<...>>>`)
-- Cause: Cache grows unbounded for the lifetime of a process; CLI tools are short-lived so impact is low today
-- Improvement path: Add LRU eviction or cap entry count if long-running process use cases emerge
+**Silent-critic subtask fetching with silent failures:**
+- Issue: Subtask fetching errors are silently ignored during task list operations
+- Files: `crates/asana-cli/src/api/tasks.rs` (lines 41-57)
+- Impact: If subtask fetch fails, tasks are returned without their subtasks but no warning is surfaced to user. Users may think data is complete when it's partial.
+- Fix approach: Add verbose logging or a warning flag. Consider collecting errors and reporting summary at end.
+
+**Asana CLI runtime creation:**
+- Issue: Multiple CLI modules create tokio runtimes independently with `RuntimeBuilder`
+- Files: `crates/asana-cli/src/cli/task.rs`, `src/cli/mod.rs`, `src/cli/project.rs`, `src/cli/tag.rs`, `src/cli/workspace.rs`, `src/cli/user.rs`, `src/cli/custom_field.rs`, `src/cli/section.rs`
+- Impact: Each subcommand creates its own tokio runtime. No centralized runtime management means potential resource waste and inconsistent configuration.
+- Fix approach: Move runtime creation to a single point in `main.rs` or CLI dispatcher. Pass runtime reference to command handlers.
+
+**Token persistence without explicit validation:**
+- Issue: Asana PAT stored on disk with minimal validation
+- Files: `crates/asana-cli/src/config.rs` (lines 42-43, 87-94)
+- Impact: Invalid or expired tokens are only detected at API call time. Config system doesn't validate token format on load.
+- Fix approach: Add token validation on load (basic format check, expiration awareness if available).
 
 ## Fragile Areas
 
-**Silent-critic: no database schema migration mechanism:**
-- Files: `crates/silent-critic/src/db.rs` (lines 24-130)
-- Why fragile: All tables created with `CREATE TABLE IF NOT EXISTS` in a single batch. Any schema change (new column, renamed table) requires manual migration or database deletion. No `PRAGMA user_version` tracking.
-- Safe modification: Only additive changes (new nullable columns) are safe without a migration system
-- Test coverage: Schema creation is tested; schema evolution is not
+**Silent-critic database schema migration:**
+- Issue: No versioning of database schema; all tables created at once with `CREATE TABLE IF NOT EXISTS`
+- Files: `crates/silent-critic/src/db.rs` (lines 24-130+)
+- Impact: Cannot support future schema changes without breaking existing databases. No migration path defined.
+- Fix approach: Implement a schema_version table and migration functions. Design migrations to be additive-only.
 
-**Silent-critic: session state machine transitions not type-enforced:**
-- Files: `crates/silent-critic/src/commands/session.rs`, `crates/silent-critic/src/db.rs`
-- Why fragile: `SessionStatus` transitions (Discovering -> Composing -> Ready -> Executing -> AwaitingAdjudication -> Adjudicated) are enforced only at the DB query layer via `get_active_session_in_status()`. Invalid transitions are detected at runtime, not compile time.
-- Safe modification: Always call `get_active_session_in_status()` before state-dependent operations
-- Test coverage: Individual command transitions tested; invalid transition rejection paths are not
+**Gator sandbox policy assembly:**
+- Issue: SBPL policy strings built with string formatting and `writeln!().unwrap()`
+- Files: `crates/gator/src/sandbox.rs` (lines 38, 45-50, 55-60, 65-70)
+- Impact: String formatting errors would panic. Complex S-expression generation is hard to validate. No syntax checking of generated SBPL.
+- Fix approach: Use a typed SBPL builder or formatter that prevents invalid policy generation. Parse generated policy to validate syntax before execution.
 
-**Gator: macOS-only with no compile-time platform guard:**
-- Files: `crates/gator/src/agent.rs` (line 5: `use std::os::unix::process::CommandExt`), `crates/gator/src/sandbox.rs`
-- Why fragile: `sandbox-exec` is a macOS-only tool. The crate compiles on Linux (unix path) but will fail at runtime. No `#[cfg(target_os = "macos")]` guards prevent non-macOS builds from producing a non-functional binary.
-- Safe modification: Add `#[cfg(target_os = "macos")]` to the `agent` module and CLI. CI only tests on macOS for this crate.
-- Test coverage: Agent tests mock the command; sandbox tests skip if base profile file absent
+**Gator session mode vs non-session mode branching:**
+- Issue: Two distinct code paths (session mode with external contracts vs non-session mode with implicit policy resolution) with minimal shared logic
+- Files: `crates/gator/src/lib.rs` (lines 34-61)
+- Impact: Bugs introduced in one path won't be caught by tests of the other. Configuration loading is different between paths.
+- Fix approach: Extract common policy assembly logic. Unify configuration loading regardless of session mode. Add integration tests covering both paths.
 
-**Gator: silent-critic integration via shell-out without version pinning:**
-- Files: `crates/gator/src/session.rs` (lines 46-48)
-- Why fragile: `gator --session <id>` shells out to `silent-critic` binary found on PATH. If silent-critic is not installed, is the wrong version, or changes its JSON output schema, gator silently fails or panics during JSON parsing.
-- Safe modification: Check silent-critic availability during startup. Pin expected API version.
-- Test coverage: JSON parsing tested with hardcoded strings; actual binary invocation not tested
-
-**Prompter: progress bar template `.unwrap()` in production init:**
-- Files: `crates/prompter/src/lib.rs` (line 955)
-- Why fragile: `ProgressStyle::template()` returns `Result` but is called with `.unwrap()` in `init_scaffold()`. The template is hardcoded so this should never fail, but a future template change could introduce a panic in the init path.
-- Safe modification: Use `.expect("hardcoded progress bar template is invalid")` with a clear message, or extract the style to a lazy static with a validated template.
-- Test coverage: Not covered; init_scaffold is not unit tested
-
-## Scaling Limits
-
-**SQLite write serialization in silent-critic:**
-- Current capacity: One connection per process; WAL mode enabled (concurrent reads OK, serialized writes)
-- Limit: Multiple simultaneous `silent-critic` CLI invocations (e.g., parallel CI jobs on same machine sharing state) will block on writes
-- Scaling path: Use connection pooling (r2d2 or sqlx) if concurrent access patterns emerge; or document that one session per machine is the intended use
-
-## Dependencies at Risk
-
-**tokio feature surface fragmentation:**
-- Risk: `asana-cli` overrides tokio with `fs`, `signal`, `time` features; workspace default only specifies `rt`, `macros`, `rt-multi-thread`. Other crates sharing tokio get only the base feature set.
-- Files: `crates/asana-cli/Cargo.toml`
-- Impact: Code added to other crates that uses `tokio::fs` or `tokio::signal` will compile only if linked with asana-cli; standalone those crates silently lack features.
-- Migration plan: Audit and align tokio features at workspace level.
-
-**reqwest with rustls-tls (no native-tls fallback):**
-- Risk: Internal certificate authorities or enterprise proxies using custom root CAs are not trusted by rustls's bundled roots
-- Files: Workspace `Cargo.toml` (reqwest features)
-- Impact: Users behind corporate TLS inspection proxies may get TLS errors with no clear path to add custom CAs
-- Migration plan: Document how to set `REQUESTS_CA_BUNDLE` equivalent. Provide `native-tls` feature flag if needed.
+**Asana API client cache with RwLock contention:**
+- Issue: Single RwLock protecting memory cache shared across all API requests
+- Files: `crates/asana-cli/src/api/client.rs` (lines 241, 244)
+- Impact: High concurrent request load could cause lock contention. Cache is per-process only; not shared across CLI invocations.
+- Fix approach: Consider sharded locking for cache if concurrency becomes bottleneck. Explore persistent caching strategy across invocations.
 
 ## Test Coverage Gaps
 
-**Gator: no tests for non-session (implicit) policy resolution path:**
-- What's not tested: The code path in `crates/gator/src/lib.rs` (lines 41-60) that resolves workdir, loads safehouse config, applies named policies
-- Files: `crates/gator/src/lib.rs`, `crates/gator/src/config.rs`
-- Risk: Changes to config loading, policy merging, or worktree detection could break the default operating mode unnoticed
-- Priority: High
+**Asana CLI mocked testing without offline fallback coverage:**
+- Issue: CLI tests use mockito for API mocking, but no coverage of actual offline behavior
+- Files: `crates/asana-cli/tests/cli.rs`, related CLI command tests
+- Impact: Offline mode (`--offline` flag) is not integration tested. Network errors during real API calls are not well-exercised.
+- Fix approach: Add tests that exercise actual network timeouts and offline mode. Test error messages for network failures.
 
-**Silent-critic: operator token printed in plaintext to stdout:**
-- What's not tested: That operator token exposure is appropriate and intentional in the `session new` output
-- Files: `crates/silent-critic/src/main.rs` (lines 180, 187)
-- Risk: Token leaks in CI logs or shell history when running `silent-critic session new`
-- Priority: Medium
+**Silent-critic session state machine:**
+- Issue: Session status transitions (Discovering → Composing → Ready → Executing → etc.) not comprehensively tested
+- Files: `crates/silent-critic/src/commands/session.rs` (lines 54, 72-100+)
+- Impact: Invalid state transitions could occur undetected. Contract composition logic is complex and untested.
+- Fix approach: Add unit tests for state machine transitions with invalid/valid state combinations.
 
-**Asana CLI: offline mode not integration tested:**
-- What's not tested: `--offline` flag behavior; network timeout handling; error messages for network failures
+**Gator policy generation edge cases:**
+- Issue: No tests for sandbox policy assembly with complex path structures, symlinks, or special characters
+- Files: `crates/gator/src/sandbox.rs`, `crates/gator/src/lib.rs`
+- Impact: Edge cases in path handling (symlinks, spaces, unicode) could cause policy syntax errors at runtime.
+- Fix approach: Add unit tests for `emit_ancestors()`, `emit_rw_grant()`, etc. with various path types. Test generated policy syntax validation.
+
+**Todoer database with minimal integration tests:**
+- Issue: Limited test coverage for database operations; most tests are unit tests
+- Files: `crates/todoer/tests/` (18 test files but mostly isolated units)
+- Impact: Schema changes, query bugs, or concurrent access issues could exist in production.
+- Fix approach: Add integration tests with real SQLite databases. Test concurrent access patterns.
+
+## Security Considerations
+
+**Asana token storage in plaintext config:**
+- Risk: Personal Access Tokens stored in `~/.config/asana-cli/config.toml`
+- Files: `crates/asana-cli/src/config.rs` (lines 87-94, file I/O)
+- Current mitigation: Unix file permissions not explicitly set; relies on system umask
+- Recommendations:
+  1. Explicitly set `0600` permissions on config file after creation (already done in some Unix configs, needs verification)
+  2. Document security implications clearly
+  3. Consider using system keychain (macOS Keychain, Linux Secret Service) instead of file storage
+
+**Silent-critic worker token in plaintext:**
+- Risk: Worker and operator tokens stored in SQLite database without encryption
+- Files: `crates/silent-critic/src/db.rs` (lines 51-52)
+- Current mitigation: Database file stored in `~/.local/share/silent-critic/` with no explicit permissions
+- Recommendations:
+  1. Encrypt sensitive columns (worker_token, operator_token)
+  2. Set database file permissions to `0600`
+  3. Document token rotation procedures
+
+**Gator sandbox escape risk:**
+- Risk: Sandbox policy assembly depends on correct path handling and SBPL syntax
+- Files: `crates/gator/src/sandbox.rs`
+- Current mitigation: Static base profile at `~/.config/sandbox-exec/agent.sb`; dynamic rules added for working directory
+- Recommendations:
+  1. Validate all path inputs before embedding in SBPL
+  2. Sanitize special characters in paths
+  3. Add integration tests that verify sandbox denials are enforced
+
+## Performance Bottlenecks
+
+**Asana CLI subtask enumeration during list:**
+- Problem: For each task with subtasks, a separate API call is made
+- Files: `crates/asana-cli/src/api/tasks.rs` (lines 41-61)
+- Cause: Asana API's `opt_expand=subtasks` is deprecated and incomplete; `num_subtasks` unreliable
+- Improvement path:
+  1. Batch subtask requests if API supports it
+  2. Add pagination/limit for subtask fetching (don't fetch all subtasks for all tasks)
+  3. Cache subtasks locally in workspace-specific cache
+  4. Provide `--no-subtasks` flag to skip this entirely
+
+**Silent-critic evidence collection without batching:**
+- Problem: Each criterion check runs as separate command invocation
+- Files: `crates/silent-critic/src/commands/session.rs` (contract execution)
+- Cause: Evidence model assumes serial command execution for notary pattern
+- Improvement path:
+  1. Group related checks and run in parallel where safe
+  2. Implement check command batching
+  3. Cache results across multiple runs of same session
+
+## Dependencies at Risk
+
+**tokio feature surface:**
+- Risk: Different crates require different tokio features (`fs`, `signal`, `time`); some features not enabled globally
+- Files: `crates/asana-cli/Cargo.toml` (line 47)
+- Impact: If asana-cli adds code using `tokio::signal::ctrl_c()`, it works because features are enabled. Other crates using tokio might not have all features available.
+- Migration plan: Audit all tokio usage across workspace. Enable required features at workspace level if safe.
+
+**reqwest with rustls configuration:**
+- Risk: reqwest built with rustls instead of native TLS; may have compatibility issues with internal CAs
+- Files: `Cargo.toml` workspace (reqwest feature config)
+- Impact: Users with internal certificate authority will need to configure rustls trust roots
+- Migration plan: Document TLS configuration options. Consider adding environment variable for custom CA bundle paths.
+
+**Old mockito version:**
+- Risk: mockito 1.x is stable but asana-cli tests heavily dependent on its mock server behavior
 - Files: `crates/asana-cli/tests/cli.rs`
-- Risk: Offline mode regressions go undetected
-- Priority: Low
+- Impact: Security updates to mockito may require test refactoring
+- Migration plan: Monitor mockito releases. Consider migrating to wiremock or httptest if needed.
+
+## Scaling Limits
+
+**SQLite database contention in silent-critic:**
+- Current capacity: Tested with basic schema; no load testing
+- Limit: SQLite writer locks could become bottleneck if multiple sessions write simultaneously
+- Scaling path:
+  1. Add connection pooling
+  2. Implement write batching for audit events
+  3. Consider migration to PostgreSQL for multi-process scenarios
+
+**In-memory cache without eviction in asana-cli:**
+- Current capacity: Unbounded HashMap for API response cache
+- Limit: Long-running sessions with many requests could consume unbounded memory
+- Scaling path:
+  1. Implement LRU eviction policy for memory cache
+  2. Cap memory cache size
+  3. Use disk cache more aggressively
+
+## Missing Critical Features
+
+**Error recovery in gator agent execution:**
+- Problem: If sandboxed agent crashes or times out, error handling is minimal
+- Blocks: Cannot implement robust agent supervision or retry logic
+- Fix approach: Add timeout handling, capture stderr/stdout properly, implement retry strategy
+
+**Silent-critic evidence audit trail without timestamps:**
+- Problem: Evidence records stored but command execution order/timing not captured
+- Blocks: Cannot reconstruct exact execution sequence for debugging
+- Fix approach: Add timestamps to each evidence record, track execution order explicitly
+
+**Asana CLI batch operations without rollback:**
+- Problem: CreateBatch/UpdateBatch operations don't have transaction semantics
+- Blocks: Cannot guarantee all-or-nothing updates
+- Fix approach: Implement dry-run mode for batch ops. Add transaction-like behavior with rollback.
 
 ---
 
