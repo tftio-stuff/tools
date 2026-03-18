@@ -1,71 +1,59 @@
-# Requirements: bsky-comment-extractor
+# Requirements: Gator Sandbox Hardening
 
-**Defined:** 2026-03-22
-**Core Value:** Complete, reliable extraction of a single BlueSky user's entire post history into a queryable local store.
+**Defined:** 2026-03-17
+**Core Value:** An agent launched by gator cannot read peer worktrees unless explicitly granted access.
 
-## bce-query-mode Requirements
+## v1 Requirements
 
-### Query
+Requirements for initial release. Each maps to roadmap phases.
 
-- [x] **QUERY-01**: `bce query` reads posts from local SQLite and outputs JSONL to stdout (one JSON object per line)
-- [x] **QUERY-02**: `--limit N` controls page size (default: 50)
-- [x] **QUERY-03**: `--offset N` skips N records for pagination
-- [x] **QUERY-04**: `--db <path>` specifies database path (XDG default)
+### Sandbox Isolation
 
-### Agent Interface
+- [ ] **SAND-01**: Sibling worktree RO grants are not added to sandbox policy by default
+- [ ] **SAND-02**: Common git dir RW grant is preserved for linked worktrees
+- [ ] **SAND-03**: `--share-worktrees` CLI flag opts in to RO access for all peer worktrees
 
-- [x] **AGENT-01**: `--agent-help` outputs structured LLM-agent reference doc (capabilities, flags, output format, pagination examples, error codes)
-- [x] **AGENT-02**: Query output wrapped in JSON envelope with pagination metadata (total, offset, limit, has_more)
+### Agent Permissions
 
-### Shared Agent Documentation
+- [ ] **PERM-01**: Gator injects agent-appropriate YOLO flag by default (Claude: `--dangerously-skip-permissions`, Codex: `--full-auto`, Gemini: equivalent)
+- [ ] **PERM-02**: `--no-yolo` CLI flag disables automatic YOLO injection
 
-- [x] **ADOC-01**: `cli-common` defines the canonical YAML agent-doc schema and shared renderer used by every binary for `--agent-help`
-- [x] **ADOC-02**: Each Phase 7 binary authors exhaustive tool-specific agent docs covering commands, arguments, examples, outputs, env/config/defaults, failure modes, and likely operator mistakes, sharing only truly common inherited sections
-- [x] **ADOC-03**: `--agent-skill` renders the same underlying agent-doc content as a ready-to-save Claude-style skill file with YAML front matter and markdown body
-- [x] **ADOC-04**: `--agent-help` and `--agent-skill` are hidden top-level-only flags that print to stdout on success, exit `0`, and stay out of normal help output
-- [x] **ADOC-05**: All seven workspace binaries (`prompter`, `unvenv`, `asana-cli`, `todoer`, `silent-critic`, `gator`, and `bce`) expose the shared agent-doc behavior through `cli-common` plus per-crate wiring
+### Compatibility
 
-## Future Requirements
+- [ ] **COMPAT-01**: Existing `--add-dirs-ro`, `.safehouse`, and `--policy` mechanisms continue to work for manual peer worktree grants
+- [ ] **COMPAT-02**: Session mode (`--session`) behavior is unchanged
 
-### Additional Activity Types
+## v2 Requirements
 
-- **LIKE-01**: Retrieve all `app.bsky.feed.like` records for a user
-- **RPST-01**: Retrieve all `app.bsky.feed.repost` records for a user
-- **BLCK-01**: Retrieve all `app.bsky.graph.block` records for a user
-- **FILT-01**: `--type` flag to filter by activity type
+None identified.
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Firehose/streaming | Batch retrieval only |
-| Multi-user extraction | Single user per invocation |
-| Real-time monitoring | No polling or watch mode |
-| OAuth authentication | App passwords sufficient |
-| Keyword search | Extracts activity, not search results |
-| Query-side filtering (--since, --author) | Agents filter client-side; keep query simple |
+| Changing session mode behavior | Contract remains sole authority when `--session` is used |
+| Changing the static base sandbox profile (`agent.sb`) | Separate concern, out of scope for this work |
+| New sandbox grant types (e.g., execute-only) | Not needed for this hardening |
 
 ## Traceability
 
+Which phases cover which requirements. Updated during roadmap creation.
+
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| QUERY-01 | Phase 5 | Complete |
-| QUERY-02 | Phase 5 | Complete |
-| QUERY-03 | Phase 5 | Complete |
-| QUERY-04 | Phase 5 | Complete |
-| AGENT-02 | Phase 5 | Complete |
-| AGENT-01 | Phase 6 / Phase 7 | Complete |
-| ADOC-01 | Phase 7 | Complete |
-| ADOC-02 | Phase 7 | Complete |
-| ADOC-03 | Phase 7 | Complete |
-| ADOC-04 | Phase 7 | Complete |
-| ADOC-05 | Phase 7 | Complete |
+| SAND-01 | TBD | Pending |
+| SAND-02 | TBD | Pending |
+| SAND-03 | TBD | Pending |
+| PERM-01 | TBD | Pending |
+| PERM-02 | TBD | Pending |
+| COMPAT-01 | TBD | Pending |
+| COMPAT-02 | TBD | Pending |
 
 **Coverage:**
-- bce-query-mode requirements: 11 total
-- Mapped to phases: 11
-- Unmapped: 0
+- v1 requirements: 7 total
+- Mapped to phases: 0
+- Unmapped: 7
 
 ---
-*Requirements defined: 2026-03-22*
-*Last updated: 2026-03-23 after Phase 7 shared agent-doc rollout completion*
+*Requirements defined: 2026-03-17*
+*Last updated: 2026-03-17 after initial definition*
