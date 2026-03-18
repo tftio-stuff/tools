@@ -22,10 +22,15 @@ pub fn write_prompt_tempfile(prompt: &str) -> Result<NamedTempFile, io::Error> {
     Ok(f)
 }
 
-/// Build the full command for `sandbox-exec`, including prompt injection.
+/// Build the full command for `sandbox-exec`, including prompt and YOLO injection.
 ///
 /// Returns the `Command` ready for exec and any temp files that must
 /// be kept alive until exec.
+///
+/// When `inject_yolo` is `true`, prepends the agent-appropriate
+/// autonomous-mode flag (`--dangerously-skip-permissions` for Claude,
+/// `--full-auto` for Codex). For Gemini, prints a stderr warning and
+/// skips injection (no known equivalent flag).
 ///
 /// # Errors
 /// Returns an error if prompt tempfile creation fails.
@@ -34,6 +39,7 @@ pub fn build_command(
     policy_path: &Path,
     prompt: Option<&str>,
     agent_args: &[String],
+    inject_yolo: bool,
 ) -> Result<(Command, Vec<NamedTempFile>), io::Error> {
     let mut cmd = Command::new("sandbox-exec");
     cmd.arg("-f").arg(policy_path).arg("--");
@@ -65,6 +71,21 @@ pub fn build_command(
         }
     }
 
+    // Inject YOLO flag (autonomous mode) per agent
+    if inject_yolo {
+        match agent {
+            Agent::Claude => {
+                cmd.arg("--dangerously-skip-permissions");
+            }
+            Agent::Codex => {
+                cmd.arg("--full-auto");
+            }
+            Agent::Gemini => {
+                eprintln!("gator: no YOLO flag known for gemini, skipping");
+            }
+        }
+    }
+
     // Forward remaining agent args
     cmd.args(agent_args);
 
@@ -92,6 +113,7 @@ mod tests {
             tmp.path(),
             None,
             &["--help".to_owned()],
+            false,
         )
         .unwrap();
         let args: Vec<_> = cmd
@@ -111,6 +133,7 @@ mod tests {
             tmp.path(),
             Some("system prompt"),
             &[],
+            false,
         )
         .unwrap();
         let args: Vec<_> = cmd
@@ -130,6 +153,7 @@ mod tests {
             tmp.path(),
             Some("codex prompt"),
             &[],
+            false,
         )
         .unwrap();
         assert_eq!(temps.len(), 1);
@@ -150,10 +174,75 @@ mod tests {
             tmp.path(),
             Some("gemini prompt"),
             &[],
+            false,
         )
         .unwrap();
         assert_eq!(temps.len(), 1);
         let envs: Vec<_> = cmd.get_envs().collect();
         assert!(envs.iter().any(|(k, _)| *k == "GEMINI_SYSTEM_MD"));
+    }
+
+    #[test]
+    fn build_command_claude_yolo() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        let (cmd, _) = build_command(&Agent::Claude, tmp.path(), None, &[], true).unwrap();
+        let has_skip = cmd
+            .get_args()
+            .any(|a| a.to_string_lossy() == "--dangerously-skip-permissions");
+        assert!(has_skip);
+    }
+
+    #[test]
+    fn build_command_codex_yolo() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        let (cmd, _) = build_command(&Agent::Codex, tmp.path(), None, &[], true).unwrap();
+        let has_full_auto = cmd
+            .get_args()
+            .any(|a| a.to_string_lossy() == "--full-auto");
+        assert!(has_full_auto);
+    }
+
+    #[test]
+    fn build_command_gemini_yolo_no_arg() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        let (cmd, _) = build_command(&Agent::Gemini, tmp.path(), None, &[], true).unwrap();
+        let args: Vec<String> = cmd
+            .get_args()
+            .map(|a| a.to_string_lossy().to_string())
+            .collect();
+        // Gemini has no YOLO flag -- only sandbox-exec plumbing + "gemini"
+        assert!(!args.contains(&"--dangerously-skip-permissions".to_owned()));
+        assert!(!args.contains(&"--full-auto".to_owned()));
+    }
+
+    #[test]
+    fn build_command_no_yolo_skips_injection() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        let (cmd, _) = build_command(&Agent::Claude, tmp.path(), None, &[], false).unwrap();
+        let has_skip = cmd
+            .get_args()
+            .any(|a| a.to_string_lossy() == "--dangerously-skip-permissions");
+        assert!(!has_skip);
+    }
+
+    #[test]
+    fn build_command_yolo_before_agent_args() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        let agent_args = vec!["--model".to_owned(), "opus".to_owned()];
+        let (cmd, _) =
+            build_command(&Agent::Claude, tmp.path(), None, &agent_args, true).unwrap();
+        let args: Vec<_> = cmd
+            .get_args()
+            .map(|a| a.to_string_lossy().to_string())
+            .collect();
+        let yolo_pos = args
+            .iter()
+            .position(|a| a == "--dangerously-skip-permissions")
+            .expect("--dangerously-skip-permissions not found");
+        let model_pos = args
+            .iter()
+            .position(|a| a == "--model")
+            .expect("--model not found");
+        assert!(yolo_pos < model_pos, "YOLO flag must appear before agent args");
     }
 }

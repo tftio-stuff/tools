@@ -21,6 +21,7 @@ pub enum Agent {
 /// Base profiles `core.baseline`, `core.agent`, `core.git` are always included.
 #[derive(Parser, Debug)]
 #[command(name = "gator", version, about)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct Cli {
     /// Agent to run
     #[arg(value_enum)]
@@ -49,9 +50,22 @@ pub struct Cli {
 
     /// Silent-critic session ID. When set, the contract is the sole
     /// authority on sandbox grants. Incompatible with `--workdir`,
-    /// `--add-dirs`, `--add-dirs-ro`, and `--policy`.
+    /// `--add-dirs`, `--add-dirs-ro`, `--policy`, and `--share-worktrees`.
     #[arg(long, value_name = "ID")]
     pub session: Option<String>,
+
+    /// Grant read-only access to all peer worktrees (disabled by default).
+    /// When absent, agents see only their own worktree. Incompatible with
+    /// `--session`.
+    #[arg(long)]
+    pub share_worktrees: bool,
+
+    /// Disable automatic YOLO flag injection (default: inject).
+    /// When absent, gator prepends the agent-appropriate autonomous-mode
+    /// flag (e.g. `--dangerously-skip-permissions` for Claude).
+    /// Incompatible with `--session`.
+    #[arg(long)]
+    pub no_yolo: bool,
 
     /// Skip prompter integration
     #[arg(long)]
@@ -89,6 +103,12 @@ impl Cli {
             }
             if !self.policies.is_empty() {
                 conflicts.push("--policy");
+            }
+            if self.share_worktrees {
+                conflicts.push("--share-worktrees");
+            }
+            if self.no_yolo {
+                conflicts.push("--no-yolo");
             }
             if !conflicts.is_empty() {
                 return Err(format!(
@@ -212,5 +232,49 @@ mod tests {
         ]);
         assert_eq!(cli.add_dirs.len(), 2);
         assert_eq!(cli.add_dirs_ro.len(), 1);
+    }
+
+    #[test]
+    fn parse_share_worktrees() {
+        let cli = Cli::parse_from(["gator", "claude", "--share-worktrees"]);
+        assert!(cli.share_worktrees);
+    }
+
+    #[test]
+    fn validate_share_worktrees_with_session() {
+        let cli = Cli::parse_from(["gator", "claude", "--share-worktrees", "--session=abc"]);
+        let err = cli.validate().unwrap_err();
+        assert!(err.contains("--share-worktrees"));
+    }
+
+    #[test]
+    fn validate_share_worktrees_without_session_ok() {
+        let cli = Cli::parse_from(["gator", "claude", "--share-worktrees"]);
+        assert!(cli.validate().is_ok());
+    }
+
+    #[test]
+    fn parse_no_yolo() {
+        let cli = Cli::parse_from(["gator", "claude", "--no-yolo"]);
+        assert!(cli.no_yolo);
+    }
+
+    #[test]
+    fn parse_no_yolo_default_false() {
+        let cli = Cli::parse_from(["gator", "claude"]);
+        assert!(!cli.no_yolo);
+    }
+
+    #[test]
+    fn validate_no_yolo_with_session() {
+        let cli = Cli::parse_from(["gator", "claude", "--no-yolo", "--session=abc"]);
+        let err = cli.validate().unwrap_err();
+        assert!(err.contains("--no-yolo"));
+    }
+
+    #[test]
+    fn validate_no_yolo_without_session_ok() {
+        let cli = Cli::parse_from(["gator", "claude", "--no-yolo"]);
+        assert!(cli.validate().is_ok());
     }
 }
