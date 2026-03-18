@@ -5,172 +5,331 @@
 ## Test Framework
 
 **Runner:**
-- The workspace standard is `cargo test`, wired through `just test` in `justfile` and through the `test` job in `.github/workflows/ci.yml`.
-- Tests run on stable Rust in CI across `ubuntu-latest` and `macos-latest` from `.github/workflows/ci.yml`.
-- Async tests use `#[tokio::test]`, visible in `crates/asana-cli/tests/api_client.rs` and `crates/asana-cli/src/api/client.rs`.
+- Native Rust `#[test]` and `#[cfg(test)]` modules for unit tests
+- `#[tokio::test]` macro for async tests (requires `tokio` with `macros` feature)
+- Integration tests in dedicated `tests/` directory at crate root
+- Config: No explicit test configuration file; uses Cargo's built-in test runner
 
 **Assertion Library:**
-- The repository uses Rust’s built-in test harness plus standard assertions (`assert!`, `assert_eq!`, `matches!`, `panic!`).
-- JSON assertions use `serde_json::Value`, for example in `crates/todoer/tests/json_output.rs` and `crates/bsky-comment-extractor/tests/query_cli.rs`.
+- Standard Rust `assert!()`, `assert_eq!()`, `assert_ne!()` macros
+- No external assertion library (keep it simple)
+
+**Test Dependencies:**
+- `mockito = "1"` - HTTP mocking for API tests
+- `serial_test = "3"` - Test isolation and serial execution
+- `tempfile = "3"` - Temporary file/directory creation for test fixtures
 
 **Run Commands:**
 ```bash
-just test                 # `cargo test --workspace --verbose`
-just test-crate todoer    # `cargo test -p todoer --verbose`
-cargo test --workspace    # direct workspace run
-cargo test -p tftio-gator # direct per-crate run
+cargo test -p <crate-name>           # Run all tests for specific crate
+cargo test                             # Run all tests in workspace
+cargo test --lib                       # Run unit tests only
+cargo test --test '*'                  # Run integration tests
 ```
 
 ## Test File Organization
 
 **Location:**
-- The workspace mixes inline unit tests and `tests/` integration suites.
-- Inline `#[cfg(test)]` modules are common in `crates/cli-common/src/lib.rs`, `crates/gator/src/cli.rs`, `crates/bsky-comment-extractor/src/cli.rs`, `crates/asana-cli/src/config.rs`, and `crates/silent-critic/src/commands/session.rs`.
-- Integration tests live under `crates/*/tests/*.rs`, especially `crates/todoer/tests/`, `crates/prompter/tests/cli.rs`, `crates/asana-cli/tests/`, `crates/unvenv/tests/integration_test.rs`, and `crates/bsky-comment-extractor/tests/query_cli.rs`.
+- **Unit tests:** Co-located with implementation in `#[cfg(test)]` modules within source files
+- **Integration tests:** Separate `.rs` files in `tests/` directory at crate root
+- Observed in crates: `prompter`, `todoer`, `asana-cli`, `unvenv` have integration tests
 
 **Naming:**
-- Use descriptive `snake_case` file names such as `commands_new.rs`, `config_resolution.rs`, `query_cli.rs`, and `api_client.rs`.
-- Inline test function names are sentence-like `snake_case`, e.g. `parse_minimal` in `crates/gator/src/cli.rs` and `query_does_not_require_bsky_app_password` in `crates/bsky-comment-extractor/tests/query_cli.rs`.
+- Integration test files are descriptive: `commands_new.rs`, `cli_parse.rs`, `db_schema.rs`, `api_client.rs`
+- Tests use snake_case: `test_init_list_validate_run()`, `new_creates_task()`
+- Grouped by domain: todoer has tests for db, cli, commands, config, models, output, project, repo, input
 
 **Structure:**
-```text
-crates/<crate>/
-├── src/*.rs              # production code with `#[cfg(test)]` modules when unit-level access matters
-└── tests/*.rs            # binary, integration, and contract-style tests
 ```
+crates/CRATE_NAME/
+├── src/
+│   ├── lib.rs          # includes mod re-exports
+│   ├── module.rs       # contains unit tests in #[cfg(test)]
+│   └── ...
+└── tests/
+    ├── integration_1.rs
+    ├── integration_2.rs
+    └── ...
+```
+
+Example from crates with tests:
+- `crates/prompter/tests/cli.rs`
+- `crates/todoer/tests/commands_new.rs`, `tests/models.rs`, `tests/db_schema.rs`, etc.
+- `crates/asana-cli/tests/api_client.rs`, `tests/cli.rs`
 
 ## Test Structure
 
-**Suite Organization:**
+**Unit Test Suite Pattern (from cli-common/src/output.rs):**
 ```rust
-#[test]
-fn query_outputs_jsonl() {
-    let (_tmp, db_path) = seeded_db();
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let output = Command::new(bin_path())
-        .args(["query", "--db"])
-        .arg(&db_path)
-        .env_remove("BSKY_APP_PASSWORD")
-        .output()
-        .expect("run query");
+    #[test]
+    fn test_is_tty_returns_bool() {
+        let _result = is_tty();
+        // Assertion here
+    }
 
-    assert!(output.status.success());
+    #[test]
+    fn test_success_format() {
+        let msg = success("test message");
+        assert!(msg.contains("test message"));
+        assert!(msg.contains("✅") || msg.contains("[OK]"));
+    }
 }
 ```
-- The pattern above is taken from `crates/bsky-comment-extractor/tests/query_cli.rs`.
+
+**Integration Test Pattern (from prompter/tests/cli.rs):**
+```rust
+use std::env;
+use std::fs;
+use std::path::PathBuf;
+use std::process::Command;
+
+fn tmp_home(prefix: &str) -> PathBuf {
+    let mut p = env::temp_dir();
+    let unique = format!(
+        "{}_{}_{}",
+        prefix,
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    );
+    p.push(unique);
+    p
+}
+
+#[test]
+fn test_init_list_validate_run() {
+    let home = tmp_home("prompter_it_home");
+    fs::create_dir_all(&home).unwrap();
+
+    // Test commands via Command::new() spawning actual binary
+    let out = Command::new(bin_path())
+        .env("HOME", &home)
+        .arg("init")
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "init failed: {}", String::from_utf8_lossy(&out.stderr));
+
+    // Further assertions
+}
+```
+- Use this style for async API flows in `crates/asana-cli/tests/api_client.rs`.
 
 **Patterns:**
-- Setup is usually local helper-first: `seed_db()` in `crates/bsky-comment-extractor/tests/query_cli.rs`, `standard_env()` in `crates/asana-cli/tests/cli.rs`, `tmp_home()` in `crates/prompter/tests/cli.rs`, and `clear_git_env()` in `crates/unvenv/tests/integration_test.rs`.
-- Teardown relies on RAII temp directories from `tempfile::TempDir` or `tempfile::tempdir`.
-- Assertions usually validate both success/failure status and exact output shape, not just type-level success.
+- Use `super::*` to import items under test
+- Separate test setup in dedicated helper functions
+- Use temporary directories and files for isolated test state
+- Spawn actual binaries in integration tests to verify CLI behavior
 
 ## Mocking
 
-**Framework:** targeted, not global
-- `mockito` is the primary HTTP mocking tool in `crates/asana-cli/tests/api_client.rs`, `crates/asana-cli/tests/cli.rs`, and `crates/asana-cli/src/api/client.rs`.
-- `serial_test` is used only where process-wide env mutation must not race, specifically `crates/asana-cli/src/config.rs`.
+**Framework:** `mockito` crate version 1.x for HTTP mocking
 
-**Patterns:**
+**Patterns (from asana-cli/tests/api_client.rs):**
 ```rust
-let mut server = Server::new_async().await;
-let _first = server
-    .mock("GET", "/users/me")
-    .with_status(429)
-    .with_header("Retry-After", "0.05")
-    .create();
+use mockito::{Matcher, Server};
+
+#[tokio::test]
+async fn paginate_workspaces_streams_all_pages() {
+    {
+        let mut server = Server::new_async().await;
+        let _first_page = server
+            .mock("GET", "/workspaces")
+            .with_status(200)
+            .with_body(r#"{ "data": [...], "next_page": {...} }"#)
+            .create();
+        let _second_page = server
+            .mock("GET", "/workspaces")
+            .match_query(Matcher::UrlEncoded("offset".into(), "after-first".into()))
+            .with_status(200)
+            .with_body(r#"{ "data": [...] }"#)
+            .create();
+
+        let client = ApiClient::builder(token)
+            .base_url(server.url())
+            .cache_dir(cache.path().join("cache"))
+            .build()
+            .expect("client initialises");
+
+        // Test code using mocked HTTP responses
+        drop(server); // Clean up server scope
+    }
+}
 ```
-- This is the prevailing API-test pattern in `crates/asana-cli/tests/api_client.rs`.
-- Outside HTTP code, the repository prefers real temp files, real SQLite connections, and real subprocesses over trait-level mocks.
+
+**Key Patterns:**
+- Create mock server with `Server::new_async().await`
+- Set up mocks with `.mock("METHOD", "path").with_status(...).with_body(...).create()`
+- Use `Matcher::UrlEncoded()` to match query parameters
+- Scope server lifetime with block `{ ... drop(server); }`
+- Base URL from mock: `server.url()`
 
 **What to Mock:**
-- Mock remote HTTP boundaries in `crates/asana-cli`.
-- Fake environment roots and config homes with temp dirs in `crates/prompter/tests/cli.rs`, `crates/asana-cli/tests/cli.rs`, and `crates/todoer/tests/config_resolution.rs`.
+- External HTTP APIs (required for unit/integration testing without network)
+- File system operations when testing configuration loading
+- Database operations with temporary test databases
 
 **What NOT to Mock:**
-- SQLite access is usually exercised against real temp databases, as in `crates/todoer/tests/commands_new.rs` and `crates/bsky-comment-extractor/tests/query_cli.rs`.
-- CLI parsing is exercised through actual `clap::Parser` or spawned binaries instead of custom stubs in `crates/gator/src/cli.rs`, `crates/todoer/tests/cli_parse.rs`, and `crates/prompter/tests/cli.rs`.
+- Core business logic (test the real implementation)
+- In-memory data structures
+- Standard library functions
 
 ## Fixtures and Factories
 
-**Test Data:**
+**Test Data (from todoer/tests/commands_new.rs):**
 ```rust
-let conn = open_db(path)?;
-init_db(&conn)?;
-upsert_post(&conn, uri, "did:plc:alice", text, created_at, &format!(r#"{{"uri":"{uri}"}}"#))?;
+use tempfile::tempdir;
+
+#[test]
+fn new_creates_task() {
+    let dir = tempdir().unwrap();
+    let db = dir.path().join("todoer.db");
+    let config = Config {
+        db_path: Some(db.to_string_lossy().to_string()),
+    };
+    let project = ResolvedProject {
+        name: "Test".to_string(),
+        key: "test".to_string(),
+    };
+
+    let conn = open_db(&db).unwrap();
+    init_db(&conn).unwrap();
+    ensure_project(&conn, &project.key, &project.name).unwrap();
+
+    let result = run_new(&config, &project, "do thing").unwrap();
+    assert_eq!(result.task.description, "do thing");
+}
 ```
-- `crates/bsky-comment-extractor/tests/query_cli.rs` uses this seed-helper style to build contract tests around actual database contents.
+- This command-contract style is used in `crates/bsky-comment-extractor/tests/query_cli.rs`, `crates/prompter/tests/cli.rs`, and `crates/unvenv/tests/integration_test.rs`.
 
 **Location:**
-- Helpers are usually local to each test file instead of shared support modules. Examples: `seed_db()` in `crates/bsky-comment-extractor/tests/query_cli.rs`, `bin_path()` in `crates/prompter/tests/cli.rs`, and `run_command_with_env()` in `crates/asana-cli/tests/cli.rs`.
+- Test data constructed inline in test functions
+- Temporary directories created with `tempfile::tempdir()`
+- Helper functions like `tmp_home()` for common setup patterns
+- Database initialization: `init_db()`, `ensure_project()` functions used in tests
 
 ## Coverage
 
-**Requirements:** None enforced
-- No coverage command exists in `justfile`.
-- No coverage upload or threshold config exists under `.github/`.
-- CI in `.github/workflows/ci.yml` enforces format, lint, test, MSRV, audit, and deny, but not statement or branch coverage.
-
-**Current Signals:**
-- Approximate test attribute counts from the current workspace scan: `crates/asana-cli` 72, `crates/gator` 55, `crates/bsky-comment-extractor` 46, `crates/prompter` 42, `crates/unvenv` 29, `crates/silent-critic` 27, `crates/cli-common` 25, and `crates/todoer` 25.
-- Inline test density is highest in `crates/asana-cli`, `crates/gator`, and `crates/cli-common`.
-- `crates/todoer` is the opposite pattern: it has many `tests/*.rs` files and no inline `#[cfg(test)]` modules in `src/`.
+**Requirements:** Not enforced; no coverage tooling configured
 
 **View Coverage:**
-```bash
-cargo test --workspace --verbose
-just ci
-```
-- These commands show pass/fail confidence only. They do not emit coverage percentages in the checked-in tooling.
+- Not configured; would use `cargo tarpaulin` or `cargo llvm-cov` if needed
 
 ## Test Types
 
 **Unit Tests:**
-- Inline unit tests cover parsing, config resolution, and internal model logic in `crates/gator/src/cli.rs`, `crates/cli-common/src/lib.rs`, `crates/silent-critic/src/models.rs`, and `crates/bsky-comment-extractor/src/db.rs`.
+- Scope: Individual functions and modules
+- Approach: Co-located with source code in `#[cfg(test)]` modules
+- Examples: `output.rs` tests formatting functions, `models.rs` tests serialization
+- Minimal dependencies; avoid file I/O when possible
 
 **Integration Tests:**
-- CLI integration is strong in `crates/prompter/tests/cli.rs`, `crates/asana-cli/tests/cli.rs`, `crates/unvenv/tests/integration_test.rs`, and `crates/bsky-comment-extractor/tests/query_cli.rs`.
-- DB-backed command integration is strongest in `crates/todoer/tests/commands_*.rs`.
+- Scope: CLI interactions, database operations, API client behavior
+- Approach: Standalone `.rs` files in `tests/` directory
+- Examples:
+  - `prompter/tests/cli.rs` - Full CLI workflows (init, list, validate, run)
+  - `todoer/tests/` - Commands (new, list, task operations), database schema, config resolution
+  - `asana-cli/tests/api_client.rs` - Async pagination, rate limiting, retries with mocked API
+- May spawn actual binaries or test library functions with real fixtures
 
 **E2E Tests:**
-- No dedicated E2E framework such as `nextest`, `cargo-llvm-cov`, or browser-driven tooling is configured.
-- The closest E2E-style tests are spawned binary tests in `crates/prompter/tests/cli.rs`, `crates/unvenv/tests/integration_test.rs`, and `crates/asana-cli/tests/cli.rs`.
+- Framework: Not used as dedicated E2E harness
+- Closest equivalent: Integration tests that spawn CLI binaries
+- Examples: `prompter/tests/cli.rs` runs actual `prompter` binary with various environments
+
+## Async Testing
+
+**Pattern (from asana-cli):**
+```rust
+#[tokio::test]
+async fn rate_limit_recovers_after_retry() {
+    let mut server = Server::new_async().await;
+    let _first = server
+        .mock("GET", "/users/me")
+        .with_status(429)
+        .with_header("Retry-After", "0.05")
+        .create();
+    let _second = server
+        .mock("GET", "/users/me")
+        .with_status(200)
+        .create();
+
+    let token = AuthToken::new(SecretString::new("rate-limit-token".into()));
+    let client = ApiClient::builder(token)
+        .base_url(server.url())
+        .build()
+        .expect("client initialises");
+
+    // Test async code directly
+    let result = client.request::<ResponseType>("GET", "/users/me").await;
+    assert!(result.is_ok());
+}
+```
+
+**Key Points:**
+- Use `#[tokio::test]` macro to enable async test execution
+- Mock servers support async with `Server::new_async().await`
+- Test async streams with `tokio::pin!()` and `.next().await`
+- Temporary directories work with async tests via `tokio::fs`
 
 ## Common Patterns
 
-**Async Testing:**
-```rust
-#[tokio::test]
-async fn rate_limit_recovers_after_retry() { /* ... */ }
-```
-- Use this style for async API flows in `crates/asana-cli/tests/api_client.rs`.
-
 **Error Testing:**
+- Test both success and failure paths
+- Example from `todoer/tests/commands_new.rs`:
+  ```rust
+  #[test]
+  fn new_creates_task() {
+      // successful path
+      let result = run_new(&config, &project, "do thing").unwrap();
+      assert_eq!(result.task.description, "do thing");
+  }
+  ```
+
+**Serialization Testing:**
 ```rust
-let failure = Command::new(bin_path())
-    .args(["query", "--db"])
-    .arg(&missing_path)
-    .output()
-    .expect("run query");
-
-assert!(!failure.status.success());
+#[test]
+fn status_serializes_as_string() {
+    let s = Status::InProgress;
+    let v = serde_json::to_string(&s).unwrap();
+    assert_eq!(v, "\"IN-PROGRESS\"");
+}
 ```
-- This command-contract style is used in `crates/bsky-comment-extractor/tests/query_cli.rs`, `crates/prompter/tests/cli.rs`, and `crates/unvenv/tests/integration_test.rs`.
 
-## Crate-Specific Notes
+**Test Isolation:**
+- Use `#[serial]` attribute from `serial_test` crate for tests that must not run in parallel
+- Observed in `asana-cli/tests/` for tests modifying global state
+- Example usage:
+  ```rust
+  #[tokio::test]
+  #[serial]
+  async fn test_that_needs_isolation() {
+      // test code
+  }
+  ```
 
-- `crates/asana-cli` has the broadest mix: inline unit tests, CLI integration tests, async API tests, retry-path tests, and an optional live smoke test in `crates/asana-cli/tests/api_client.rs` that runs only when `ASANA_CLI_TEST_TOKEN` is set.
-- `crates/prompter` validates real binary behavior through `env!("CARGO_BIN_EXE_prompter")` and temp HOME directories in `crates/prompter/tests/cli.rs`.
-- `crates/unvenv` uses subprocess-heavy integration tests in `crates/unvenv/tests/integration_test.rs`; those tests build the binary with `cargo build --bin unvenv` and hardcode `../../target/debug/unvenv`.
-- `crates/todoer` leans on real SQLite integration tests in `crates/todoer/tests/` and has only a light JSON shape test for `crates/todoer/src/output.rs`.
-- `crates/gator`, `crates/cli-common`, and `crates/silent-critic` currently rely on inline tests only; there is no `tests/` directory for those crates.
+**Temporary File Handling:**
+```rust
+use tempfile::tempdir;
 
-## Coverage Gaps and Risks
+let dir = tempdir().unwrap();
+let db_path = dir.path().join("test.db");
+// Test with temporary database
+// Automatically cleaned up when dir is dropped
+```
 
-- There is no repository-level coverage measurement or threshold in `justfile` or `.github/workflows/ci.yml`.
-- CI does not test Windows; the matrix in `.github/workflows/ci.yml` covers Linux and macOS only.
-- `crates/gator` and `crates/silent-critic` expose user-facing binaries but have no spawned-binary integration suite under `crates/*/tests/`.
-- `crates/todoer/tests/config_resolution.rs` mutates process env with `unsafe { std::env::set_var(...) }` but does not use `serial_test`; that file assumes isolated execution.
-- `crates/asana-cli/tests/api_client.rs` contains an optional live smoke test branch that is skipped unless external env vars are present, so CI exercises only the mocked path by default.
+## Testing Characteristics
+
+- **Granular:** Each crate has focused integration tests
+- **Hermetic:** Tests use temporary files and mocked HTTP, no external dependencies
+- **Fast:** Unit tests in process, integration tests with mocked I/O
+- **Debuggable:** Real binary execution in integration tests (not stubbed)
+- **Documented:** Test names describe what they test, minimal comments needed
 
 ---
 

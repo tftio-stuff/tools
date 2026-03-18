@@ -5,109 +5,264 @@
 ## Naming Patterns
 
 **Files:**
-- Use `snake_case` for Rust module files such as `crates/gator/src/worktree.rs`, `crates/todoer/src/output.rs`, and `crates/bsky-comment-extractor/src/error.rs`.
-- Use `kebab-case` for crate directories and binary names such as `crates/asana-cli`, `crates/silent-critic`, and the `bce` binary declared in `crates/bsky-comment-extractor/Cargo.toml`.
-- Group command handlers under `src/commands/` when the CLI is multi-command, as in `crates/todoer/src/commands/` and `crates/silent-critic/src/commands/`.
+- Module files use snake_case: `error.rs`, `output.rs`, `config.rs`, `models.rs`
+- Test files may be integration tests in dedicated `tests/` directory or unit tests in `#[cfg(test)]` modules within source files
+- Examples: `crates/todoer/tests/commands_new.rs`, `crates/asana-cli/tests/api_client.rs`
 
 **Functions:**
-- Use `snake_case` for functions and helpers, including CLI helpers like `print_top_level_help` in `crates/bsky-comment-extractor/src/main.rs`, `run_validate_stdout` in `crates/prompter/src/lib.rs`, and `resolve_workdir` in `crates/gator/src/config.rs`.
-- Keep `main` thin and delegate to `run` or `dispatch`, as in `crates/todoer/src/main.rs`, `crates/silent-critic/src/main.rs`, and `crates/gator/src/main.rs`.
+- Use snake_case for all function names
+- Builder pattern methods use `with_` prefix: `with_cache_dir()`, `with_timeout()`, `with_max_retries()`
+- Getter methods use descriptive names: `as_str()`, `repo_info()`, `current_version()`
+- Examples from codebase: `run_new()`, `open_db()`, `init_db()`, `ensure_project()`, `default_cache_dir()`, `resolve_project_key()`
 
 **Variables:**
-- Use descriptive local names over abbreviations in application code (`workdir`, `ungated_siblings`, `config_home`, `data_home` in `crates/gator/src/lib.rs` and `crates/asana-cli/tests/cli.rs`).
-- Use short temporaries only in narrow scopes (`cfg`, `pb`, `out`, `err`) as seen in `crates/asana-cli/src/config.rs`, `crates/bsky-comment-extractor/src/main.rs`, and `crates/prompter/src/main.rs`.
+- Use snake_case for all variable names
+- Private/internal fields in structs use lowercase: `profiles`, `post_prompt`, `expires_at`
+- Public struct fields use snake_case: `base_url`, `user_agent`, `timeout`, `cache_ttl`
+- Examples: `safehouse_extras`, `policy_denies`, `project_key`
 
 **Types:**
-- Use `PascalCase` for public structs and enums such as `Cli`, `Command`, `FetchArgs`, `ResolvedProject`, and `SessionCommand` in `crates/*/src/cli.rs`.
-- Use ALL_CAPS for env-var constants where present, such as `ENV_CONFIG_HOME` and `ENV_TOKEN` in `crates/asana-cli/src/config.rs`.
+- Use PascalCase for structs, enums, and traits
+- Examples: `Config`, `ApiClient`, `Task`, `Status`, `ListResponse`, `Workspace`
+- Type aliases use PascalCase: `type Result<T> = anyhow::Result<T>;`
 
 ## Code Style
 
 **Formatting:**
-- Format with `rustfmt` using `rustfmt.toml`: `max_width = 100`, spaces not tabs, `tab_spaces = 4`, `force_explicit_abi = true`, `use_field_init_shorthand = true`, and `use_try_shorthand = true`.
-- `cargo +nightly fmt --all` is the canonical formatter entry point in `justfile` and in `.github/workflows/ci.yml`.
+- Tool: `rustfmt` configured in `rustfmt.toml`
+- Edition: 2024
+- Max line width: 100 characters
+- Hard tabs: disabled
+- Tab spaces: 4
+- Force explicit ABI: enabled (`force_explicit_abi = true`)
+- Use field init shorthand enabled (`use_field_init_shorthand = true`)
+- Use try shorthand enabled (`use_try_shorthand = true`)
 
 **Linting:**
-- The workspace root `Cargo.toml` sets strict defaults: `unsafe_code = "warn"`, `missing_docs = "deny"`, `clippy::all = "deny"`, and `clippy::pedantic = "deny"`.
-- Prefer inheriting workspace lints via `[lints] workspace = true`, as in `crates/gator/Cargo.toml`, `crates/prompter/Cargo.toml`, and `crates/bsky-comment-extractor/Cargo.toml`.
-- Local lint escapes are explicit and narrow. Examples: `#[allow(clippy::struct_excessive_bools)]` in `crates/gator/src/cli.rs`, `#[allow(clippy::future_not_send)]` in `crates/bsky-comment-extractor/src/lib.rs`, and per-crate `missing_docs = "allow"` in `crates/todoer/Cargo.toml` and `crates/silent-critic/Cargo.toml`.
-- When unsafe is required, include a nearby safety explanation, as in `crates/gator/src/lib.rs` and `crates/todoer/tests/config_resolution.rs`.
+- Tool: `clippy` with strict workspace-level configuration
+- Workspace lints (from root `Cargo.toml`):
+  - `rust.unsafe_code = "warn"`
+  - `rust.missing_docs = "deny"` (must document public items)
+  - `clippy.all = "deny"` with priority -1
+  - `clippy.pedantic = "deny"` with priority -1
+  - `clippy.nursery = "warn"` with priority -1
+  - `clippy.cargo = "warn"` with priority -1
+  - `enum_glob_use = "deny"`
+  - `wildcard_imports = "deny"`
+  - Pre-existing allowances: `missing_errors_doc`, `missing_panics_doc`, `too_many_arguments`, `too_many_lines`, `collapsible_if`, `use_self`, `branches_sharing_code`, `missing_const_for_fn`, `significant_drop_tightening`, `uninlined_format_args`, `bool_to_int_with_if`
+- Per-crate overrides: `todoer` and `silent-critic` set `missing_docs = "allow"` for local lints
+
+**Documentation:**
+- All public items must have doc comments (enforced by lint)
+- Use `///` for item documentation
+- Use `//!` for module-level documentation
+- Include examples in documentation when helpful
+- Link to related items using markdown links in doc comments
+- Example from `cli-common/src/output.rs`:
+  ```rust
+  /// Check if stdout is a TTY (terminal).
+  ///
+  /// Returns `true` if stdout is connected to a terminal, `false` if piped/redirected.
+  /// This is used to determine whether to use colored output and fancy formatting.
+  #[must_use]
+  pub fn is_tty() -> bool {
+  ```
 
 ## Import Organization
 
 **Order:**
-1. Standard library imports first, e.g. `use std::path::{Path, PathBuf};` in `crates/bsky-comment-extractor/src/main.rs`.
-2. Third-party crates second, e.g. `use anyhow::{Context, Result, bail};` and `use clap::{CommandFactory, Parser};` in `crates/bsky-comment-extractor/src/main.rs`.
-3. Local crate imports last, e.g. `use bsky_comment_extractor::db::{count_posts, open_existing_db, query_posts};` in `crates/bsky-comment-extractor/src/main.rs`.
+1. Internal crate imports (`use crate::...`)
+2. External crate imports grouped by category (dependencies)
+3. Standard library imports (std::*)
+4. Type-level re-exports and use statements after groups
 
 **Path Aliases:**
-- Use explicit crate paths instead of relative aliases. Examples: `use todoer::commands::new::run_new` in `crates/todoer/tests/commands_new.rs` and `use silent_critic::commands::{contract, criterion, decide, log, project, session};` in `crates/silent-critic/src/main.rs`.
-- Re-export shared surface area from `src/lib.rs` when a crate is meant to be consumed by others, as in `crates/cli-common/src/lib.rs`.
+- No global path aliases configured
+- Imports use fully qualified paths from crate root
+- Examples:
+  - `use crate::config::{Config, resolve_db_path};`
+  - `use crate::db::open_db;`
+  - `use crate::api::{ApiClient, ApiError, AuthToken, ListResponse};`
+
+**Import Grouping (observed in asana-cli):**
+```rust
+// Internal crate modules
+use crate::api::{auth::AuthToken, error::{ApiError, RateLimitInfo}, pagination::ListResponse};
+
+// External dependencies
+use async_stream::try_stream;
+use base64::{Engine as _, engine::general_purpose};
+use futures_core::Stream;
+use reqwest::{Method, StatusCode, header::{...}};
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, path::PathBuf, sync::...};
+use tokio::{fs, sync::RwLock, time::sleep};
+use tracing::{debug, warn};
+```
 
 ## Error Handling
 
 **Patterns:**
-- Use typed error enums when the crate has a meaningful domain model, e.g. `ExtractorError` in `crates/bsky-comment-extractor/src/error.rs`.
-- Use `anyhow::Result` at binary boundaries or orchestration layers, e.g. `crates/asana-cli/src/error.rs`, `crates/silent-critic/src/main.rs`, and `crates/bsky-comment-extractor/src/main.rs`.
-- Add context at I/O and parsing boundaries, as in `with_context` calls in `crates/asana-cli/src/config.rs`.
-- Convert failures into exit codes in `src/main.rs` instead of panicking. Examples: `crates/gator/src/main.rs`, `crates/todoer/src/main.rs`, and `crates/prompter/src/main.rs`.
-- Support structured JSON errors for machine-facing CLIs. Examples: `ok_response` and `err_response` in `crates/todoer/src/output.rs` and `crates/silent-critic/src/output.rs`, plus JSON error lines in `crates/bsky-comment-extractor/src/main.rs`.
+- Use `anyhow::Result<T>` type alias as primary error type
+- Example from `asana-cli/src/error.rs`:
+  ```rust
+  /// Result type alias leveraging `anyhow` for rich context.
+  pub type Result<T> = anyhow::Result<T>;
+  ```
+- Propagate errors with `?` operator in functions returning `Result`
+- Use `anyhow::anyhow!()` macro to construct contextual errors
+- Example from `asana-cli/src/lib.rs`:
+  ```rust
+  fmt()
+      .with_env_filter(filter)
+      .with_target(false)
+      .try_init()
+      .map_err(|err| anyhow!(err))?;
+  ```
+
+**Error Messages in CLI:**
+- Main entry points convert errors to exit codes
+- Example from `gator/src/main.rs`:
+  ```rust
+  if let Err(e) = gator::run(&cli) {
+      if json {
+          eprintln!(r#"{{"error":"{}"}}"#, e.replace('"', "\\\""));
+      } else {
+          eprintln!("gator: {e}");
+      }
+      std::process::exit(1);
+  }
+  ```
+- Support JSON output for errors when `--json` flag is present
 
 ## Logging
 
-**Framework:** mixed
-- `tracing` is used where API/network diagnostics matter, especially `crates/asana-cli/src/main.rs`.
-- Most other crates use plain `println!`/`eprintln!` output with optional JSON modes, such as `crates/gator/src/main.rs`, `crates/todoer/src/main.rs`, and `crates/silent-critic/src/main.rs`.
+**Framework:** `tracing` crate for structured logging
+
+**Initialization:**
+- Initialize tracing subscriber in main entry points
+- Example from `asana-cli/src/lib.rs`:
+  ```rust
+  pub fn init_tracing() -> Result<()> {
+      let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+      fmt()
+          .with_env_filter(filter)
+          .with_target(false)
+          .try_init()
+          .map_err(|err| anyhow!(err))?;
+      Ok(())
+  }
+  ```
 
 **Patterns:**
-- Human-readable output goes to stdout; failures go to stderr unless the command explicitly emits structured JSON.
-- JSON modes are exposed as `--json` flags in `crates/todoer/src/cli.rs`, `crates/gator/src/cli.rs`, `crates/prompter/src/lib.rs`, and `crates/silent-critic/src/cli.rs`.
+- Use `tracing::{debug, warn, info, error}` macros for logging
+- Include contextual information in log messages
+- Example usage in `api/client.rs`: `debug!(...)`, `warn!(...)`
 
 ## Comments
 
 **When to Comment:**
-- Use crate-level or module-level `//!` docs on public files, especially in crates that inherit `missing_docs = "deny"`. Examples: `crates/cli-common/src/lib.rs`, `crates/gator/src/lib.rs`, `crates/prompter/src/lib.rs`, and `crates/bsky-comment-extractor/src/cli.rs`.
-- Use `///` on public CLI structs, fields, and functions. `crates/bsky-comment-extractor/src/cli.rs` is the clearest reference pattern.
-- Use inline comments for constraints and safety notes rather than narration. Examples: the PATH mutation comment in `crates/gator/src/lib.rs` and the env-isolation notes in `crates/unvenv/tests/integration_test.rs`.
+- Public API documentation via doc comments is mandatory (enforced by lint)
+- Explain WHY not WHAT - code should be clear enough to explain what it does
+- Use comments for non-obvious algorithmic choices or workarounds
+- Example from `gator/src/lib.rs`:
+  ```rust
+  // SAFETY: gator is single-threaded and sets PATH before spawning anything.
+  unsafe { std::env::set_var("PATH", ...); }
+  ```
 
 **JSDoc/TSDoc:**
-- Not applicable. The repository is Rust-only in the inspected workspace.
+- Use Rust doc comments (`///` and `//!`)
+- Include parameter and return value documentation
+- Use code examples in doc comments when appropriate
+- Example from `cli-common/src/lib.rs`:
+  ```rust
+  //! Common functionality for Workhelix Rust CLI tools.
+  //!
+  //! This library provides shared functionality for CLI tools including:
+  //! - Shell completion generation
+  //! - Health check framework
+  //! - License display
+  //! - Terminal output utilities
+  ```
 
 ## Function Design
 
-**Size:**
-- Small command routers live in `src/main.rs`; larger business logic lives in `src/lib.rs` or `src/commands/*.rs`.
-- Large functions are tolerated only with explicit lint waivers, such as `#[allow(clippy::too_many_lines)]` in `crates/unvenv/src/main.rs` and `crates/asana-cli/src/api/client.rs`.
+**Size:** No specific upper bound enforced (too_many_lines is allowed), but keep functions focused on single responsibility
 
 **Parameters:**
-- Prefer typed Clap structs (`FetchArgs`, `QueryArgs`, `TaskCommand`) for CLI inputs in `crates/bsky-comment-extractor/src/cli.rs`, `crates/todoer/src/cli.rs`, and `crates/silent-critic/src/cli.rs`.
-- Prefer borrowing references into command-layer functions, e.g. `run(cli: &Cli)` in `crates/gator/src/lib.rs` and `run_new(&config, &project, "do thing")` in `crates/todoer/tests/commands_new.rs`.
+- Use strong types rather than primitives for clarity
+- Builder pattern for complex configuration: `ApiClient::builder(token).base_url(url).cache_dir(dir).build()`
+- Example from `api/client.rs`:
+  ```rust
+  pub fn builder(token: AuthToken) -> ApiClientBuilder {
+      ApiClientBuilder::new(token)
+  }
+  ```
 
 **Return Values:**
-- Library functions usually return `Result<T, E>`.
-- Binary `run` functions return exit codes (`i32`) when they need to centralize stdout/stderr policy, as in `crates/todoer/src/main.rs`, `crates/silent-critic/src/main.rs`, and `crates/bsky-comment-extractor/src/main.rs`.
+- Use `Result<T>` for fallible operations
+- Use `Option<T>` for nullable values
+- Avoid bare tuples; prefer named structs for multiple return values
+- Mark pure functions with `#[must_use]` attribute
+- Example from `output.rs`:
+  ```rust
+  #[must_use]
+  pub fn success(msg: &str) -> String { ... }
+
+  #[must_use]
+  pub fn is_tty() -> bool { ... }
+  ```
 
 ## Module Design
 
 **Exports:**
-- Keep `src/lib.rs` as the module registry and re-export surface, as in `crates/cli-common/src/lib.rs`, `crates/gator/src/lib.rs`, and `crates/silent-critic/src/lib.rs`.
-- Put CLI definitions in `src/cli.rs` or `src/cli/mod.rs`; put execution logic elsewhere.
+- Re-export commonly used types from lib.rs
+- Example from `cli-common/src/lib.rs`:
+  ```rust
+  pub use doctor::DoctorChecks;
+  pub use license::LicenseType;
+  pub use types::{DoctorCheck, RepoInfo};
+  pub use completions::generate_completions;
+  pub use doctor::run_doctor;
+  pub use license::display_license;
+  ```
 
 **Barrel Files:**
-- `mod.rs` is used selectively for grouped domains such as `crates/todoer/src/commands/mod.rs`, `crates/silent-critic/src/commands/mod.rs`, and `crates/asana-cli/src/cli/mod.rs`.
-- Most crates otherwise favor flat `*.rs` module files over deep barrel hierarchies.
+- Use `mod.rs` files for module organization in subdirectories
+- Re-export key types at the barrel level
+- Example in `crates/commands/mod.rs` and submodule files
 
-## Config and CLI Conventions
+**Module Structure:**
+- Organize by domain: `cli`, `commands`, `config`, `db`, `models`, `output`, etc.
+- Keep related functionality together
+- One concept per file when possible
+- Examples:
+  - `todoer` modules: `cli.rs`, `commands/`, `config.rs`, `db.rs`, `models.rs`, `output.rs`, `project.rs`, `repo.rs`
+  - `asana-cli` modules: `api/`, `cli.rs`, `config.rs`, `doctor.rs`, `error.rs`, `filters.rs`, `models.rs`, `output.rs`, `templates.rs`
 
-- Prefer XDG-aware config/data resolution and env overrides, as seen in `crates/todoer/src/config.rs`, `crates/silent-critic/src/config.rs`, and `crates/asana-cli/src/config.rs`.
-- Expose top-level operational recipes through `justfile`: `just format`, `just lint`, `just test`, `just dev`, and `just ci`.
-- Keep repository workflow policy in checked-in automation: `.github/workflows/ci.yml` defines formatting, lint, test, MSRV, audit, and deny gates; `.github/workflows/release-please.yml` and `.github/workflows/release.yml` define release flow from `main` and `*-v*` tags.
+**UNSAFE Code:**
+- Minimize unsafe code; only use when necessary
+- Always add `SAFETY:` comment explaining the invariant
+- Example from `gator/src/lib.rs`:
+  ```rust
+  // SAFETY: gator is single-threaded and sets PATH before spawning anything.
+  unsafe { std::env::set_var("PATH", ...); }
+  ```
 
-## Repository Workflow Conventions
+## Builder Pattern
 
-- Treat `main` as the integration branch: `.github/workflows/ci.yml` and `.github/workflows/release-please.yml` trigger on pushes to `main`.
-- Run `just dev` locally before shipping changes and `just ci` when matching the full CI pipeline from `justfile`.
-- Keep dependency policy centralized in `deny.toml` and dependency versions centralized in the workspace root `Cargo.toml`.
+Used extensively for complex initialization (particularly in `asana-cli`):
+- Return `Self` from builder methods for method chaining
+- Mark builder methods with `#[must_use]`
+- Example from `api/client.rs`:
+  ```rust
+  #[must_use]
+  pub fn with_cache_dir(mut self, cache_dir: PathBuf) -> Self {
+      self.cache_dir = cache_dir;
+      self
+  }
+  ```
 
 ---
 

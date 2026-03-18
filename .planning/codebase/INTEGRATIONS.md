@@ -4,121 +4,158 @@
 
 ## APIs & External Services
 
-**Task/work management:**
-- Asana REST API - used by `/Users/jfb/Projects/tools/main/crates/asana-cli/src/api/client.rs` for authenticated resource access, pagination, rate limiting, retries, and cache-backed offline reads.
-  - SDK/Client: `reqwest` with async helpers in `/Users/jfb/Projects/tools/main/crates/asana-cli/src/api/client.rs`
-  - Auth: `ASANA_PAT` from `/Users/jfb/Projects/tools/main/crates/asana-cli/src/config.rs`
-  - Overrides: `ASANA_BASE_URL`, `ASANA_WORKSPACE`, `ASANA_ASSIGNEE`, `ASANA_PROJECT`, `ASANA_CLI_CONFIG_HOME`, `ASANA_CLI_DATA_HOME` from `/Users/jfb/Projects/tools/main/crates/asana-cli/src/config.rs`
+**Asana API:**
+- Service: Asana project management platform
+  - Endpoint: `https://app.asana.com/api/1.0` (default, overridable via `ASANA_BASE_URL`)
+  - SDK/Client: `reqwest` 0.13 HTTP client via `crates/asana-cli/src/api/` module
+  - Auth: Personal Access Token (PAT) via `ASANA_PAT` environment variable
+  - Auth storage: Secure disk storage with `secrecy` redaction in `crates/asana-cli/src/config.rs`
+  - Features: Multipart upload support, streaming responses
+  - Models: Tasks, projects, workspaces, users, tags, stories, sections, attachments, custom fields
+  - Pagination: Automatic cursor-based pagination via async streams
 
-**Social/AT Protocol:**
-- BlueSky public AppView and PDS endpoints - used by `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/src/client.rs` for handle resolution, authenticated session creation, token refresh, and `com.atproto.repo.listRecords` pagination.
-  - SDK/Client: `reqwest` in `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/src/client.rs`
-  - Auth: `BSKY_APP_PASSWORD` from `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/src/lib.rs` and `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/src/main.rs`
-  - Base URLs: `https://public.api.bsky.app` and `https://bsky.social` in `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/src/client.rs`
-
-**Source hosting/downloads:**
-- GitHub raw content and releases - used by the shared updater in `/Users/jfb/Projects/tools/main/crates/cli-common/src/update.rs` and described in `/Users/jfb/Projects/tools/main/README.md`.
-  - SDK/Client: shell `curl | sh` launched from `/Users/jfb/Projects/tools/main/crates/cli-common/src/update.rs`
-  - Auth: none for public downloads
+**Silent Critic Worker Communication:**
+- Service: Internal agent-supervisor protocol
+  - Auth: Opaque session token via `SILENT_CRITIC_TOKEN` environment variable
+  - Protocol: JSON-based contract exchange via stdout/stdin (see `crates/silent-critic/src/`)
+  - Usage: `gator` shells out to `silent-critic session sandbox <id> --format json`
+  - Integration: `crates/gator/src/session.rs:fetch_session_sandbox()` parses contract sandbox specifications
 
 ## Data Storage
 
 **Databases:**
-- SQLite for `todoer` at XDG-resolved paths from `/Users/jfb/Projects/tools/main/crates/todoer/src/config.rs`, opened by `/Users/jfb/Projects/tools/main/crates/todoer/src/db.rs`.
-  - Connection: filesystem path from `XDG_DATA_HOME` or `~/.local/share/todoer/todoer.db`
-  - Client: `rusqlite` in `/Users/jfb/Projects/tools/main/crates/todoer/src/db.rs`
-- SQLite for `silent-critic` at per-project hashed paths from `/Users/jfb/Projects/tools/main/crates/silent-critic/src/config.rs`, schema in `/Users/jfb/Projects/tools/main/crates/silent-critic/src/db.rs`.
-  - Connection: filesystem path from `XDG_DATA_HOME`, config override `db_dir`, or `~/.local/share/silent-critic/<project-hash>/db.sqlite`
-  - Client: `rusqlite` in `/Users/jfb/Projects/tools/main/crates/silent-critic/src/db.rs`
-- SQLite for BlueSky extraction output at `ProjectDirs`-resolved default location from `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/src/main.rs`, schema in `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/src/db.rs`.
-  - Connection: default `.../bce/bsky-posts.db` or explicit `--db`
-  - Client: `rusqlite` in `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/src/db.rs`
+
+- **SQLite 3 (bundled):**
+  - Todoer backend: `~/.local/share/todoer/todoer.db` (XDG-compliant, overridable)
+    - Location: `crates/todoer/src/db.rs`
+    - Tables: projects, tasks, task_notes
+    - Config file: `.todoer.toml` (reads `db_path` override)
+  - Silent Critic backend: `~/.local/share/silent-critic/{project-hash}/db.sqlite` (XDG-compliant)
+    - Location: `crates/silent-critic/src/db.rs`
+    - Tables: projects, criteria, sessions, contracts, contract_criteria, discovery_contexts, evidence, decisions, audit_events
+    - WAL mode enabled: `PRAGMA journal_mode = WAL`
+    - Foreign keys enforced: `PRAGMA foreign_keys = ON`
+    - Config file: `~/.config/silent-critic/config.toml` (reads `db_dir` override)
 
 **File Storage:**
-- Local filesystem only.
-- Asana CLI persists config, templates, filters, and cache under paths resolved in `/Users/jfb/Projects/tools/main/crates/asana-cli/src/config.rs`.
-- Prompter stores profile config and markdown prompt library under `~/.config/prompter/config.toml` and `~/.local/prompter/library` from `/Users/jfb/Projects/tools/main/crates/prompter/src/lib.rs`.
-- Gator reads project-local `.safehouse` and `.gator/policies/*.toml` plus user-global `~/.config/gator/policies/*.toml` from `/Users/jfb/Projects/tools/main/crates/gator/src/config.rs`.
+- Local filesystem only - No cloud storage integrations detected
+- Cache directory: `~/.local/share/{app}/cache/` (XDG-compliant, used by `asana-cli`)
+- Config paths: `~/.config/{app}/` (XDG-compliant)
+- Temporary: `tempfile` crate for secure temp files (`gator` sandbox policies)
 
 **Caching:**
-- Asana CLI maintains in-memory and disk-backed API cache in `/Users/jfb/Projects/tools/main/crates/asana-cli/src/api/client.rs`.
-  - Default cache path: ProjectDirs data-local cache under `/Users/jfb/Projects/tools/main/crates/asana-cli/src/api/client.rs`
-  - TTL/offline controls: `cache_ttl` and `offline` in `/Users/jfb/Projects/tools/main/crates/asana-cli/src/api/client.rs`
+- HTTP response caching in `asana-cli` (cache directory managed via `Config.cache_dir`)
+- No Redis, Memcached, or distributed caching
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- Custom token/env-var based auth.
-  - Asana uses PAT handling with `secrecy::SecretString` in `/Users/jfb/Projects/tools/main/crates/asana-cli/src/config.rs`.
-  - BlueSky uses app-password login to exchange for access/refresh JWTs in `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/src/client.rs`.
-  - Silent Critic worker flows require `SILENT_CRITIC_TOKEN` in `/Users/jfb/Projects/tools/main/crates/silent-critic/src/main.rs`.
+- Custom token-based auth
+  - Asana: Personal Access Token (PAT) - stored encrypted on disk, retrieved via `ASANA_PAT` env var
+  - Silent Critic: Opaque session tokens - `SILENT_CRITIC_TOKEN` for worker processes
+  - Implementation: No OAuth, JWT, or third-party identity provider
+  - Secure input: `rpassword` 7 for interactive password prompts (`asana-cli`)
+
+**Token Storage:**
+- Asana PAT: `~/.config/asana-cli/asana-cli.toml` (unencrypted, permissions: 0o600 on Unix)
+  - Code: `crates/asana-cli/src/config.rs` lines 200-220
+  - Redaction: `secrecy::SecretString` prevents accidental logging
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- None detected as an external SaaS integration.
+- None detected - No Sentry, Rollbar, or error tracking service
 
 **Logs:**
-- `tracing` and `tracing-subscriber` are initialized in `/Users/jfb/Projects/tools/main/crates/asana-cli/src/lib.rs`.
-- CLI stderr/JSON error outputs are emitted directly in `/Users/jfb/Projects/tools/main/crates/todoer/src/main.rs`, `/Users/jfb/Projects/tools/main/crates/gator/src/main.rs`, and `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/src/main.rs`.
-- Silent Critic stores durable audit/evidence data in SQLite tables declared in `/Users/jfb/Projects/tools/main/crates/silent-critic/src/db.rs`.
+- Structured logging via `tracing` framework
+- Sink: `tracing-subscriber` to stderr with `EnvFilter`
+- Default level: `info` (overridable via `RUST_LOG` environment variable)
+- Code: `crates/asana-cli/src/lib.rs:init_tracing()`
+
+**Spans & Metrics:**
+- `asana-cli` uses `tracing` instrumentation on async API operations
+- No dedicated metrics/monitoring service (Prometheus, Datadog, etc.)
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Source and release distribution are GitHub-centric per `/Users/jfb/Projects/tools/main/README.md`, `/Users/jfb/Projects/tools/main/.github/workflows/release-please.yml`, and `/Users/jfb/Projects/tools/main/.github/workflows/release.yml`.
-- Crate publishing targets crates.io through `cargo publish` in `/Users/jfb/Projects/tools/main/.github/workflows/release.yml`.
+- GitHub (repository: `https://github.com/tftio-stuff/tools`)
+- No containerization detected (no Docker/OCI)
+- No cloud platform deployments (AWS, GCP, Azure)
 
 **CI Pipeline:**
-- GitHub Actions is the only CI/CD service detected.
-  - CI checks: `/Users/jfb/Projects/tools/main/.github/workflows/ci.yml`
-  - Release PR automation: `/Users/jfb/Projects/tools/main/.github/workflows/release-please.yml`
-  - Tagged binary builds and crates.io publish: `/Users/jfb/Projects/tools/main/.github/workflows/release.yml`
+- GitHub Actions (inferred from release-please and CI workflows)
+  - Workflows: `ci.yml` (format, lint, test, MSRV, audit, deny), `release-please.yml`, `release.yml`
+  - Matrix testing: Multiple Rust versions
+  - Cross-platform builds: Tests run on Linux and macOS
+
+**Package Distribution:**
+- crates.io publication (inferred from release workflow)
+- Binaries: Likely published via GitHub Releases
 
 ## Environment Configuration
 
 **Required env vars:**
-- `ASANA_PAT`, `ASANA_BASE_URL`, `ASANA_WORKSPACE`, `ASANA_ASSIGNEE`, `ASANA_PROJECT`, `ASANA_CLI_CONFIG_HOME`, `ASANA_CLI_DATA_HOME` in `/Users/jfb/Projects/tools/main/crates/asana-cli/src/config.rs`
-- `BSKY_APP_PASSWORD` in `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/src/lib.rs` and `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/src/main.rs`
-- `SILENT_CRITIC_TOKEN` in `/Users/jfb/Projects/tools/main/crates/silent-critic/src/main.rs`
-- `XDG_CONFIG_HOME` and `XDG_DATA_HOME` in `/Users/jfb/Projects/tools/main/crates/todoer/src/config.rs` and `/Users/jfb/Projects/tools/main/crates/silent-critic/src/config.rs`
-- `HOME` is used by `/Users/jfb/Projects/tools/main/crates/prompter/src/lib.rs` for default config/library resolution
+- `ASANA_PAT` - Asana API authentication (required for `asana-cli`)
+- `SILENT_CRITIC_TOKEN` - Worker session auth (required for `silent-critic` session execution via `gator`)
+
+**Optional env vars:**
+- `ASANA_BASE_URL` - Custom Asana API endpoint (default: `https://app.asana.com/api/1.0`)
+- `ASANA_WORKSPACE`, `ASANA_ASSIGNEE`, `ASANA_PROJECT` - Asana command defaults
+- `ASANA_CLI_CONFIG_HOME`, `ASANA_CLI_DATA_HOME` - Custom paths
+- `XDG_CONFIG_HOME` - Override config directory
+- `XDG_DATA_HOME` - Override data directory
+- `RUST_LOG` - Tracing level control
 
 **Secrets location:**
-- Environment variables for active credentials.
-- Persisted Asana PAT can be written to the Asana config file resolved by `/Users/jfb/Projects/tools/main/crates/asana-cli/src/config.rs`.
-- GitHub Actions secrets are referenced as `GITHUB_TOKEN`, `RELEASE_PLEASE_TOKEN`, and `CARGO_REGISTRY_TOKEN` in `/Users/jfb/Projects/tools/main/.github/workflows/*.yml`.
-
-## Network Integrations
-
-**Git and repo inspection:**
-- `git2` integration is used in `/Users/jfb/Projects/tools/main/crates/unvenv/src/main.rs`, `/Users/jfb/Projects/tools/main/crates/gator/src/config.rs`, and Silent Critic project/session discovery modules under `/Users/jfb/Projects/tools/main/crates/silent-critic/src/`.
-
-**Agent tooling:**
-- Gator launches external agent binaries (`claude`, `codex`, `gemini`) under `sandbox-exec` in `/Users/jfb/Projects/tools/main/crates/gator/src/agent.rs`.
-- Gator composes sandbox policy text from a base SBPL profile at `~/.config/sandbox-exec/agent.sb` in `/Users/jfb/Projects/tools/main/crates/gator/src/sandbox.rs`.
-- Gator integrates with the Prompter library from `/Users/jfb/Projects/tools/main/crates/gator/Cargo.toml` and `/Users/jfb/Projects/tools/main/crates/gator/src/prompt.rs`.
-
-## Release & Distribution Integrations
-
-**Incoming release triggers:**
-- Tag pattern `*-v*` in `/Users/jfb/Projects/tools/main/.github/workflows/release.yml`
-- Pushes to `main` in `/Users/jfb/Projects/tools/main/.github/workflows/release-please.yml`
-
-**Outgoing distribution:**
-- `taiki-e/upload-rust-binary-action` uploads release archives in `/Users/jfb/Projects/tools/main/.github/workflows/release.yml`
-- `cargo publish` pushes crates to crates.io in `/Users/jfb/Projects/tools/main/.github/workflows/release.yml`
-- Release version state is tracked in `/Users/jfb/Projects/tools/main/.release-please-manifest.json`
+- Asana PAT: `~/.config/asana-cli/asana-cli.toml` (disk-based, file permissions enforced)
+- Silent Critic tokens: Environment variable only (transient, no persistent storage)
+- `.env` files: Not used in this codebase (all via environment variables or config files)
 
 ## Webhooks & Callbacks
 
 **Incoming:**
-- None detected in workspace code under `/Users/jfb/Projects/tools/main/crates/`.
+- None detected - No webhook endpoints implemented
 
 **Outgoing:**
-- Asana API requests from `/Users/jfb/Projects/tools/main/crates/asana-cli/src/api/client.rs`
-- BlueSky/AT Protocol requests from `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/src/client.rs`
-- GitHub raw install script download from `/Users/jfb/Projects/tools/main/crates/cli-common/src/update.rs`
+- None detected - No external webhooks triggered
+
+## Git Integration
+
+**Repository Operations:**
+- `git2` (vendored libgit2 0.20) for:
+  - Repository discovery (`gator`, `silent-critic`)
+  - Project identification via `sha2` hashing of repo path
+  - Worktree detection in `crates/gator/src/worktree.rs`
+  - Git status inspection
+
+**Repository Metadata:**
+- Repository URL: `https://github.com/tftio-stuff/tools` (workspace-level)
+
+## macOS Sandbox Integration (Gator)
+
+**Sandbox Framework:**
+- `sandbox-exec` (built-in macOS utility)
+- SBPL (Sandbox Policy Language) - Native macOS security model
+- Policy generation: `crates/gator/src/sandbox.rs`
+- Static base profile: `~/.config/sandbox-exec/agent.sb` (user-provided)
+- Policy enforcement: Dynamic rules appended for workdir, worktrees, extra directories
+
+**Process Execution:**
+- `std::os::unix::process::CommandExt` for low-level process control
+- SBPL policy injected via `sandbox-exec` command wrapper
+- No cgroup, seccomp, or Linux security module support
+
+## System Integration Points
+
+**Prompter Integration:**
+- `gator` uses `tftio-prompter` library to compose system prompts from TOML profiles
+- Code: `crates/gator/src/prompt.rs`
+- Features: Profile recursion, markdown deduplication, completion generation
+
+**CLI Common Library:**
+- Shared utilities: Completions, health checks, license reporting, auto-update helpers
+- Dependency: All CLI crates depend on `tftio-cli-common`
 
 ---
 
