@@ -1,67 +1,62 @@
----
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: Gator Sandbox Hardening
-status: complete
-stopped_at: Milestone v1.0 shipped
-last_updated: "2026-03-18"
-last_activity: 2026-03-18 -- Milestone v1.0 completed and archived
-progress:
-  total_phases: 2
-  completed_phases: 2
-  total_plans: 2
-  completed_plans: 2
-  percent: 100
----
-
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-18)
+See: .planning/PROJECT.md (updated 2026-03-17)
 
 **Core value:** An agent launched by gator cannot read peer worktrees unless explicitly granted access.
-**Current focus:** Planning next milestone
+**Current focus:** Phase 1 - Sandbox Isolation
 
 ## Current Position
 
-Phase: 2 of 2 (all complete)
-Plan: All plans complete
-Status: Milestone v1.0 shipped
-Last activity: 2026-03-18 -- Milestone v1.0 completed and archived
+Phase: 1 of 2 (Sandbox Isolation)
+Plan: 0 of ? in current phase
+Status: Ready to plan
+Last activity: 2026-03-17 -- Roadmap created
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 12.5min
-- Total execution time: 25min
+- Total plans completed: 0
+- Average duration: -
+- Total execution time: -
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-sandbox-isolation | 1 | 18min | 18min |
-| 02-yolo-injection | 1 | 7min | 7min |
+| - | - | - | - |
+
+**Recent Trend:**
+- Last 5 plans: -
+- Trend: -
+
+*Updated after each plan completion*
 
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
+Recent decisions affecting current work:
+
+- Drop sibling grants by default (least privilege -- agent sees only its own worktree)
+- Keep common git dir RW (agent needs write for commits, index, refs)
+- Add --share-worktrees opt-in (clear escape hatch for cross-worktree reads)
+- YOLO by default, --no-yolo opt-out (sandbox is the security boundary)
 
 ### Pending Todos
 
-None.
+None yet.
 
 ### Blockers/Concerns
 
-None.
+None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18
-Stopped at: Milestone v1.0 shipped
+Last session: 2026-03-17
+Stopped at: Roadmap created, ready to plan Phase 1
 Resume file: None
