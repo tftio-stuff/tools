@@ -41,7 +41,10 @@ Plans:
   2. Launching gator with Codex injects --full-auto into the agent command automatically
   3. Launching gator with --no-yolo starts the agent without any injected YOLO flag (agent uses its default permission mode)
   4. YOLO injection does not affect --session launches (session path unchanged)
-**Plans**: TBD
+**Plans:** 1 plan
+
+Plans:
+- [ ] 02-01-PLAN.md -- Add YOLO flag injection to build_command() with --no-yolo opt-out
 
 <details>
 <summary>[x] v1.1 bsky-comment-extractor (Phases 3-4) -- SHIPPED 2026-03-22</summary>
@@ -94,4 +97,4 @@ Phases execute in numeric order: 1 -> 2
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Sandbox Isolation | 1/1 | Complete    | 2026-03-18 |
-| 2. YOLO Injection | 0/? | Not started | - |
+| 2. YOLO Injection | 0/1 | Not started | - |
