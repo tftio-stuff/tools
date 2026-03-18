@@ -12,7 +12,7 @@ Two focused changes to gator's launch behavior: tighten the default sandbox poli
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Sandbox Isolation** - Remove default sibling worktree grants and add --share-worktrees opt-in
+- [x] **Phase 1: Sandbox Isolation** - Remove default sibling worktree grants and add --share-worktrees opt-in (completed 2026-03-18)
 - [ ] **Phase 2: YOLO Injection** - Inject agent YOLO flags by default and add --no-yolo opt-out
 
 ## Phase Details
@@ -27,7 +27,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Running gator with --share-worktrees produces a sandbox policy that grants RO access to all peer worktrees (restoring pre-hardening behavior)
   4. Existing --add-dirs-ro, .safehouse, and --policy invocations continue to expand sandbox access without modification
   5. Running gator with --session is unaffected by sandbox isolation changes
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [x] 01-01-PLAN.md -- Add --share-worktrees flag, sibling gating, and dry-run diagnostics
@@ -50,5 +50,5 @@ Phases execute in numeric order: 1 -> 2
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Sandbox Isolation | 1/1 | In progress (awaiting verify) | - |
+| 1. Sandbox Isolation | 1/1 | Complete   | 2026-03-18 |
 | 2. YOLO Injection | 0/? | Not started | - |
