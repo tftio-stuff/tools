@@ -4,166 +4,158 @@
 
 ## APIs & External Services
 
-**Asana REST API:**
+**Asana API:**
 - Service: Asana project management platform
-  - SDK/Client: `reqwest` 0.13 HTTP client, implementation in `crates/asana-cli/src/api/`
-  - Base URL: `https://app.asana.com/api/1.0` (default); overridable via `ASANA_BASE_URL` env var
-  - Auth: Personal Access Token (PAT) via `ASANA_PAT` env var or stored in config file
-  - Token storage: `~/.config/asana-cli/asana-cli.toml`, Unix permissions enforced to 0o600; wrapped in `secrecy::SecretString` to prevent accidental log exposure
-  - HTTP features: Multipart uploads (attachments), streaming responses
-  - Pagination: Cursor-based pagination via async streams (`async-stream`, `futures-core`)
-  - Resources: Tasks, projects, workspaces, users, tags, stories, sections, attachments, custom fields
-  - Logging: All API calls instrumented via `tracing`; level via `RUST_LOG`
+  - Endpoint: `https://app.asana.com/api/1.0` (default, overridable via `ASANA_BASE_URL`)
+  - SDK/Client: `reqwest` 0.13 HTTP client via `crates/asana-cli/src/api/` module
+  - Auth: Personal Access Token (PAT) via `ASANA_PAT` environment variable
+  - Auth storage: Secure disk storage with `secrecy` redaction in `crates/asana-cli/src/config.rs`
+  - Features: Multipart upload support, streaming responses
+  - Models: Tasks, projects, workspaces, users, tags, stories, sections, attachments, custom fields
+  - Pagination: Automatic cursor-based pagination via async streams
 
-**crates.io:**
-- Publishing: All installable crates are published to crates.io on release
-  - Auth: `CARGO_REGISTRY_TOKEN` GitHub Actions secret
-  - Workflow: `release.yml` triggers `cargo publish -p <crate>` on version tag push
-  - Registry: `https://github.com/rust-lang/crates.io-index` (sole allowed registry, enforced by `deny.toml`)
-
-**GitHub:**
-- Repository hosting: `https://github.com/tftio-stuff/tools`
-- Release automation: `googleapis/release-please-action@v4` creates release PRs
-  - Auth: `RELEASE_PLEASE_TOKEN` GitHub Actions secret
-  - Workflow: `.github/workflows/release-please.yml`
-- CI: `.github/workflows/ci.yml` (format, lint, test matrix, MSRV, audit, deny)
-- Binary release: `taiki-e/upload-rust-binary-action@v1` uploads cross-compiled binaries on tag push
-  - Auth: `GITHUB_TOKEN` (automatic)
-- Security audit: `rustsec/audit-check@v2` in CI
-- Dependency compliance: `EmbarkStudios/cargo-deny-action@v2` in CI
+**Silent Critic Worker Communication:**
+- Service: Internal agent-supervisor protocol
+  - Auth: Opaque session token via `SILENT_CRITIC_TOKEN` environment variable
+  - Protocol: JSON-based contract exchange via stdout/stdin (see `crates/silent-critic/src/`)
+  - Usage: `gator` shells out to `silent-critic session sandbox <id> --format json`
+  - Integration: `crates/gator/src/session.rs:fetch_session_sandbox()` parses contract sandbox specifications
 
 ## Data Storage
 
 **Databases:**
 
-- **SQLite 3 (bundled via `rusqlite` 0.38):**
-  - `todoer` database: `~/.local/share/todoer/todoer.db`
-    - Implementation: `crates/todoer/src/db.rs`
-    - Schema: `projects`, `tasks`, `task_notes` tables
-    - Config override: `db_path` in `.todoer.toml`
-  - `silent-critic` database: `~/.local/share/silent-critic/{project-sha256-hash}/db.sqlite`
-    - Implementation: `crates/silent-critic/src/db.rs`
-    - Schema: `projects`, `criteria`, `sessions`, `contracts`, `contract_criteria`, `discovery_contexts`, `evidence`, `decisions`, `audit_events`
+- **SQLite 3 (bundled):**
+  - Todoer backend: `~/.local/share/todoer/todoer.db` (XDG-compliant, overridable)
+    - Location: `crates/todoer/src/db.rs`
+    - Tables: projects, tasks, task_notes
+    - Config file: `.todoer.toml` (reads `db_path` override)
+  - Silent Critic backend: `~/.local/share/silent-critic/{project-hash}/db.sqlite` (XDG-compliant)
+    - Location: `crates/silent-critic/src/db.rs`
+    - Tables: projects, criteria, sessions, contracts, contract_criteria, discovery_contexts, evidence, decisions, audit_events
     - WAL mode enabled: `PRAGMA journal_mode = WAL`
     - Foreign keys enforced: `PRAGMA foreign_keys = ON`
-    - Config override: `db_dir` in `~/.config/silent-critic/config.toml`
+    - Config file: `~/.config/silent-critic/config.toml` (reads `db_dir` override)
 
 **File Storage:**
-- Local filesystem only; no cloud object storage (no S3, GCS, Azure Blob)
-- `asana-cli` cache: `~/.local/share/asana-cli/cache/` (HTTP response caching via `Config.cache_dir`)
-- `gator` sandbox profiles: `~/.config/sandbox-exec/agent.sb` (static base SBPL policy, user-managed)
-- `prompter` profiles: User-configured directory of TOML profile files and markdown snippet files
-- Temporary files: `tempfile` crate for secure temp directories during sandbox policy assembly
+- Local filesystem only - No cloud storage integrations detected
+- Cache directory: `~/.local/share/{app}/cache/` (XDG-compliant, used by `asana-cli`)
+- Config paths: `~/.config/{app}/` (XDG-compliant)
+- Temporary: `tempfile` crate for secure temp files (`gator` sandbox policies)
 
 **Caching:**
-- `asana-cli` maintains a local cache directory for API responses at `~/.local/share/asana-cli/cache/`
+- HTTP response caching in `asana-cli` (cache directory managed via `Config.cache_dir`)
 - No Redis, Memcached, or distributed caching
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- No third-party identity provider (no OAuth, OIDC, SAML, JWT)
-- Custom token-based authentication per service:
-  - Asana PAT: stored in config file at `~/.config/asana-cli/asana-cli.toml` with 0o600 Unix permissions; `secrecy::SecretString` prevents log leakage; `rpassword` used for interactive input
-  - Silent Critic worker auth: opaque session token via `SILENT_CRITIC_TOKEN` env var; transient, not persisted
+- Custom token-based auth
+  - Asana: Personal Access Token (PAT) - stored encrypted on disk, retrieved via `ASANA_PAT` env var
+  - Silent Critic: Opaque session tokens - `SILENT_CRITIC_TOKEN` for worker processes
+  - Implementation: No OAuth, JWT, or third-party identity provider
+  - Secure input: `rpassword` 7 for interactive password prompts (`asana-cli`)
+
+**Token Storage:**
+- Asana PAT: `~/.config/asana-cli/asana-cli.toml` (unencrypted, permissions: 0o600 on Unix)
+  - Code: `crates/asana-cli/src/config.rs` lines 200-220
+  - Redaction: `secrecy::SecretString` prevents accidental logging
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- None - No Sentry, Bugsnag, Rollbar, or external error reporting service
+- None detected - No Sentry, Rollbar, or error tracking service
 
 **Logs:**
-- Structured tracing via `tracing` 0.1 framework
-- Sink: `tracing-subscriber` to stderr with `EnvFilter`; level controlled by `RUST_LOG`
-- Asana API calls instrumented with spans; no metrics export (no Prometheus, Datadog, etc.)
-- Tracing initialization: `crates/asana-cli/src/lib.rs` `init_tracing()` function
+- Structured logging via `tracing` framework
+- Sink: `tracing-subscriber` to stderr with `EnvFilter`
+- Default level: `info` (overridable via `RUST_LOG` environment variable)
+- Code: `crates/asana-cli/src/lib.rs:init_tracing()`
+
+**Spans & Metrics:**
+- `asana-cli` uses `tracing` instrumentation on async API operations
+- No dedicated metrics/monitoring service (Prometheus, Datadog, etc.)
 
 ## CI/CD & Deployment
 
-**CI Platform:**
-- GitHub Actions
-  - `.github/workflows/ci.yml`: format check (nightly), lint (clippy), test matrix (ubuntu + macos), MSRV check (1.94.0), security audit, dependency compliance
-  - Caching: `Swatinem/rust-cache@v2` on lint, test, MSRV jobs
-  - `CARGO_TERM_COLOR=always` set workspace-wide
-
-**Release Automation:**
-- `release-please` (`googleapis/release-please-action@v4`) creates release PRs on push to `main`
-  - Config: `release-please-config.json`
-  - Auth: `RELEASE_PLEASE_TOKEN` secret
-- On tag push (`*-v*` pattern): `release.yml` builds cross-platform binaries and publishes to crates.io
-  - Build targets: `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`, `aarch64-apple-darwin`
-  - Archives: `.tar.gz` with SHA-256 checksums
-  - Publishing: `cargo publish` with `CARGO_REGISTRY_TOKEN` secret
-
 **Hosting:**
-- GitHub Releases for binary distribution
-- crates.io for library/crate distribution
-- No containerization (no Docker, no Kubernetes, no cloud platform)
+- GitHub (repository: `https://github.com/tftio-stuff/tools`)
+- No containerization detected (no Docker/OCI)
+- No cloud platform deployments (AWS, GCP, Azure)
+
+**CI Pipeline:**
+- GitHub Actions (inferred from release-please and CI workflows)
+  - Workflows: `ci.yml` (format, lint, test, MSRV, audit, deny), `release-please.yml`, `release.yml`
+  - Matrix testing: Multiple Rust versions
+  - Cross-platform builds: Tests run on Linux and macOS
+
+**Package Distribution:**
+- crates.io publication (inferred from release workflow)
+- Binaries: Likely published via GitHub Releases
 
 ## Environment Configuration
 
-**Required env vars (per crate):**
-- `asana-cli`: `ASANA_PAT` - Asana Personal Access Token (required for all API operations)
-- `gator` + `silent-critic` session execution: `SILENT_CRITIC_TOKEN` - Worker auth token
+**Required env vars:**
+- `ASANA_PAT` - Asana API authentication (required for `asana-cli`)
+- `SILENT_CRITIC_TOKEN` - Worker session auth (required for `silent-critic` session execution via `gator`)
 
 **Optional env vars:**
-- `ASANA_BASE_URL` - Custom Asana API base URL (default: `https://app.asana.com/api/1.0`)
-- `ASANA_WORKSPACE` - Default workspace GID
-- `ASANA_ASSIGNEE` - Default assignee (email or GID)
-- `ASANA_PROJECT` - Default project GID
-- `ASANA_CLI_CONFIG_HOME` - Override asana-cli config directory
-- `ASANA_CLI_DATA_HOME` - Override asana-cli data directory
-- `RUST_LOG` - Tracing level (e.g., `debug`, `info`, `warn`)
-- `XDG_CONFIG_HOME`, `XDG_DATA_HOME` - Standard XDG overrides used by `directories` crate
+- `ASANA_BASE_URL` - Custom Asana API endpoint (default: `https://app.asana.com/api/1.0`)
+- `ASANA_WORKSPACE`, `ASANA_ASSIGNEE`, `ASANA_PROJECT` - Asana command defaults
+- `ASANA_CLI_CONFIG_HOME`, `ASANA_CLI_DATA_HOME` - Custom paths
+- `XDG_CONFIG_HOME` - Override config directory
+- `XDG_DATA_HOME` - Override data directory
+- `RUST_LOG` - Tracing level control
 
 **Secrets location:**
-- Asana PAT: disk file `~/.config/asana-cli/asana-cli.toml` (permissions 0o600 on Unix; code: `crates/asana-cli/src/config.rs`)
-- `CARGO_REGISTRY_TOKEN`: GitHub Actions secret (publish only)
-- `RELEASE_PLEASE_TOKEN`: GitHub Actions secret (release PR creation)
-- No `.env` files used; all configuration via environment variables or TOML config files
+- Asana PAT: `~/.config/asana-cli/asana-cli.toml` (disk-based, file permissions enforced)
+- Silent Critic tokens: Environment variable only (transient, no persistent storage)
+- `.env` files: Not used in this codebase (all via environment variables or config files)
 
 ## Webhooks & Callbacks
 
 **Incoming:**
-- None - No webhook endpoints implemented
+- None detected - No webhook endpoints implemented
 
 **Outgoing:**
-- None - No external webhook calls
+- None detected - No external webhooks triggered
 
 ## Git Integration
 
-**Library:** `git2` 0.20 (vendored-libgit2; no system libgit2 required)
+**Repository Operations:**
+- `git2` (vendored libgit2 0.20) for:
+  - Repository discovery (`gator`, `silent-critic`)
+  - Project identification via `sha2` hashing of repo path
+  - Worktree detection in `crates/gator/src/worktree.rs`
+  - Git status inspection
 
-**Used by:**
-- `crates/unvenv/src/main.rs` - Repository status to detect unignored venvs
-- `crates/gator/src/worktree.rs` - Worktree discovery for sandbox policy generation
-- `crates/silent-critic/src/project.rs` - Repository discovery and project identity hashing
+**Repository Metadata:**
+- Repository URL: `https://github.com/tftio-stuff/tools` (workspace-level)
 
-**Operations:**
-- Repository discovery (walk up directory tree)
-- Worktree enumeration (linked worktrees for SBPL policy sibling grants)
-- SHA-256 hash of repository path for project identity (`sha2` crate)
+## macOS Sandbox Integration (Gator)
 
-## macOS Sandbox Integration (gator)
+**Sandbox Framework:**
+- `sandbox-exec` (built-in macOS utility)
+- SBPL (Sandbox Policy Language) - Native macOS security model
+- Policy generation: `crates/gator/src/sandbox.rs`
+- Static base profile: `~/.config/sandbox-exec/agent.sb` (user-provided)
+- Policy enforcement: Dynamic rules appended for workdir, worktrees, extra directories
 
-**Platform:** macOS only
+**Process Execution:**
+- `std::os::unix::process::CommandExt` for low-level process control
+- SBPL policy injected via `sandbox-exec` command wrapper
+- No cgroup, seccomp, or Linux security module support
 
-**Framework:** `sandbox-exec` (macOS built-in) + SBPL (Sandbox Policy Language)
+## System Integration Points
 
-**Policy assembly:** `crates/gator/src/sandbox.rs`
-- Reads static base profile from `~/.config/sandbox-exec/agent.sb` (user must provide this file)
-- Appends dynamic rules: workdir RW grant, git common dir RW grant, sibling worktrees RO grant, extra RW/RO dirs, deny rules
-- Policy passed to `sandbox-exec` command at agent launch
+**Prompter Integration:**
+- `gator` uses `tftio-prompter` library to compose system prompts from TOML profiles
+- Code: `crates/gator/src/prompt.rs`
+- Features: Profile recursion, markdown deduplication, completion generation
 
-**No Linux equivalent:** No seccomp, cgroup, or AppArmor support
-
-## Internal Crate Integration (gator + prompter)
-
-**Dependency:** `gator` depends on `tftio-prompter` as a library crate
-
-**Purpose:** `crates/gator/src/prompt.rs` uses `prompter` to compose system prompts from TOML profile files before agent launch
-
-**Protocol:** `gator` communicates with `silent-critic` via subprocess (`silent-critic session sandbox <id> --format json`); parses JSON output in `crates/gator/src/session.rs`
+**CLI Common Library:**
+- Shared utilities: Completions, health checks, license reporting, auto-update helpers
+- Dependency: All CLI crates depend on `tftio-cli-common`
 
 ---
 
