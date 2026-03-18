@@ -110,11 +110,13 @@ pub fn run(cli: &Cli) -> Result<(), String> {
         .map_err(|e| format!("cannot write policy: {e}"))?;
 
     // 9. Build and exec command
+    let inject_yolo = !cli.no_yolo && cli.session.is_none();
     let (cmd, _tempfiles) = agent::build_command(
         &cli.agent,
         policy_file.path(),
         prompt.as_deref(),
         &cli.agent_args,
+        inject_yolo,
     )
     .map_err(|e| format!("cannot build command: {e}"))?;
 
