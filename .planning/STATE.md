@@ -1,55 +1,51 @@
----
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: Ready to plan
-stopped_at: Completed 05-query-subcommand-03-PLAN.md
-last_updated: "2026-03-22T22:19:51.641Z"
-progress:
-  total_phases: 2
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
----
-
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-22)
+See: .planning/PROJECT.md (updated 2026-03-17)
 
-**Core value:** Complete, reliable extraction of a single BlueSky user's entire post and interaction history into a queryable local store.
-**Current focus:** Phase 05 — query-subcommand
+**Core value:** An agent launched by gator cannot read peer worktrees unless explicitly granted access.
+**Current focus:** Phase 1 - Sandbox Isolation
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
+Phase: 1 of 2 (Sandbox Isolation)
+Plan: 0 of ? in current phase
+Status: Ready to plan
+Last activity: 2026-03-17 -- Roadmap created
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
-**Velocity (v1.1):**
-
-- Total plans completed: 2
-- Average duration: ~4.5min
-- Total execution time: ~9min
+**Velocity:**
+- Total plans completed: 0
+- Average duration: -
+- Total execution time: -
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 03-extraction-engine | 2 | 9min | 4.5min |
-| Phase 04-cli-surface P01 | 4 | 2 tasks | 4 files |
-| Phase 04 P02 | 3.5min | 3 tasks | 6 files |
-| Phase 05-query-subcommand P02 | 2m | 2 tasks | 2 files |
-| Phase 05-query-subcommand P01 | 0 min | 2 tasks | 3 files |
-| Phase 05-query-subcommand P03 | 3m 23s | 3 tasks | 4 files |
+| - | - | - | - |
+
+**Recent Trend:**
+- Last 5 plans: -
+- Trend: -
+
+*Updated after each plan completion*
 
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
+Recent decisions affecting current work:
+
+- Drop sibling grants by default (least privilege -- agent sees only its own worktree)
+- Keep common git dir RW (agent needs write for commits, index, refs)
+- Add --share-worktrees opt-in (clear escape hatch for cross-worktree reads)
+- YOLO by default, --no-yolo opt-out (sandbox is the security boundary)
 
 - [v1.1 init]: Use `com.atproto.repo.listRecords` over `getAuthorFeed` for completeness
 - [v1.1 init]: App password auth only (no OAuth/DPoP)
@@ -76,15 +72,14 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 ### Pending Todos
 
-None.
+None yet.
 
 ### Blockers/Concerns
 
-- "blocked-by" data is not in the user's own repo; requires a separate API call (`app.bsky.graph.getBlocks`) -- deferred to v2
-- Rate limit: ~3,000 req/5min; plan for backoff from the start
+None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T22:16:28.147Z
-Stopped at: Completed 05-query-subcommand-03-PLAN.md
+Last session: 2026-03-17
+Stopped at: Roadmap created, ready to plan Phase 1
 Resume file: None

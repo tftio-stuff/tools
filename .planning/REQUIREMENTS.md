@@ -41,19 +41,19 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SAND-01 | TBD | Pending |
-| SAND-02 | TBD | Pending |
-| SAND-03 | TBD | Pending |
-| PERM-01 | TBD | Pending |
-| PERM-02 | TBD | Pending |
-| COMPAT-01 | TBD | Pending |
-| COMPAT-02 | TBD | Pending |
+| SAND-01 | Phase 1 | Pending |
+| SAND-02 | Phase 1 | Pending |
+| SAND-03 | Phase 1 | Pending |
+| PERM-01 | Phase 2 | Pending |
+| PERM-02 | Phase 2 | Pending |
+| COMPAT-01 | Phase 1 | Pending |
+| COMPAT-02 | Phase 1 | Pending |
 
 **Coverage:**
 - v1 requirements: 7 total
-- Mapped to phases: 0
-- Unmapped: 7
+- Mapped to phases: 7
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-17*
-*Last updated: 2026-03-17 after initial definition*
+*Last updated: 2026-03-17 after roadmap creation*
