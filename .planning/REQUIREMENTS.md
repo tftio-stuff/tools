@@ -9,9 +9,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Sandbox Isolation
 
-- [ ] **SAND-01**: Sibling worktree RO grants are not added to sandbox policy by default
-- [ ] **SAND-02**: Common git dir RW grant is preserved for linked worktrees
-- [ ] **SAND-03**: `--share-worktrees` CLI flag opts in to RO access for all peer worktrees
+- [x] **SAND-01**: Sibling worktree RO grants are not added to sandbox policy by default
+- [x] **SAND-02**: Common git dir RW grant is preserved for linked worktrees
+- [x] **SAND-03**: `--share-worktrees` CLI flag opts in to RO access for all peer worktrees
 
 ### Agent Permissions
 
@@ -20,8 +20,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Compatibility
 
-- [ ] **COMPAT-01**: Existing `--add-dirs-ro`, `.safehouse`, and `--policy` mechanisms continue to work for manual peer worktree grants
-- [ ] **COMPAT-02**: Session mode (`--session`) behavior is unchanged
+- [x] **COMPAT-01**: Existing `--add-dirs-ro`, `.safehouse`, and `--policy` mechanisms continue to work for manual peer worktree grants
+- [x] **COMPAT-02**: Session mode (`--session`) behavior is unchanged
 
 ## v2 Requirements
 
@@ -41,13 +41,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SAND-01 | Phase 1 | Pending |
-| SAND-02 | Phase 1 | Pending |
-| SAND-03 | Phase 1 | Pending |
+| SAND-01 | Phase 1 | Complete |
+| SAND-02 | Phase 1 | Complete |
+| SAND-03 | Phase 1 | Complete |
 | PERM-01 | Phase 2 | Pending |
 | PERM-02 | Phase 2 | Pending |
-| COMPAT-01 | Phase 1 | Pending |
-| COMPAT-02 | Phase 1 | Pending |
+| COMPAT-01 | Phase 1 | Complete |
+| COMPAT-02 | Phase 1 | Complete |
 
 **Coverage:**
 - v1 requirements: 7 total
@@ -56,4 +56,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-17*
-*Last updated: 2026-03-17 after roadmap creation*
+*Last updated: 2026-03-18 after Phase 1 Plan 01 completion*

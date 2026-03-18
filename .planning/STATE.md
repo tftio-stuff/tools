@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Phase 1 context gathered
-last_updated: "2026-03-18T01:51:42.255Z"
-last_activity: 2026-03-17 -- Roadmap created
+status: executing
+stopped_at: "01-01-PLAN.md complete (awaiting human-verify checkpoint)"
+last_updated: "2026-03-18T02:18:49Z"
+last_activity: 2026-03-18 -- Sandbox isolation plan 01 complete
 progress:
   total_phases: 2
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_plans: 2
+  completed_plans: 1
+  percent: 25
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-17)
 
 **Core value:** An agent launched by gator cannot read peer worktrees unless explicitly granted access.
-**Current focus:** Phase 1 - Sandbox Isolation
+**Current focus:** Phase 1 - Sandbox Isolation (Plan 1 complete, awaiting human-verify)
 
 ## Current Position
 
 Phase: 1 of 2 (Sandbox Isolation)
-Plan: 0 of ? in current phase
-Status: Ready to plan
-Last activity: 2026-03-17 -- Roadmap created
+Plan: 1 of 2 in current phase
+Status: Awaiting human verification (checkpoint after plan 01)
+Last activity: 2026-03-18 -- Plan 01 sandbox isolation implementation complete
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] 25%
 
 ## Performance Metrics
 
@@ -46,7 +46,7 @@ Progress: [░░░░░░░░░░] 0%
 | - | - | - | - |
 
 **Recent Trend:**
-- Last 5 plans: -
+- Last 5 plans: 18min
 - Trend: -
 
 *Updated after each plan completion*
@@ -62,6 +62,8 @@ Recent decisions affecting current work:
 - Keep common git dir RW (agent needs write for commits, index, refs)
 - Add --share-worktrees opt-in (clear escape hatch for cross-worktree reads)
 - YOLO by default, --no-yolo opt-out (sandbox is the security boundary)
+- Sibling gating in lib.rs run() not in detect_worktrees (detection stays pure)
+- Two-variable split: wt_for_policy + ungated_siblings (no WorktreeInfo mutation)
 
 - [v1.1 init]: Use `com.atproto.repo.listRecords` over `getAuthorFeed` for completeness
 - [v1.1 init]: App password auth only (no OAuth/DPoP)
@@ -96,6 +98,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T01:51:42.243Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-sandbox-isolation/01-CONTEXT.md
+Last session: 2026-03-18T02:18:49Z
+Stopped at: Completed 01-01-PLAN.md (awaiting human-verify checkpoint Task 2)
+Resume file: .planning/phases/01-sandbox-isolation/01-01-SUMMARY.md
