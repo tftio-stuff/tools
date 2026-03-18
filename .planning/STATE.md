@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Phase 2 context gathered
-last_updated: "2026-03-18T12:59:14.668Z"
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-03-18T14:34:15.085Z"
 last_activity: 2026-03-18 -- Plan 01-01 fully complete (checkpoint approved)
 progress:
   total_phases: 2
-  completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
+  completed_phases: 2
+  total_plans: 2
+  completed_plans: 2
   percent: 25
 ---
 
@@ -50,6 +50,7 @@ Progress: [██░░░░░░░░] 25%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 02-yolo-injection P01 | 7 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,9 @@ Recent decisions affecting current work:
 - YOLO by default, --no-yolo opt-out (sandbox is the security boundary)
 - Sibling gating in lib.rs run() not in detect_worktrees (detection stays pure)
 - Two-variable split: wt_for_policy + ungated_siblings (no WorktreeInfo mutation)
+- [Phase 02-yolo-injection]: YOLO injection is opt-out by default (sandbox is the security boundary)
+- [Phase 02-yolo-injection]: --no-yolo conflicts with --session (session contract is sole authority in session mode)
+- [Phase 02-yolo-injection]: Gemini gets stderr warning, no flag injection (no known YOLO equivalent)
 
 - [v1.1 init]: Use `com.atproto.repo.listRecords` over `getAuthorFeed` for completeness
 - [v1.1 init]: App password auth only (no OAuth/DPoP)
@@ -98,6 +102,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T12:59:14.654Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-yolo-injection/02-CONTEXT.md
+Last session: 2026-03-18T14:34:15.080Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: None
