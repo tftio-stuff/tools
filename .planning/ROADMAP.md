@@ -30,7 +30,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 1 plan
 
 Plans:
-- [ ] 01-01-PLAN.md -- Add --share-worktrees flag, sibling gating, and dry-run diagnostics
+- [x] 01-01-PLAN.md -- Add --share-worktrees flag, sibling gating, and dry-run diagnostics
 
 ### Phase 2: YOLO Injection
 **Goal**: Agents launch in autonomous mode by default, with a clear opt-out for users who want manual approval
@@ -99,5 +99,5 @@ Phases execute in numeric order: 1 -> 2
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Sandbox Isolation | 0/1 | Not started | - |
+| 1. Sandbox Isolation | 1/1 | In progress (awaiting verify) | - |
 | 2. YOLO Injection | 0/? | Not started | - |
