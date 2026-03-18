@@ -64,13 +64,6 @@ pub struct Cli {
     #[arg(long)]
     pub share_worktrees: bool,
 
-    /// Disable automatic YOLO flag injection (default: inject).
-    /// When absent, gator prepends the agent-appropriate autonomous-mode
-    /// flag (e.g. `--dangerously-skip-permissions` for Claude).
-    /// Incompatible with `--session`.
-    #[arg(long)]
-    pub no_yolo: bool,
-
     /// Skip prompter integration
     #[arg(long)]
     pub no_prompt: bool,
@@ -139,9 +132,6 @@ impl Cli {
             }
             if self.share_worktrees {
                 conflicts.push("--share-worktrees");
-            }
-            if self.no_yolo {
-                conflicts.push("--no-yolo");
             }
             if !conflicts.is_empty() {
                 return Err(format!(
@@ -276,44 +266,6 @@ mod tests {
     #[test]
     fn validate_share_worktrees_without_session_ok() {
         let cli = Cli::parse_from(["gator", "claude", "--share-worktrees"]);
-        assert!(cli.validate().is_ok());
-    }
-
-    #[test]
-    fn parse_no_yolo() {
-        let cli = Cli::parse_from(["gator", "claude", "--no-yolo"]);
-        assert!(cli.no_yolo);
-    }
-
-    #[test]
-    fn parse_no_yolo_default_false() {
-        let cli = Cli::parse_from(["gator", "claude"]);
-        assert!(!cli.no_yolo);
-    }
-
-    #[test]
-    fn parse_meta_version_with_global_json() {
-        let cli = Cli::parse_from(["gator", "--json", "meta", "version"]);
-        assert!(cli.json);
-        match cli.command {
-            Some(Command::Meta { command }) => {
-                assert!(matches!(command, MetaCommand::Version));
-            }
-            _ => panic!("expected meta command"),
-        }
-        assert!(cli.agent.is_none());
-    }
-
-    #[test]
-    fn validate_no_yolo_with_session() {
-        let cli = Cli::parse_from(["gator", "claude", "--no-yolo", "--session=abc"]);
-        let err = cli.validate().unwrap_err();
-        assert!(err.contains("--no-yolo"));
-    }
-
-    #[test]
-    fn validate_no_yolo_without_session_ok() {
-        let cli = Cli::parse_from(["gator", "claude", "--no-yolo"]);
         assert!(cli.validate().is_ok());
     }
 }
