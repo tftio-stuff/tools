@@ -15,8 +15,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Agent Permissions
 
-- [ ] **PERM-01**: Gator injects agent-appropriate YOLO flag by default (Claude: `--dangerously-skip-permissions`, Codex: `--full-auto`, Gemini: equivalent)
-- [ ] **PERM-02**: `--no-yolo` CLI flag disables automatic YOLO injection
+- [x] **PERM-01**: Gator injects agent-appropriate YOLO flag by default (Claude: `--dangerously-skip-permissions`, Codex: `--full-auto`, Gemini: equivalent)
+- [x] **PERM-02**: `--no-yolo` CLI flag disables automatic YOLO injection
 
 ### Compatibility
 
@@ -44,8 +44,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SAND-01 | Phase 1 | Complete |
 | SAND-02 | Phase 1 | Complete |
 | SAND-03 | Phase 1 | Complete |
-| PERM-01 | Phase 2 | Pending |
-| PERM-02 | Phase 2 | Pending |
+| PERM-01 | Phase 2 | Complete |
+| PERM-02 | Phase 2 | Complete |
 | COMPAT-01 | Phase 1 | Complete |
 | COMPAT-02 | Phase 1 | Complete |
 
