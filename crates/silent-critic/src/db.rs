@@ -844,7 +844,7 @@ mod tests {
         let e = Evidence {
             id: uuid::Uuid::new_v4().to_string(),
             session_id: s.id.clone(),
-            criterion_id: c.id.clone(),
+            criterion_id: c.id,
             command_run: "echo ok".to_string(),
             exit_code: 0,
             stdout: "ok\n".to_string(),

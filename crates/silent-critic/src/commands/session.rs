@@ -302,7 +302,7 @@ pub fn run_submit(
         id: uuid::Uuid::new_v4().to_string(),
         session_id: session.id.clone(),
         criterion_id: criterion_id.to_string(),
-        command_run: criterion.check_spec.clone(),
+        command_run: criterion.check_spec,
         exit_code: output.status.code().unwrap_or(-1),
         stdout: String::from_utf8_lossy(&output.stdout).to_string(),
         stderr: String::from_utf8_lossy(&output.stderr).to_string(),
