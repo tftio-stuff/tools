@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/tftio-stuff/tools/compare/gator-v0.2.0...gator-v0.2.1) (2026-03-18)
+
+
+### Bug Fixes
+
+* resolve CI clippy failures and release workflow gaps ([#17](https://github.com/tftio-stuff/tools/issues/17)) ([fc780b7](https://github.com/tftio-stuff/tools/commit/fc780b7a34ba97575e82df0fa1f5653634558ee2))
+
 ## [0.2.0](https://github.com/tftio-stuff/tools/compare/gator-v0.1.0...gator-v0.2.0) (2026-03-16)
 
 
