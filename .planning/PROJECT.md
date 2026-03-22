@@ -21,6 +21,12 @@ Complete, reliable extraction of a single BlueSky user's entire post history int
 
 ### Active
 
+- [ ] Query mode: read stored posts from local SQLite, output as JSON (one object per post)
+- [ ] Offset/limit pagination for paging through results
+- [ ] `--agent-help` flag: output LLM-agent-consumable reference documentation (skills-style)
+
+### Future
+
 - [ ] Support filtering by activity type: posts, likes, reposts, quote-posts, blocks, blocked-by
 - [ ] Default filter: posts (all posts including replies) when no filter specified
 
@@ -31,7 +37,6 @@ Complete, reliable extraction of a single BlueSky user's entire post history int
 - Real-time monitoring or polling
 - OAuth authentication -- app passwords sufficient
 - Search by keyword -- extracts activity, not search results
-- Output formats other than SQLite (JSONL, CSV) -- may revisit later
 
 ## Context
 
@@ -61,9 +66,18 @@ Complete, reliable extraction of a single BlueSky user's entire post history int
 | Sync main + RuntimeBuilder (not `#[tokio::main]`) | Matches workspace pattern (asana-cli) | Good -- consistent conventions |
 | XDG default path via `directories` crate | `~/.local/share/bce/bsky-posts.db` with auto-created parent dirs | Good -- follows platform conventions |
 
+## Current Milestone: bce-query-mode
+
+**Goal:** Make bce's stored data queryable by LLM agents via JSON output with pagination.
+
+**Target features:**
+- `bce query` subcommand: read-only against local SQLite, JSON output
+- Offset/limit pagination for paging through results
+- `--agent-help` flag: structured reference doc for LLM agent consumption
+
 ## Current State
 
-**v1.1 shipped 2026-03-22.** The `bce` binary is functional: authenticated extraction, exhaustive pagination, SQLite storage, progress spinner, completion summary. Filtering by activity type remains as future work (v2).
+**v1.1 shipped 2026-03-22.** The `bce` binary is functional: authenticated extraction, exhaustive pagination, SQLite storage, progress spinner, completion summary.
 
 ---
-*Last updated: 2026-03-22 after v1.1 milestone*
+*Last updated: 2026-03-22 after bce-query-mode milestone start*
