@@ -7,7 +7,7 @@
 
 ### Query
 
-- [ ] **QUERY-01**: `bce query` reads posts from local SQLite and outputs JSONL to stdout (one JSON object per line)
+- [x] **QUERY-01**: `bce query` reads posts from local SQLite and outputs JSONL to stdout (one JSON object per line)
 - [x] **QUERY-02**: `--limit N` controls page size (default: 50)
 - [x] **QUERY-03**: `--offset N` skips N records for pagination
 - [x] **QUERY-04**: `--db <path>` specifies database path (XDG default)
@@ -15,7 +15,7 @@
 ### Agent Interface
 
 - [ ] **AGENT-01**: `--agent-help` outputs structured LLM-agent reference doc (capabilities, flags, output format, pagination examples, error codes)
-- [ ] **AGENT-02**: Query output wrapped in JSON envelope with pagination metadata (total, offset, limit, has_more)
+- [x] **AGENT-02**: Query output wrapped in JSON envelope with pagination metadata (total, offset, limit, has_more)
 
 ## Future Requirements
 
@@ -41,11 +41,11 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| QUERY-01 | Phase 5 | Pending |
+| QUERY-01 | Phase 5 | Complete |
 | QUERY-02 | Phase 5 | Complete |
 | QUERY-03 | Phase 5 | Complete |
 | QUERY-04 | Phase 5 | Complete |
-| AGENT-02 | Phase 5 | Pending |
+| AGENT-02 | Phase 5 | Complete |
 | AGENT-01 | Phase 6 | Pending |
 
 **Coverage:**
