@@ -45,18 +45,21 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full details.
 **Plans:** 2/2 plans complete
 Plans:
 - [x] 03-01-PLAN.md -- Crate scaffold, types/models/error, SQLite storage layer
-- [ ] 03-02-PLAN.md -- AT Protocol client: auth, handle resolution, exhaustive pagination, rate-limit backoff
+- [x] 03-02-PLAN.md -- AT Protocol client: auth, handle resolution, exhaustive pagination, rate-limit backoff
 
 ### Phase 4: CLI Surface
 **Goal**: The extraction engine is usable as a first-class CLI tool following workspace conventions
 **Depends on**: Phase 3
 **Requirements**: CLI-01, CLI-02, CLI-03, CLI-04
 **Success Criteria** (what must be TRUE):
-  1. Running `bsky-comment-extractor <handle>` with credentials triggers extraction and writes to `./bsky-posts.db` by default
+  1. Running `bce <handle>` with credentials triggers extraction and writes to `~/.local/share/bce/bsky-posts.db` by default
   2. Running with `--db /path/to/file.db` writes to the specified path instead
   3. A progress indicator updates in the terminal during extraction showing records retrieved
   4. The crate compiles and passes `just ci` (format, lint, test, audit, deny) as a workspace member
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 04-01-PLAN.md -- Extend library API: FetchSummary new/existing counts, progress callback
+- [ ] 04-02-PLAN.md -- CLI binary: clap args, tokio runtime, spinner, XDG paths, summary line
 
 ## Progress
 
@@ -67,5 +70,5 @@ Phases execute in numeric order: 3 -> 4
 |-------|-----------|----------------|--------|-----------|
 | 1. Sandbox Isolation | v1.0 | 1/1 | Complete | 2026-03-18 |
 | 2. YOLO Injection | v1.0 | 1/1 | Complete | 2026-03-18 |
-| 3. Extraction Engine | 2/2 | Complete   | 2026-03-22 | - |
-| 4. CLI Surface | v1.1 | 0/? | Not started | - |
+| 3. Extraction Engine | v1.1 | 2/2 | Complete | 2026-03-22 |
+| 4. CLI Surface | v1.1 | 0/2 | Not started | - |
