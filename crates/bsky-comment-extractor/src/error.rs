@@ -1,6 +1,6 @@
 //! Error types for the bsky-comment-extractor crate.
 
-/// All errors that can occur during BlueSky post extraction.
+/// All errors that can occur during `BlueSky` post extraction.
 #[derive(thiserror::Error, Debug)]
 pub enum ExtractorError {
     /// An HTTP response with an unexpected status code was received.
@@ -11,7 +11,7 @@ pub enum ExtractorError {
     #[error("Network error: {0}")]
     Network(#[from] reqwest::Error),
 
-    /// A SQLite database error occurred.
+    /// A `SQLite` database error occurred.
     #[error("Database error: {0}")]
     Db(#[from] rusqlite::Error),
 
