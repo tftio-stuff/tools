@@ -49,7 +49,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full details.
 Plans:
 - [x] 05-01-PLAN.md — add query models and read-only SQLite pagination helpers
 - [x] 05-02-PLAN.md — migrate clap parser to fetch/query subcommands with top-level `--agent-help`
-- [ ] 05-03-PLAN.md — wire main.rs query JSONL output, structured query errors, and integration tests
+- [x] 05-03-PLAN.md — wire main.rs query JSONL output, structured query errors, and integration tests
 
 ### Phase 6: Agent Help
 **Goal**: LLM agents can discover how to use `bce` without reading source code
