@@ -25,8 +25,8 @@
 
 ### CLI
 
-- [ ] **CLI-01**: Accept user handle or DID as positional argument
-- [ ] **CLI-02**: `--db` flag for database path
+- [x] **CLI-01**: Accept user handle or DID as positional argument
+- [x] **CLI-02**: `--db` flag for database path
 - [x] **CLI-03**: Progress indicator during extraction
 - [x] **CLI-04**: Follow workspace conventions (clap, cli-common integration)
 
@@ -69,8 +69,8 @@
 | STOR-01 | Phase 3 | Complete (03-01) |
 | STOR-02 | Phase 3 | Complete (03-01) |
 | STOR-03 | Phase 3 | Complete (03-01) |
-| CLI-01 | Phase 4 | Pending |
-| CLI-02 | Phase 4 | Pending |
+| CLI-01 | Phase 4 | Complete |
+| CLI-02 | Phase 4 | Complete |
 | CLI-03 | Phase 4 | Complete |
 | CLI-04 | Phase 4 | Complete |
 

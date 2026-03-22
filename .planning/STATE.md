@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: bsky-comment-extractor
 status: unknown
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-22T17:48:23.616Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-03-22T17:53:51.875Z"
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -40,6 +40,7 @@ Plan: 1 of 2
 |-------|-------|-------|----------|
 | 03-extraction-engine | 2 | 9min | 4.5min |
 | Phase 04-cli-surface P01 | 4 | 2 tasks | 4 files |
+| Phase 04 P02 | 3.5min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -59,6 +60,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 03-02]: future_not_send allowed on async fns taking &rusqlite::Connection (expected single-threaded)
 - [Phase 04-01]: on_progress uses Option<&dyn Fn(u64)> ref pattern -- non-Send compatible, no heap allocation, matches future_not_send established pattern
 - [Phase 04-01]: upsert_post checks db_has_uri before INSERT OR REPLACE rather than conn.changes() -- semantically unambiguous, avoids surprising delete+insert change count
+- [Phase 04-02]: make_spinner returns None when quiet=true OR stdout is not TTY, matching workspace UX pattern
+- [Phase 04-02]: test_db_path_default checks path contains bce and ends with bsky-posts.db for cross-platform correctness
 
 ### Pending Todos
 
@@ -71,6 +74,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-22T17:48:23.614Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-03-22T17:53:51.873Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
