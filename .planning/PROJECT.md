@@ -18,11 +18,11 @@ Complete, reliable extraction of a single BlueSky user's entire post history int
 - [x] Store posts in SQLite with structured schema, idempotent writes -- v1.1
 - [x] Configurable database path (`--db` flag, XDG default) -- v1.1
 - [x] CLI interface following workspace conventions (clap, cli-common, indicatif) -- v1.1
+- [x] Query mode reads stored posts from local SQLite and outputs envelope-first JSONL pagination -- validated in Phase 5: Query Subcommand
+- [x] Offset/limit pagination supports page traversal through stored results -- validated in Phase 5: Query Subcommand
 
 ### Active
 
-- [ ] Query mode: read stored posts from local SQLite, output as JSON (one object per post)
-- [ ] Offset/limit pagination for paging through results
 - [ ] `--agent-help` flag: output LLM-agent-consumable reference documentation (skills-style)
 
 ### Future
@@ -77,7 +77,7 @@ Complete, reliable extraction of a single BlueSky user's entire post history int
 
 ## Current State
 
-**v1.1 shipped 2026-03-22.** The `bce` binary is functional: authenticated extraction, exhaustive pagination, SQLite storage, progress spinner, completion summary.
+**Phase 5 complete on 2026-03-22.** The `bce` binary now supports authenticated fetch plus read-only `query` output with envelope-first JSONL pagination from the local SQLite store. Remaining milestone work is Phase 6 agent-help documentation.
 
 ---
-*Last updated: 2026-03-22 after bce-query-mode milestone start*
+*Last updated: 2026-03-22 after Phase 5 query-subcommand completion*
