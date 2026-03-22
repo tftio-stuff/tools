@@ -63,7 +63,11 @@ Complete, reliable extraction of a single BlueSky user's entire post history int
 
 ## Current State
 
-**v1.1 shipped 2026-03-22.** The `bce` binary is functional: authenticated extraction, exhaustive pagination, SQLite storage, progress spinner, completion summary. Filtering by activity type remains as future work (v2).
+**Recent refactor:** The symbolic milestone `cli-common-unification` completed on 2026-03-22, and Phase 03 of `cli-common-maximal-sharing` finished the remaining extraction wave. `tftio-cli-common` now owns the shared workspace tool preset, metadata-command mapping helpers, doctorless adapter, buffer-first completion rendering, shared response branching, structured doctor reports/builders, fatal runner handling, and repository shell-enforcement helpers.
+
+**Shared/local boundary:** Tool crates now keep only domain command trees, domain summaries, and data collection needed before shared rendering. The intentional local exceptions are `gator`'s clap-enum bridge, `bce`'s minimal doctor provider plus extraction summary, `todoer`'s task/project formatting, and `prompter`'s dynamic completion augmentation plus doctor state collection.
+
+**Product state:** `bce` shipped in v1.1 on 2026-03-22. The binary is functional: authenticated extraction, exhaustive pagination, SQLite storage, progress spinner, and completion summary. The later symbolic milestones unified the workspace CLI base UX and extracted the reusable CLI substrate into `tftio-cli-common`. Filtering by activity type remains future work.
 
 ---
-*Last updated: 2026-03-22 after v1.1 milestone*
+*Last updated: 2026-03-22 after Phase 03 execution*
