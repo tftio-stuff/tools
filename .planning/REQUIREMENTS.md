@@ -27,8 +27,8 @@
 
 - [ ] **CLI-01**: Accept user handle or DID as positional argument
 - [ ] **CLI-02**: `--db` flag for database path
-- [ ] **CLI-03**: Progress indicator during extraction
-- [ ] **CLI-04**: Follow workspace conventions (clap, cli-common integration)
+- [x] **CLI-03**: Progress indicator during extraction
+- [x] **CLI-04**: Follow workspace conventions (clap, cli-common integration)
 
 ## v2 Requirements
 
@@ -71,8 +71,8 @@
 | STOR-03 | Phase 3 | Complete (03-01) |
 | CLI-01 | Phase 4 | Pending |
 | CLI-02 | Phase 4 | Pending |
-| CLI-03 | Phase 4 | Pending |
-| CLI-04 | Phase 4 | Pending |
+| CLI-03 | Phase 4 | Complete |
+| CLI-04 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 13 total
