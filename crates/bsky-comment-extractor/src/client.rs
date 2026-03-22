@@ -233,6 +233,8 @@ impl BskyClient {
     ) -> Result<FetchSummary, ExtractorError> {
         let mut cursor: Option<String> = crate::db::load_resume_cursor(conn, did)?;
         let mut count = 0u64;
+        let mut new_count = 0u64;
+        let mut existing_count = 0u64;
 
         loop {
             let mut params: Vec<(&str, String)> = vec![
@@ -257,7 +259,7 @@ impl BskyClient {
                 // Incremental stop: hit a URI we already have
                 if crate::db::db_has_uri(conn, &record.uri)? {
                     crate::db::complete_extraction(conn, did, count)?;
-                    return Ok(FetchSummary { count, done: true });
+                    return Ok(FetchSummary { count, done: true, new_count, existing_count });
                 }
 
                 // Extract text and created_at from the record value
@@ -271,14 +273,19 @@ impl BskyClient {
                     if let Ok(ts) = chrono::DateTime::parse_from_rfc3339(&created_at) {
                         if ts.with_timezone(&chrono::Utc) < cutoff {
                             crate::db::complete_extraction(conn, did, count)?;
-                            return Ok(FetchSummary { count, done: true });
+                            return Ok(FetchSummary { count, done: true, new_count, existing_count });
                         }
                     }
                 }
 
                 let raw_json = serde_json::to_string(&record.value)?;
-                crate::db::upsert_post(conn, &record.uri, did, &text, &created_at, &raw_json)?;
+                let is_new = crate::db::upsert_post(conn, &record.uri, did, &text, &created_at, &raw_json)?;
                 count += 1;
+                if is_new {
+                    new_count += 1;
+                } else {
+                    existing_count += 1;
+                }
             }
 
             // Save cursor after every page for resilience
@@ -291,7 +298,7 @@ impl BskyClient {
         }
 
         crate::db::complete_extraction(conn, did, count)?;
-        Ok(FetchSummary { count, done: true })
+        Ok(FetchSummary { count, done: true, new_count, existing_count })
     }
 
     /// Build a full URL from a path relative to `base_url`.
@@ -511,6 +518,19 @@ mod tests {
         crate::db::save_cursor(&conn, did, Some("my-cursor-abc")).unwrap();
         let loaded = crate::db::load_resume_cursor(&conn, did).unwrap();
         assert_eq!(loaded, Some("my-cursor-abc".to_string()));
+    }
+
+    #[test]
+    fn test_fetch_summary_has_new_and_existing_count() {
+        // Compile test: FetchSummary must have new_count and existing_count fields.
+        let summary = FetchSummary {
+            count: 5,
+            done: true,
+            new_count: 3,
+            existing_count: 2,
+        };
+        assert_eq!(summary.new_count, 3);
+        assert_eq!(summary.existing_count, 2);
     }
 
     #[test]

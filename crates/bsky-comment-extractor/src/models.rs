@@ -77,4 +77,8 @@ pub struct FetchSummary {
     pub count: u64,
     /// Whether the fetch reached the end of the user's post history.
     pub done: bool,
+    /// Number of posts that were newly inserted.
+    pub new_count: u64,
+    /// Number of posts that already existed and were updated.
+    pub existing_count: u64,
 }
