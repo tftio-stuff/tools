@@ -44,18 +44,10 @@ mod tests {
     use clap::Parser;
 
     #[test]
-    fn test_cli_parse_handle_only() {
-        let cli = Cli::try_parse_from(["bce", "alice.bsky.social"]).unwrap();
-        assert_eq!(cli.handle, "alice.bsky.social");
-        assert!(cli.db.is_none());
-        assert!(cli.since.is_none());
-        assert!(!cli.quiet);
-    }
-
-    #[test]
-    fn test_cli_parse_all_flags() {
+    fn test_cli_parse_fetch_subcommand() {
         let cli = Cli::try_parse_from([
             "bce",
+            "fetch",
             "alice.bsky.social",
             "--db",
             "/tmp/test.db",
@@ -64,20 +56,76 @@ mod tests {
             "-q",
         ])
         .unwrap();
-        assert_eq!(cli.handle, "alice.bsky.social");
-        assert_eq!(cli.db.unwrap(), std::path::PathBuf::from("/tmp/test.db"));
-        assert_eq!(cli.since.unwrap(), "2025-01-01");
-        assert!(cli.quiet);
+
+        assert!(!cli.agent_help);
+        match cli.command {
+            Some(Command::Fetch(args)) => {
+                assert_eq!(args.handle, "alice.bsky.social");
+                assert_eq!(args.db, Some(std::path::PathBuf::from("/tmp/test.db")));
+                assert_eq!(args.since, Some("2025-01-01".to_string()));
+                assert!(args.quiet);
+            }
+            Some(Command::Query(_)) => panic!("expected Fetch subcommand, got Query"),
+            None => panic!("expected Fetch subcommand, got no subcommand"),
+        }
     }
 
     #[test]
-    fn test_cli_parse_did_input() {
-        let cli = Cli::try_parse_from(["bce", "did:plc:abc123"]).unwrap();
-        assert_eq!(cli.handle, "did:plc:abc123");
+    fn test_cli_parse_query_defaults() {
+        let cli = Cli::try_parse_from(["bce", "query"]).unwrap();
+
+        assert!(!cli.agent_help);
+        match cli.command {
+            Some(Command::Query(args)) => {
+                assert!(args.db.is_none());
+                assert_eq!(args.limit, 50);
+                assert_eq!(args.offset, 0);
+            }
+            Some(Command::Fetch(_)) => panic!("expected Query subcommand, got Fetch"),
+            None => panic!("expected Query subcommand, got no subcommand"),
+        }
     }
 
     #[test]
-    fn test_cli_parse_missing_handle_fails() {
-        assert!(Cli::try_parse_from(["bce"]).is_err());
+    fn test_cli_parse_query_overrides() {
+        let cli = Cli::try_parse_from([
+            "bce",
+            "query",
+            "--db",
+            "/tmp/query.db",
+            "--limit",
+            "25",
+            "--offset",
+            "75",
+        ])
+        .unwrap();
+
+        match cli.command {
+            Some(Command::Query(args)) => {
+                assert_eq!(args.db, Some(std::path::PathBuf::from("/tmp/query.db")));
+                assert_eq!(args.limit, 25);
+                assert_eq!(args.offset, 75);
+            }
+            Some(Command::Fetch(_)) => panic!("expected Query subcommand, got Fetch"),
+            None => panic!("expected Query subcommand, got no subcommand"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parse_top_level_agent_help() {
+        let cli = Cli::try_parse_from(["bce", "--agent-help"]).unwrap();
+
+        assert!(cli.agent_help);
+        assert!(cli.command.is_none());
+    }
+
+    #[test]
+    fn test_cli_parse_flat_invocation_fails() {
+        assert!(Cli::try_parse_from(["bce", "alice.bsky.social"]).is_err());
+    }
+
+    #[test]
+    fn test_cli_parse_query_rejects_since_flag() {
+        assert!(Cli::try_parse_from(["bce", "query", "--since", "2025-01-01"]).is_err());
     }
 }
