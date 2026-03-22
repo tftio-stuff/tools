@@ -2,8 +2,14 @@ use clap::Parser;
 use serde_json::json;
 use std::io::Read;
 use tftio_cli_common::{
-    LicenseType, StandardCommand, ToolSpec, command::run_standard_command_no_doctor,
-    render_response, workspace_tool,
+    command::run_standard_command_no_doctor,
+    error::print_error,
+    render_response,
+    render_response_with,
+    workspace_tool,
+    LicenseType,
+    StandardCommand,
+    ToolSpec,
 };
 
 use todoer::cli::{Cli, Command, MetaCommand, TaskCommand, TaskUpdateCommand};
@@ -11,7 +17,10 @@ use todoer::commands::{
     init::run_init,
     list::run_list,
     new::run_new,
-    task::{run_note, run_show, run_status, run_update_status},
+    task::{
+        run_note, run_show, run_status, run_update_status, NoteResult, ShowResult, StatusResult,
+        UpdateStatusResult,
+    },
 };
 use todoer::config::load_config;
 use todoer::input::resolve_input;
@@ -48,45 +57,50 @@ fn run(cli: Cli) -> i32 {
         }
         Command::Init { project, json } => {
             let config = match load_config() {
-                Ok(c) => c,
-                Err(e) => return print_error("init", json, e),
+                Ok(config) => config,
+                Err(error) => return print_error("init", json, &error.to_string()),
             };
             let cwd = match std::env::current_dir() {
-                Ok(c) => c,
-                Err(e) => return print_error("init", json, e.into()),
+                Ok(cwd) => cwd,
+                Err(error) => return print_error("init", json, &error.to_string()),
             };
             let home = match dirs::home_dir() {
-                Some(h) => h,
-                None => return print_error("init", json, anyhow::anyhow!("no home dir")),
+                Some(home) => home,
+                None => return print_error("init", json, "no home dir"),
             };
             let git_name = git_repo_name(&cwd);
-            let proj =
-                match resolve_init_project(project.as_deref(), &cwd, &home, git_name.as_deref()) {
-                    Ok(p) => p,
-                    Err(e) => return print_error("init", json, e),
-                };
-                match run_init(&config, &proj) {
-                    Ok(result) => {
-                        println!(
-                            "{}",
-                            render_response(
-                                "init",
-                                json,
-                                json!({
-                                    "project": {"name": proj.name, "key": proj.key},
-                                    "db_path": result.db_path,
-                                    "schema_created": result.schema_created
-                                }),
-                                format!(
-                                    "project: {}\ndb: {}",
-                                    proj.name,
-                                    result.db_path.display()
-                                ),
-                            )
-                        );
-                        0
-                    }
-                    Err(e) => print_error("init", json, e),
+            let project = match resolve_init_project(
+                project.as_deref(),
+                &cwd,
+                &home,
+                git_name.as_deref(),
+            ) {
+                Ok(project) => project,
+                Err(error) => return print_error("init", json, &error.to_string()),
+            };
+
+            match run_init(&config, &project) {
+                Ok(result) => {
+                    println!(
+                        "{}",
+                        render_response(
+                            "init",
+                            json,
+                            json!({
+                                "project": {"name": project.name, "key": project.key},
+                                "db_path": result.db_path,
+                                "schema_created": result.schema_created
+                            }),
+                            format!(
+                                "project: {}\ndb: {}",
+                                project.name,
+                                result.db_path.display()
+                            ),
+                        )
+                    );
+                    0
+                }
+                Err(error) => print_error("init", json, &error.to_string()),
             }
         }
         Command::New {
@@ -95,37 +109,38 @@ fn run(cli: Cli) -> i32 {
             json,
         } => {
             let config = match load_config() {
-                Ok(c) => c,
-                Err(e) => return print_error("new", json, e),
+                Ok(config) => config,
+                Err(error) => return print_error("new", json, &error.to_string()),
             };
             let cwd = match std::env::current_dir() {
-                Ok(c) => c,
-                Err(e) => return print_error("new", json, e.into()),
+                Ok(cwd) => cwd,
+                Err(error) => return print_error("new", json, &error.to_string()),
             };
             let home = match dirs::home_dir() {
-                Some(h) => h,
-                None => return print_error("new", json, anyhow::anyhow!("no home dir")),
+                Some(home) => home,
+                None => return print_error("new", json, "no home dir"),
             };
             let discovered = match discover_project_name(&cwd, &home) {
-                Ok(d) => d,
-                Err(e) => return print_error("new", json, e),
+                Ok(discovered) => discovered,
+                Err(error) => return print_error("new", json, &error.to_string()),
             };
             let git_name = git_repo_name(&cwd);
-            let proj = match resolve_project(
+            let project = match resolve_project(
                 project.as_deref(),
                 discovered,
                 &cwd,
                 &home,
                 git_name.as_deref(),
             ) {
-                Ok(p) => p,
-                Err(e) => return print_error("new", json, e),
+                Ok(project) => project,
+                Err(error) => return print_error("new", json, &error.to_string()),
             };
-            let desc = match read_input(&description) {
-                Ok(d) => d,
-                Err(e) => return print_error("new", json, e),
+            let description = match read_input(&description) {
+                Ok(description) => description,
+                Err(error) => return print_error("new", json, &error.to_string()),
             };
-            match run_new(&config, &proj, &desc) {
+
+            match run_new(&config, &project, &description) {
                 Ok(result) => {
                     println!(
                         "{}",
@@ -143,28 +158,28 @@ fn run(cli: Cli) -> i32 {
                     );
                     0
                 }
-                Err(e) => print_error("new", json, e),
+                Err(error) => print_error("new", json, &error.to_string()),
             }
         }
         Command::List { project, all, json } => {
             let config = match load_config() {
-                Ok(c) => c,
-                Err(e) => return print_error("list", json, e),
+                Ok(config) => config,
+                Err(error) => return print_error("list", json, &error.to_string()),
             };
             let cwd = match std::env::current_dir() {
-                Ok(c) => c,
-                Err(e) => return print_error("list", json, e.into()),
+                Ok(cwd) => cwd,
+                Err(error) => return print_error("list", json, &error.to_string()),
             };
             let home = match dirs::home_dir() {
-                Some(h) => h,
-                None => return print_error("list", json, anyhow::anyhow!("no home dir")),
+                Some(home) => home,
+                None => return print_error("list", json, "no home dir"),
             };
-            let proj = if all {
+            let project = if all {
                 None
             } else {
                 let discovered = match discover_project_name(&cwd, &home) {
-                    Ok(d) => d,
-                    Err(e) => return print_error("list", json, e),
+                    Ok(discovered) => discovered,
+                    Err(error) => return print_error("list", json, &error.to_string()),
                 };
                 let git_name = git_repo_name(&cwd);
                 match resolve_project(
@@ -174,136 +189,87 @@ fn run(cli: Cli) -> i32 {
                     &home,
                     git_name.as_deref(),
                 ) {
-                    Ok(p) => Some(p),
-                    Err(e) => return print_error("list", json, e),
+                    Ok(project) => Some(project),
+                    Err(error) => return print_error("list", json, &error.to_string()),
                 }
             };
-            match run_list(&config, proj.as_ref(), all) {
+
+            match run_list(&config, project.as_ref(), all) {
                 Ok(result) => {
-                    let table = render_task_table(&result.tasks);
                     println!(
                         "{}",
-                        render_response("list", json, json!({"tasks": result.tasks}), table)
+                        render_response(
+                            "list",
+                            json,
+                            json!({"tasks": result.tasks}),
+                            render_task_table(&result.tasks),
+                        )
                     );
                     0
                 }
-                Err(e) => print_error("list", json, e),
+                Err(error) => print_error("list", json, &error.to_string()),
             }
         }
         Command::Task { command, json } => match command {
             TaskCommand::Status { id } => {
                 let config = match load_config() {
-                    Ok(c) => c,
-                    Err(e) => return print_error("task.status", json, e),
+                    Ok(config) => config,
+                    Err(error) => return print_error("task.status", json, &error.to_string()),
                 };
                 match run_status(&config, &id) {
                     Ok(result) => {
-                        println!(
-                            "{}",
-                            render_response(
-                                "task.status",
-                                json,
-                                json!({
-                                    "description": result.description,
-                                    "status": result.status,
-                                    "created_at": result.created_at
-                                }),
-                                format!(
-                                    "{}\n{}\n{}",
-                                    result.description,
-                                    result.status.as_str(),
-                                    result.created_at
-                                ),
-                            )
-                        );
+                        println!("{}", render_status_response(&result, json));
                         0
                     }
-                    Err(e) => print_error("task.status", json, e),
+                    Err(error) => print_error("task.status", json, &error.to_string()),
                 }
             }
             TaskCommand::Show { id } => {
                 let config = match load_config() {
-                    Ok(c) => c,
-                    Err(e) => return print_error("task.show", json, e),
+                    Ok(config) => config,
+                    Err(error) => return print_error("task.show", json, &error.to_string()),
                 };
                 match run_show(&config, &id) {
                     Ok(result) => {
-                        if json {
-                            println!(
-                                "{}",
-                                render_response(
-                                    "task.show",
-                                    true,
-                                    json!({
-                                        "description": result.description,
-                                        "status": result.status,
-                                        "created_at": result.created_at,
-                                        "notes": result.notes
-                                    }),
-                                    String::new(),
-                                )
-                            );
-                        } else {
-                            println!(
-                                "{}\n{}\n{}",
-                                result.description,
-                                result.status.as_str(),
-                                result.created_at
-                            );
-                            for note in result.notes {
-                                println!("- {}", note.note);
-                            }
-                        }
+                        println!("{}", render_show_response(&result, json));
                         0
                     }
-                    Err(e) => print_error("task.show", json, e),
+                    Err(error) => print_error("task.show", json, &error.to_string()),
                 }
             }
             TaskCommand::Note { id, note } => {
                 let config = match load_config() {
-                    Ok(c) => c,
-                    Err(e) => return print_error("task.note", json, e),
+                    Ok(config) => config,
+                    Err(error) => return print_error("task.note", json, &error.to_string()),
                 };
                 let note = match read_input(&note) {
-                    Ok(n) => n,
-                    Err(e) => return print_error("task.note", json, e),
+                    Ok(note) => note,
+                    Err(error) => return print_error("task.note", json, &error.to_string()),
                 };
                 match run_note(&config, &id, &note) {
                     Ok(result) => {
-                        println!(
-                            "{}",
-                            render_response(
-                                "task.note",
-                                json,
-                                json!({"note": result.note}),
-                                format!("note added: {}", result.note.id),
-                            )
-                        );
+                        println!("{}", render_note_response(&result, json));
                         0
                     }
-                    Err(e) => print_error("task.note", json, e),
+                    Err(error) => print_error("task.note", json, &error.to_string()),
                 }
             }
             TaskCommand::Update { command } => match command {
                 TaskUpdateCommand::Status { id, status } => {
                     let config = match load_config() {
-                        Ok(c) => c,
-                        Err(e) => return print_error("task.update.status", json, e),
+                        Ok(config) => config,
+                        Err(error) => {
+                            return print_error("task.update.status", json, &error.to_string())
+                        }
                     };
                     match run_update_status(&config, &id, status) {
                         Ok(result) => {
-                            println!(
-                                "{}",
-                                render_response(
-                                    "task.update.status",
-                                    json,
-                                    json!({"status": result.status}),
-                                    result.status.as_str().to_string(),
-                                )
-                            );
+                            println!("{}", render_update_status_response(&result, json));
                             0
                         }
-                        Err(e) => print_error("task.update.status", json, e),
+                        Err(error) => {
+                            print_error("task.update.status", json, &error.to_string())
+                        }
                     }
                 }
             },
@@ -348,19 +314,88 @@ fn git_repo_name(cwd: &std::path::Path) -> Option<String> {
     }
     std::path::Path::new(&path)
         .file_name()
-        .and_then(|s| s.to_str())
-        .map(|s| s.to_string())
+        .and_then(|segment| segment.to_str())
+        .map(std::string::ToString::to_string)
 }
 
-fn print_error(command: &str, json: bool, err: anyhow::Error) -> i32 {
-    tftio_cli_common::error::print_error(command, json, &err.to_string())
+fn render_status_response(result: &StatusResult, json: bool) -> String {
+    render_response_with(
+        "task.status",
+        json,
+        json!({
+            "description": result.description,
+            "status": result.status,
+            "created_at": result.created_at
+        }),
+        || {
+            format!(
+                "{}\n{}\n{}",
+                result.description,
+                result.status.as_str(),
+                result.created_at
+            )
+        },
+    )
+}
+
+fn render_show_response(result: &ShowResult, json: bool) -> String {
+    render_response_with(
+        "task.show",
+        json,
+        json!({
+            "description": result.description,
+            "status": result.status,
+            "created_at": result.created_at,
+            "notes": result.notes
+        }),
+        || {
+            let note_lines = result
+                .notes
+                .iter()
+                .map(|note| format!("- {}", note.note))
+                .collect::<Vec<_>>()
+                .join("\n");
+            if note_lines.is_empty() {
+                format!(
+                    "{}\n{}\n{}",
+                    result.description,
+                    result.status.as_str(),
+                    result.created_at
+                )
+            } else {
+                format!(
+                    "{}\n{}\n{}\n{}",
+                    result.description,
+                    result.status.as_str(),
+                    result.created_at,
+                    note_lines
+                )
+            }
+        },
+    )
+}
+
+fn render_note_response(result: &NoteResult, json: bool) -> String {
+    render_response_with("task.note", json, json!({"note": result.note}), || {
+        format!("note added: {}", result.note.id)
+    })
+}
+
+fn render_update_status_response(result: &UpdateStatusResult, json: bool) -> String {
+    render_response_with(
+        "task.update.status",
+        json,
+        json!({"status": result.status}),
+        || result.status.as_str().to_string(),
+    )
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use todoer::commands::task::{ShowResult, StatusResult};
     use todoer::models::{Status, TaskNote};
+
+    use super::{render_show_response, render_status_response};
 
     #[test]
     fn render_status_response_uses_text_payload_for_text_mode() {
@@ -373,10 +408,7 @@ mod tests {
             false,
         );
 
-        assert_eq!(
-            rendered,
-            "write tests\nIN-PROGRESS\n2026-03-22T10:00:00Z"
-        );
+        assert_eq!(rendered, "write tests\nIN-PROGRESS\n2026-03-22T10:00:00Z");
     }
 
     #[test]
