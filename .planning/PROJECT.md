@@ -1,56 +1,83 @@
-# Gator Sandbox Hardening
+# bsky-comment-extractor
 
 ## What This Is
 
-Gator wraps coding agents (Claude, Codex, Gemini) with macOS `sandbox-exec`. v1.0 tightened the default sandbox policy to follow the principle of least privilege: agents see only their own worktree by default and run in autonomous mode since sandbox-exec is the security boundary.
+A Rust CLI tool (`bce`) that exhaustively retrieves a BlueSky user's post history via the AT Protocol and stores it in a local SQLite database. A workspace member of the `tools` Cargo monorepo.
 
 ## Core Value
 
-An agent launched by gator cannot read peer worktrees unless explicitly granted access.
+Complete, reliable extraction of a single BlueSky user's entire post history into a queryable local store.
 
 ## Requirements
 
 ### Validated
 
-- ✓ Sibling worktree RO grants are no longer added by default -- v1.0
-- ✓ Common git dir RW grant is preserved for linked worktrees -- v1.0
-- ✓ `--share-worktrees` flag opts in to RO access to all peer worktrees -- v1.0
-- ✓ Agent-appropriate YOLO flags are injected by default (Claude: `--dangerously-skip-permissions`, Codex: `--full-auto`, Gemini: stderr warning) -- v1.0
-- ✓ `--no-yolo` flag disables automatic YOLO injection -- v1.0
-- ✓ Existing opt-in mechanisms (`--add-dirs-ro`, `.safehouse`, `--policy`) continue to work -- v1.0
-- ✓ Session mode (`--session`) behavior unchanged -- v1.0
+- [x] Authenticate to BlueSky via app password -- v1.1
+- [x] Retrieve all posts via `com.atproto.repo.listRecords` with exhaustive pagination -- v1.1
+- [x] Resolve handle to DID, rate-limit backoff on HTTP 429 -- v1.1
+- [x] Store posts in SQLite with structured schema, idempotent writes -- v1.1
+- [x] Configurable database path (`--db` flag, XDG default) -- v1.1
+- [x] CLI interface following workspace conventions (clap, cli-common, indicatif) -- v1.1
+- [x] Query mode reads stored posts from local SQLite and outputs envelope-first JSONL pagination -- validated in Phase 5: Query Subcommand
+- [x] Offset/limit pagination supports page traversal through stored results -- validated in Phase 5: Query Subcommand
 
 ### Active
 
-(None -- define in next milestone)
+- [ ] `--agent-help` flag: output LLM-agent-consumable reference documentation (skills-style)
+
+### Future
+
+- [ ] Support filtering by activity type: posts, likes, reposts, quote-posts, blocks, blocked-by
+- [ ] Default filter: posts (all posts including replies) when no filter specified
 
 ### Out of Scope
 
-- Changing session mode behavior -- contract remains sole authority when `--session` is used
-- Changing the static base sandbox profile (`agent.sb`)
-- Adding new sandbox grant types (e.g., execute-only)
+- Firehose/streaming consumption -- batch retrieval only
+- Multi-user extraction in a single invocation
+- Real-time monitoring or polling
+- OAuth authentication -- app passwords sufficient
+- Search by keyword -- extracts activity, not search results
 
 ## Context
 
-Shipped v1.0 with +261 net lines of Rust across 4 files (agent.rs, cli.rs, lib.rs, sandbox.rs). The codebase has the worktree detection infrastructure (`worktree.rs`), sandbox policy assembly (`sandbox.rs`), CLI flag parsing (`cli.rs`), and agent command construction (`agent.rs`).
+- 1,416 lines of Rust across 7 source files in `crates/bsky-comment-extractor/`
+- Binary: `bce` (installed via `cargo install tftio-bsky-comment-extractor`)
+- 32 tests (9 db, 14 client, 4 cli parse, 2 main, 3 ignored integration)
+- Dependencies: reqwest (rustls), rusqlite (bundled), clap, tokio, serde, chrono, indicatif, dateparser, directories, anyhow, thiserror
+- AT Protocol collections: `app.bsky.feed.post` (v1); `app.bsky.feed.like`, `app.bsky.feed.repost`, `app.bsky.graph.block` planned for v2
+- Rate limit: ~3,000 requests per 5 minutes; `listRecords` paginated at 100 records per request
 
 ## Constraints
 
-- **Backwards compatibility**: Users who depend on peer worktree access use `--share-worktrees`
-- **Agent variance**: Each agent has different YOLO flags; Gemini has no known YOLO equivalent
-- **Session mode**: No changes to session-mode behavior (`--session` path is unaffected)
+- **Tech stack**: Rust, workspace member of `tools/`. Follows workspace lint config, dependency patterns, and crate structure
+- **Dependencies**: Workspace-level deps via `dep.workspace = true`
+- **Auth**: App password only (no OAuth complexity)
+- **API approach**: `com.atproto.repo.listRecords` as primary data source
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Drop sibling grants by default | Least privilege -- agent sees only its own worktree | ✓ Good |
-| Keep common git dir RW | Agent needs write access for commits, index, refs | ✓ Good |
-| Add --share-worktrees opt-in | Clear escape hatch for users who need cross-worktree reads | ✓ Good |
-| YOLO by default, --no-yolo opt-out | Sandbox is the security boundary; agent permissions are redundant | ✓ Good |
-| Sibling gating in lib.rs run() not in detect_worktrees | Detection stays pure, policy assembly gets filtered input | ✓ Good |
-| Two-variable split: wt_for_policy + ungated_siblings | No WorktreeInfo mutation; diagnostic comments for dry-run | ✓ Good |
-| Gemini gets stderr warning, no YOLO flag | No known Gemini YOLO equivalent exists | ✓ Good |
+| SQLite output | Queryable, structured, consistent with workspace (todoer, silent-critic) | Good -- works well for single-user extraction |
+| `listRecords` over `getAuthorFeed` | Completeness over richness; raw repo data captures everything | Good -- exhaustive, no gaps |
+| App password auth only | Simple, well-supported, OAuth adds DPoP complexity for no gain here | Good -- sufficient for CLI tool |
+| Workspace crate, not standalone | Shares deps, lint config, CI, release tooling | Good -- seamless workspace integration |
+| Reply parent in raw_json, not dedicated column | Queryable via `json_extract()`, avoids schema rigidity | Good -- flexible for future query needs |
+| Sync main + RuntimeBuilder (not `#[tokio::main]`) | Matches workspace pattern (asana-cli) | Good -- consistent conventions |
+| XDG default path via `directories` crate | `~/.local/share/bce/bsky-posts.db` with auto-created parent dirs | Good -- follows platform conventions |
+
+## Current Milestone: bce-query-mode
+
+**Goal:** Make bce's stored data queryable by LLM agents via JSON output with pagination.
+
+**Target features:**
+- `bce query` subcommand: read-only against local SQLite, JSON output
+- Offset/limit pagination for paging through results
+- `--agent-help` flag: structured reference doc for LLM agent consumption
+
+## Current State
+
+**Phase 5 complete on 2026-03-22.** The `bce` binary now supports authenticated fetch plus read-only `query` output with envelope-first JSONL pagination from the local SQLite store. Remaining milestone work is Phase 6 agent-help documentation.
 
 ---
-*Last updated: 2026-03-18 after v1.0 milestone*
+*Last updated: 2026-03-22 after Phase 5 query-subcommand completion*

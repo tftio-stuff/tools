@@ -186,27 +186,29 @@ mod tests {
     fn build_command_claude_yolo() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
         let (cmd, _) = build_command(&Agent::Claude, tmp.path(), None, &[], true).unwrap();
-        let has_skip = cmd
+        let args: Vec<_> = cmd
             .get_args()
-            .any(|a| a.to_string_lossy() == "--dangerously-skip-permissions");
-        assert!(has_skip);
+            .map(|a| a.to_string_lossy().to_string())
+            .collect();
+        assert!(args.contains(&"--dangerously-skip-permissions".to_owned()));
     }
 
     #[test]
     fn build_command_codex_yolo() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
         let (cmd, _) = build_command(&Agent::Codex, tmp.path(), None, &[], true).unwrap();
-        let has_full_auto = cmd
+        let args: Vec<_> = cmd
             .get_args()
-            .any(|a| a.to_string_lossy() == "--full-auto");
-        assert!(has_full_auto);
+            .map(|a| a.to_string_lossy().to_string())
+            .collect();
+        assert!(args.contains(&"--full-auto".to_owned()));
     }
 
     #[test]
     fn build_command_gemini_yolo_no_arg() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
         let (cmd, _) = build_command(&Agent::Gemini, tmp.path(), None, &[], true).unwrap();
-        let args: Vec<String> = cmd
+        let args: Vec<_> = cmd
             .get_args()
             .map(|a| a.to_string_lossy().to_string())
             .collect();
@@ -219,10 +221,11 @@ mod tests {
     fn build_command_no_yolo_skips_injection() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
         let (cmd, _) = build_command(&Agent::Claude, tmp.path(), None, &[], false).unwrap();
-        let has_skip = cmd
+        let args: Vec<_> = cmd
             .get_args()
-            .any(|a| a.to_string_lossy() == "--dangerously-skip-permissions");
-        assert!(!has_skip);
+            .map(|a| a.to_string_lossy().to_string())
+            .collect();
+        assert!(!args.contains(&"--dangerously-skip-permissions".to_owned()));
     }
 
     #[test]

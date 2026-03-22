@@ -74,6 +74,12 @@ jobs:
               BINARY_NAME="silent-critic"
               IS_LIBRARY_ONLY="false"
               ;;
+            bsky-comment-extractor)
+              CRATE_NAME="tftio-bsky-comment-extractor"
+              CRATE_DIR="crates/bsky-comment-extractor"
+              BINARY_NAME="bce"
+              IS_LIBRARY_ONLY="false"
+              ;;
             *)
               echo "Unknown component: $COMPONENT"
               exit 1

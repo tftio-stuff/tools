@@ -8,6 +8,7 @@ members = [
     "crates/todoer",
     "crates/silent-critic",
     "crates/gator",
+    "crates/bsky-comment-extractor",
 ]
 
 [workspace.package]

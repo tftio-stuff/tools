@@ -40,6 +40,45 @@
 
 ---
 
+## Milestone: v1.1 -- bsky-comment-extractor
+
+**Shipped:** 2026-03-22
+**Phases:** 2 | **Plans:** 4 | **Tasks:** 8
+
+### What Was Built
+- AT Protocol client with `createSession` auth, handle-to-DID resolution, exhaustive `listRecords` pagination, and rate-limit backoff
+- SQLite storage layer with idempotent upsert, cursor persistence for resumable extraction
+- `bce` CLI binary with clap args, XDG default paths, indicatif spinner, `--since` date filtering, completion summary line
+
+### What Worked
+- Two-phase split (library then CLI) kept plans focused and dependencies clean
+- Plan checker caught a missing `create_dir_all` for parent directory creation before it reached execution
+- Cross-phase API contract (FetchSummary fields, progress callback signature) documented in plan interfaces block -- Wave 2 consumed Wave 1 without issues
+- 32 tests (unit + integration stubs) written alongside implementation
+
+### What Was Inefficient
+- `just ci` fails workspace-wide due to pre-existing rustfmt violations in unrelated crates -- Phase 4 executor had to apply fmt fixes to Phase 3 files
+- SUMMARY.md `one_liner` and `requirements_completed` frontmatter fields inconsistently populated by executors -- 04-02 had empty requirements list
+- VALIDATION.md `nyquist_compliant` frontmatter never updated to `true` after execution
+
+### Patterns Established
+- Sync `fn main()` + `tokio::runtime::Builder::new_current_thread()` for async CLIs (not `#[tokio::main]`)
+- `Option<&dyn Fn(u64)>` progress callback pattern for library-to-CLI spinner wiring
+- `db_has_uri` pre-check before upsert to distinguish new vs existing records
+- XDG paths via `directories::ProjectDirs` with `create_dir_all` on parent
+
+### Key Lessons
+1. Plan checker verification loop catches real issues -- the `create_dir_all` blocker would have caused first-run failures
+2. Library API changes (adding fields, callback params) should be a separate plan from CLI consumption -- vertical slicing doesn't work when the API must change first
+3. SUMMARY frontmatter fields need executor enforcement -- empty `requirements_completed` reduces audit automation reliability
+
+### Cost Observations
+- Model mix: opus (planner), sonnet (researcher, executor, checker, verifier, integration checker)
+- Sessions: 2 (planning + execution in one session, audit in same session)
+- Notable: Plan checker revision loop completed in 1 iteration (blocker + warning fixed on first pass)
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -47,13 +86,16 @@
 | Milestone | Sessions | Phases | Key Change |
 |-----------|----------|--------|------------|
 | v1.0 | 3 | 2 | Initial milestone -- established sandbox hardening patterns |
+| v1.1 | 2 | 2 | New crate from scratch -- library + CLI split pattern |
 
 ### Cumulative Quality
 
 | Milestone | Tests | Coverage | Files Changed |
 |-----------|-------|----------|---------------|
 | v1.0 | 55 total (13 new) | Unit + structural | 4 |
+| v1.1 | 32 total (32 new) | Unit + integration stubs | 26 |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. (Single milestone -- lessons pending cross-validation)
+1. Small, focused milestones (2 phases each) ship cleanly -- validated in both v1.0 and v1.1
+2. Plan checker verification catches real issues before execution -- validated in v1.1 (create_dir_all blocker)

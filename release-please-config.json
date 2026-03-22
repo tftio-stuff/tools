@@ -45,6 +45,13 @@
       "changelog-path": "CHANGELOG.md",
       "bump-minor-pre-major": true,
       "package-name": "tftio-gator"
+    },
+    "crates/bsky-comment-extractor": {
+      "release-type": "rust",
+      "component": "bsky-comment-extractor",
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true,
+      "package-name": "tftio-bsky-comment-extractor"
     }
   },
   "separate-pull-requests": true

@@ -2323,6 +2323,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "tftio-bsky-comment-extractor"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "dateparser",
+ "directories",
+ "indicatif",
+ "is-terminal",
+ "reqwest",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tftio-cli-common",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "tftio-cli-common"
 version = "0.5.0"
 dependencies = [
@@ -2334,7 +2356,7 @@ dependencies = [
 
 [[package]]
 name = "tftio-gator"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "clap",
  "dirs",
@@ -2367,7 +2389,7 @@ dependencies = [
 
 [[package]]
 name = "tftio-silent-critic"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
