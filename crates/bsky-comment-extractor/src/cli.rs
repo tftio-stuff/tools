@@ -1,55 +1,23 @@
 //! Command-line argument definitions for the `bce` binary.
 
-use clap::{Args, Parser, Subcommand};
+use clap::Parser;
 use std::path::PathBuf;
 
-/// Extract and query `BlueSky` posts from a local `SQLite` database.
+/// Extract a `BlueSky` user's complete post history to a local `SQLite` database.
 #[derive(Parser, Debug)]
 #[command(name = "bce")]
 #[command(version)]
-#[command(about = "Extract and query BlueSky posts from a local SQLite database")]
+#[command(about = "Extract a BlueSky user's post history to SQLite")]
 #[command(after_help = "\
 CREDENTIALS:
   Set BSKY_APP_PASSWORD before running.
   Create an app password at https://bsky.app/settings/app-passwords
 
 EXAMPLES:
-  bce fetch <HANDLE>
-  bce fetch alice.bsky.social
-  bce fetch alice.bsky.social --since '3 months ago'
-  bce query --limit 25 --offset 50
-  bce version
-  bce completions bash")]
+  bce alice.bsky.social
+  bce alice.bsky.social --since '3 months ago'
+  bce did:plc:abc123 --db /tmp/posts.db")]
 pub struct Cli {
-    /// Select the networked fetch path, local query path, or metadata commands.
-    #[command(subcommand)]
-    pub command: Option<Command>,
-}
-
-/// Available `bce` subcommands.
-#[derive(Subcommand, Debug)]
-pub enum Command {
-    /// Fetch posts from the network into the local database.
-    Fetch(FetchArgs),
-    /// Query posts from the local database without making network requests.
-    Query(QueryArgs),
-
-    /// Show version information.
-    Version,
-    /// Show license information.
-    License,
-    /// Generate shell completion scripts.
-    Completions {
-        /// Shell to generate completions for.
-        shell: clap_complete::Shell,
-    },
-    /// Run health checks.
-    Doctor,
-}
-
-/// Arguments for the networked extractor path.
-#[derive(Args, Debug)]
-pub struct FetchArgs {
     /// `BlueSky` handle (e.g. alice.bsky.social) or DID (e.g. did:plc:abc123).
     pub handle: String,
 
@@ -70,32 +38,24 @@ pub struct FetchArgs {
     pub quiet: bool,
 }
 
-/// Arguments for the read-only local query path.
-#[derive(Args, Debug)]
-pub struct QueryArgs {
-    /// Path to the existing `SQLite` database file.
-    #[arg(long, value_name = "PATH")]
-    pub db: Option<PathBuf>,
-
-    /// Maximum number of posts to return.
-    #[arg(long, default_value_t = 50)]
-    pub limit: u64,
-
-    /// Number of posts to skip before returning results.
-    #[arg(long, default_value_t = 0)]
-    pub offset: u64,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use clap::Parser;
 
     #[test]
-    fn test_cli_parse_fetch_subcommand() {
+    fn test_cli_parse_handle_only() {
+        let cli = Cli::try_parse_from(["bce", "alice.bsky.social"]).unwrap();
+        assert_eq!(cli.handle, "alice.bsky.social");
+        assert!(cli.db.is_none());
+        assert!(cli.since.is_none());
+        assert!(!cli.quiet);
+    }
+
+    #[test]
+    fn test_cli_parse_all_flags() {
         let cli = Cli::try_parse_from([
             "bce",
-            "fetch",
             "alice.bsky.social",
             "--db",
             "/tmp/test.db",
@@ -104,97 +64,20 @@ mod tests {
             "-q",
         ])
         .unwrap();
-
-        match cli.command {
-            Some(Command::Fetch(args)) => {
-                assert_eq!(args.handle, "alice.bsky.social");
-                assert_eq!(args.db, Some(std::path::PathBuf::from("/tmp/test.db")));
-                assert_eq!(args.since, Some("2025-01-01".to_string()));
-                assert!(args.quiet);
-            }
-            Some(Command::Query(_)) => panic!("expected Fetch subcommand, got Query"),
-            _ => panic!("expected Fetch subcommand"),
-        }
+        assert_eq!(cli.handle, "alice.bsky.social");
+        assert_eq!(cli.db.unwrap(), std::path::PathBuf::from("/tmp/test.db"));
+        assert_eq!(cli.since.unwrap(), "2025-01-01");
+        assert!(cli.quiet);
     }
 
     #[test]
-    fn test_cli_parse_query_defaults() {
-        let cli = Cli::try_parse_from(["bce", "query"]).unwrap();
-
-        match cli.command {
-            Some(Command::Query(args)) => {
-                assert!(args.db.is_none());
-                assert_eq!(args.limit, 50);
-                assert_eq!(args.offset, 0);
-            }
-            Some(Command::Fetch(_)) => panic!("expected Query subcommand, got Fetch"),
-            None => panic!("expected Query subcommand, got no subcommand"),
-            _ => panic!("expected Query subcommand, got metadata command"),
-        }
+    fn test_cli_parse_did_input() {
+        let cli = Cli::try_parse_from(["bce", "did:plc:abc123"]).unwrap();
+        assert_eq!(cli.handle, "did:plc:abc123");
     }
 
     #[test]
-    fn test_cli_parse_query_overrides() {
-        let cli = Cli::try_parse_from([
-            "bce",
-            "query",
-            "--db",
-            "/tmp/query.db",
-            "--limit",
-            "25",
-            "--offset",
-            "75",
-        ])
-        .unwrap();
-
-        match cli.command {
-            Some(Command::Query(args)) => {
-                assert_eq!(args.db, Some(std::path::PathBuf::from("/tmp/query.db")));
-                assert_eq!(args.limit, 25);
-                assert_eq!(args.offset, 75);
-            }
-            Some(Command::Fetch(_)) => panic!("expected Query subcommand, got Fetch"),
-            None => panic!("expected Query subcommand, got no subcommand"),
-            _ => panic!("expected Query subcommand, got metadata command"),
-        }
-    }
-
-    #[test]
-    fn test_cli_parse_flat_invocation_fails() {
-        assert!(Cli::try_parse_from(["bce", "alice.bsky.social"]).is_err());
-    }
-
-    #[test]
-    fn test_cli_parse_query_rejects_since_flag() {
-        assert!(Cli::try_parse_from(["bce", "query", "--since", "2025-01-01"]).is_err());
-    }
-
-    #[test]
-    fn test_cli_parse_completions() {
-        let cli = Cli::try_parse_from(["bce", "completions", "bash"]).unwrap();
-        match cli.command {
-            Some(Command::Completions { shell }) => {
-                assert_eq!(shell, clap_complete::Shell::Bash);
-            }
-            _ => panic!("expected completions command"),
-        }
-    }
-
-    #[test]
-    fn test_cli_parse_license() {
-        let cli = Cli::try_parse_from(["bce", "license"]).unwrap();
-        assert!(matches!(cli.command, Some(Command::License)));
-    }
-
-    #[test]
-    fn test_cli_parse_version() {
-        let cli = Cli::try_parse_from(["bce", "version"]).unwrap();
-        assert!(matches!(cli.command, Some(Command::Version)));
-    }
-
-    #[test]
-    fn test_cli_parse_doctor() {
-        let cli = Cli::try_parse_from(["bce", "doctor"]).unwrap();
-        assert!(matches!(cli.command, Some(Command::Doctor)));
+    fn test_cli_parse_missing_handle_fails() {
+        assert!(Cli::try_parse_from(["bce"]).is_err());
     }
 }
