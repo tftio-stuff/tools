@@ -38,7 +38,7 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full details.
   5. Posts are written to SQLite with AT URI, author DID, text, created_at, reply parent, and raw JSON; re-running does not produce duplicate rows
 **Plans:** 2 plans
 Plans:
-- [ ] 03-01-PLAN.md -- Crate scaffold, types/models/error, SQLite storage layer
+- [x] 03-01-PLAN.md -- Crate scaffold, types/models/error, SQLite storage layer
 - [ ] 03-02-PLAN.md -- AT Protocol client: auth, handle resolution, exhaustive pagination, rate-limit backoff
 
 ### Phase 4: CLI Surface
@@ -61,5 +61,5 @@ Phases execute in numeric order: 3 -> 4
 |-------|-----------|----------------|--------|-----------|
 | 1. Sandbox Isolation | v1.0 | 1/1 | Complete | 2026-03-18 |
 | 2. YOLO Injection | v1.0 | 1/1 | Complete | 2026-03-18 |
-| 3. Extraction Engine | v1.1 | 0/2 | Planning complete | - |
+| 3. Extraction Engine | v1.1 | 1/2 | In progress | - |
 | 4. CLI Surface | v1.1 | 0/? | Not started | - |
