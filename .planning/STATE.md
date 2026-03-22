@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: bsky-comment-extractor
 status: unknown
-stopped_at: Phase 4 context gathered
-last_updated: "2026-03-22T17:21:05.250Z"
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-03-22T17:48:23.616Z"
 progress:
   total_phases: 2
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 4
+  completed_plans: 3
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Complete, reliable extraction of a single BlueSky user's entire post and interaction history into a queryable local store.
-**Current focus:** Phase 03 — extraction-engine
+**Current focus:** Phase 04 — cli-surface
 
 ## Current Position
 
-Phase: 03 (extraction-engine) — COMPLETE
-Plan: 2 of 2 (all plans complete)
+Phase: 04 (cli-surface) — EXECUTING
+Plan: 1 of 2
 
 ## Performance Metrics
 
@@ -39,6 +39,7 @@ Plan: 2 of 2 (all plans complete)
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 03-extraction-engine | 2 | 9min | 4.5min |
+| Phase 04-cli-surface P01 | 4 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -56,6 +57,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 03-02]: execute() uses Option<Vec<u8>> for body to allow cloning across retry iterations
 - [Phase 03-02]: backoff_delay uses bit-shift not saturating_shl (unavailable on stable u64 MSRV)
 - [Phase 03-02]: future_not_send allowed on async fns taking &rusqlite::Connection (expected single-threaded)
+- [Phase 04-01]: on_progress uses Option<&dyn Fn(u64)> ref pattern -- non-Send compatible, no heap allocation, matches future_not_send established pattern
+- [Phase 04-01]: upsert_post checks db_has_uri before INSERT OR REPLACE rather than conn.changes() -- semantically unambiguous, avoids surprising delete+insert change count
 
 - [v1.1 init]: Use `com.atproto.repo.listRecords` over `getAuthorFeed` for completeness
 - [v1.1 init]: App password auth only (no OAuth/DPoP)
@@ -91,6 +94,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-22T17:21:05.248Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-cli-surface/04-CONTEXT.md
+Last session: 2026-03-22T17:48:23.614Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None
