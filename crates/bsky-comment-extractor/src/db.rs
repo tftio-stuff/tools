@@ -61,6 +61,9 @@ pub fn init_db(conn: &Connection) -> Result<(), ExtractorError> {
 ///
 /// Uses `INSERT OR REPLACE` semantics so that inserting the same AT URI a
 /// second time updates the existing row rather than producing a duplicate.
+///
+/// Returns `true` if the record was newly inserted, or `false` if it already
+/// existed and was replaced.
 pub fn upsert_post(
     conn: &Connection,
     uri: &str,
@@ -68,13 +71,14 @@ pub fn upsert_post(
     text: &str,
     created_at: &str,
     raw_json: &str,
-) -> Result<(), ExtractorError> {
+) -> Result<bool, ExtractorError> {
+    let is_new = !db_has_uri(conn, uri)?;
     conn.execute(
         "INSERT OR REPLACE INTO posts (uri, author_did, text, created_at, raw_json)
          VALUES (?1, ?2, ?3, ?4, ?5)",
         params![uri, author_did, text, created_at, raw_json],
     )?;
-    Ok(())
+    Ok(is_new)
 }
 
 /// Return `true` if a post with the given AT URI exists in the database.
@@ -295,6 +299,26 @@ mod tests {
     fn test_db_has_uri_false() {
         let conn = test_db();
         assert!(!db_has_uri(&conn, "at://did:plc:abc/app.bsky.feed.post/999").unwrap());
+    }
+
+    #[test]
+    fn test_upsert_post_returns_true_for_new() {
+        let conn = test_db();
+        let uri = "at://did:plc:abc/app.bsky.feed.post/new001";
+        let is_new = upsert_post(&conn, uri, "did:plc:abc", "text", "2024-01-01T00:00:00Z", "{}")
+            .unwrap();
+        assert!(is_new, "upsert_post must return true when the URI is new");
+    }
+
+    #[test]
+    fn test_upsert_post_returns_false_for_existing() {
+        let conn = test_db();
+        let uri = "at://did:plc:abc/app.bsky.feed.post/existing001";
+        upsert_post(&conn, uri, "did:plc:abc", "first", "2024-01-01T00:00:00Z", "{}")
+            .unwrap();
+        let is_new = upsert_post(&conn, uri, "did:plc:abc", "updated", "2024-01-01T00:00:00Z", "{}")
+            .unwrap();
+        assert!(!is_new, "upsert_post must return false when the URI already exists");
     }
 
     #[test]
