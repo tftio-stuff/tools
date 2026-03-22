@@ -10,21 +10,17 @@ Complete, reliable extraction of a single BlueSky user's entire post and interac
 
 ## Requirements
 
-### Validated
+### Active
+- [ ] Support filtering by activity type: posts, likes, reposts, quote-posts, blocks, blocked-by
+- [ ] Default filter: posts (all posts including replies) when no filter specified
 
+### Validated
+- [x] CLI interface following workspace conventions (clap, cli-common) — Phase 4
 - [x] Authenticate to BlueSky via app password — Phase 3
 - [x] Retrieve all posts (top-level and replies) for a given user handle or DID — Phase 3
 - [x] Use `com.atproto.repo.listRecords` for completeness over `getAuthorFeed` — Phase 3
 - [x] Store results in a local SQLite database — Phase 3
 - [x] Paginate exhaustively through full history — Phase 3
-
-### Active
-- [ ] Use `com.atproto.repo.listRecords` for completeness over `getAuthorFeed`
-- [ ] Store results in a local SQLite database
-- [ ] Support filtering by activity type: posts, likes, reposts, quote-posts, blocks, blocked-by
-- [ ] Default filter: posts (all posts including replies) when no filter specified
-- [ ] Paginate exhaustively through full history
-- [ ] CLI interface following workspace conventions (clap, cli-common)
 
 ### Out of Scope
 
@@ -61,5 +57,9 @@ Complete, reliable extraction of a single BlueSky user's entire post and interac
 | App password auth only | Simple, well-supported, OAuth adds DPoP complexity for no gain here | — Pending |
 | Workspace crate, not standalone | Shares deps, lint config, CI, release tooling | — Pending |
 
+## Current State
+
+Phase 4 (CLI Surface) complete — `bce` binary is functional with clap args, XDG default paths, indicatif spinner, and summary line. All four milestone phases (1-4) for v1.1 are complete. Filtering by activity type remains as future work.
+
 ---
-*Last updated: 2026-03-22 after initialization*
+*Last updated: 2026-03-22 after Phase 4 completion*
