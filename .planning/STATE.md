@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: bsky-comment-extractor
-status: complete
+status: unknown
 stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-03-22T16:16:16.677Z"
+last_updated: "2026-03-22T16:21:00.159Z"
 progress:
   total_phases: 2
   completed_phases: 1
