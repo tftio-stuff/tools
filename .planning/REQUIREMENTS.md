@@ -1,0 +1,58 @@
+# Requirements: bsky-comment-extractor
+
+**Defined:** 2026-03-22
+**Core Value:** Complete, reliable extraction of a single BlueSky user's entire post history into a queryable local store.
+
+## bce-query-mode Requirements
+
+### Query
+
+- [ ] **QUERY-01**: `bce query` reads posts from local SQLite and outputs JSONL to stdout (one JSON object per line)
+- [ ] **QUERY-02**: `--limit N` controls page size (default: 50)
+- [ ] **QUERY-03**: `--offset N` skips N records for pagination
+- [ ] **QUERY-04**: `--db <path>` specifies database path (XDG default)
+
+### Agent Interface
+
+- [ ] **AGENT-01**: `--agent-help` outputs structured LLM-agent reference doc (capabilities, flags, output format, pagination examples, error codes)
+- [ ] **AGENT-02**: Query output wrapped in JSON envelope with pagination metadata (total, offset, limit, has_more)
+
+## Future Requirements
+
+### Additional Activity Types
+
+- **LIKE-01**: Retrieve all `app.bsky.feed.like` records for a user
+- **RPST-01**: Retrieve all `app.bsky.feed.repost` records for a user
+- **BLCK-01**: Retrieve all `app.bsky.graph.block` records for a user
+- **FILT-01**: `--type` flag to filter by activity type
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Firehose/streaming | Batch retrieval only |
+| Multi-user extraction | Single user per invocation |
+| Real-time monitoring | No polling or watch mode |
+| OAuth authentication | App passwords sufficient |
+| Keyword search | Extracts activity, not search results |
+| Query-side filtering (--since, --author) | Agents filter client-side; keep query simple |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| QUERY-01 | TBD | Pending |
+| QUERY-02 | TBD | Pending |
+| QUERY-03 | TBD | Pending |
+| QUERY-04 | TBD | Pending |
+| AGENT-01 | TBD | Pending |
+| AGENT-02 | TBD | Pending |
+
+**Coverage:**
+- bce-query-mode requirements: 6 total
+- Mapped to phases: 0
+- Unmapped: 6
+
+---
+*Requirements defined: 2026-03-22*
+*Last updated: 2026-03-22 after initial definition*
