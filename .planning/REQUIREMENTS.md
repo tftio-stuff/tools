@@ -20,7 +20,7 @@
 ### Storage
 
 - [ ] **STOR-01**: Store posts in SQLite with structured schema (AT URI, author DID, text, created_at, reply parent, raw JSON)
-- [ ] **STOR-02**: Idempotent writes — re-running updates existing records, does not duplicate
+- [ ] **STOR-02**: Idempotent writes -- re-running updates existing records, does not duplicate
 - [ ] **STOR-03**: Configurable database file path (default: `./bsky-posts.db`)
 
 ### CLI
@@ -60,25 +60,25 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | — | Pending |
-| AUTH-02 | — | Pending |
-| EXTR-01 | — | Pending |
-| EXTR-02 | — | Pending |
-| EXTR-03 | — | Pending |
-| EXTR-04 | — | Pending |
-| STOR-01 | — | Pending |
-| STOR-02 | — | Pending |
-| STOR-03 | — | Pending |
-| CLI-01 | — | Pending |
-| CLI-02 | — | Pending |
-| CLI-03 | — | Pending |
-| CLI-04 | — | Pending |
+| AUTH-01 | Phase 3 | Pending |
+| AUTH-02 | Phase 3 | Pending |
+| EXTR-01 | Phase 3 | Pending |
+| EXTR-02 | Phase 3 | Pending |
+| EXTR-03 | Phase 3 | Pending |
+| EXTR-04 | Phase 3 | Pending |
+| STOR-01 | Phase 3 | Pending |
+| STOR-02 | Phase 3 | Pending |
+| STOR-03 | Phase 3 | Pending |
+| CLI-01 | Phase 4 | Pending |
+| CLI-02 | Phase 4 | Pending |
+| CLI-03 | Phase 4 | Pending |
+| CLI-04 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 13 total
-- Mapped to phases: 0
-- Unmapped: 13
+- Mapped to phases: 13
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-22*
-*Last updated: 2026-03-22 after initial definition*
+*Last updated: 2026-03-22 after roadmap creation*
