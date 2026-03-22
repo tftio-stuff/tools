@@ -5,9 +5,34 @@ use std::path::PathBuf;
 use anyhow::{Context, Result, bail};
 use clap::Parser;
 use directories::ProjectDirs;
-use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
+use tftio_cli_common::{
+    DoctorChecks, LicenseType, StandardCommand, ToolSpec, command::run_standard_command,
+    error::print_error, progress::make_spinner, workspace_tool,
+};
 
-use bsky_comment_extractor::cli::Cli;
+use bsky_comment_extractor::cli::{Cli, Command};
+
+struct BceDoctor;
+
+impl DoctorChecks for BceDoctor {
+    fn repo_info() -> tftio_cli_common::RepoInfo {
+        tftio_cli_common::app::WORKSPACE_REPO
+    }
+
+    fn current_version() -> &'static str {
+        env!("CARGO_PKG_VERSION")
+    }
+}
+
+const TOOL_SPEC: ToolSpec = workspace_tool(
+    "bce",
+    "BlueSky Comment Extractor",
+    env!("CARGO_PKG_VERSION"),
+    LicenseType::MIT,
+    false,
+    true,
+    false,
+);
 
 fn main() {
     let cli = Cli::parse();
@@ -16,16 +41,33 @@ fn main() {
 }
 
 fn run(cli: Cli) -> i32 {
+    if let Some(command) = &cli.command {
+        let standard_command = match command {
+            Command::Version => StandardCommand::Version { json: false },
+            Command::License => StandardCommand::License,
+            Command::Completions { shell } => StandardCommand::Completions { shell: *shell },
+            Command::Doctor => StandardCommand::Doctor,
+        };
+
+        let doctor = BceDoctor;
+        return run_standard_command::<Cli, BceDoctor>(&TOOL_SPEC, &standard_command, Some(&doctor));
+    }
+
     match execute(cli) {
         Ok(()) => 0,
         Err(e) => {
-            eprintln!("Error: {e:#}");
+            let _ = print_error("extract", false, &format!("{e:#}"));
             1
         }
     }
 }
 
 fn execute(cli: Cli) -> Result<()> {
+    let handle = cli
+        .handle
+        .as_deref()
+        .ok_or_else(|| anyhow::anyhow!("handle is required"))?;
+
     // 1. Validate BSKY_APP_PASSWORD is set
     if std::env::var("BSKY_APP_PASSWORD").is_err() {
         bail!(
@@ -56,14 +98,14 @@ fn execute(cli: Cli) -> Result<()> {
         .transpose()?;
 
     // 5. Create spinner (only if TTY and not --quiet)
-    let spinner = make_spinner(cli.quiet, &cli.handle);
+    let spinner = make_spinner(!cli.quiet, &format!("Fetching posts for {handle}... 0 records"));
 
     // 6. Build progress callback that updates the spinner
     let progress_cb = |count: u64| {
         if let Some(ref pb) = spinner {
             pb.set_message(format!(
                 "Fetching posts for {}... {} records",
-                &cli.handle, count
+                handle, count
             ));
         }
     };
@@ -75,7 +117,7 @@ fn execute(cli: Cli) -> Result<()> {
         .context("failed to start async runtime")?;
 
     let result = runtime.block_on(bsky_comment_extractor::run_extraction(
-        &cli.handle,
+        handle,
         &db_path,
         since,
         Some(&progress_cb),
@@ -92,7 +134,7 @@ fn execute(cli: Cli) -> Result<()> {
     println!(
         "Extracted {} posts for {} to {} ({} new, {} existing)",
         summary.count,
-        cli.handle,
+        handle,
         db_path.display(),
         summary.new_count,
         summary.existing_count,
@@ -114,25 +156,6 @@ fn default_db_path() -> Result<PathBuf> {
     Ok(dirs.data_dir().join("bsky-posts.db"))
 }
 
-/// Create an `indicatif` spinner for progress display.
-///
-/// Returns `None` if `quiet` is true or stdout is not a terminal.
-fn make_spinner(quiet: bool, handle: &str) -> Option<ProgressBar> {
-    if quiet || !tftio_cli_common::output::is_tty() {
-        return None;
-    }
-    let pb = ProgressBar::with_draw_target(None, ProgressDrawTarget::stderr());
-    pb.set_style(
-        ProgressStyle::default_spinner()
-            .tick_chars("\u{2801}\u{2802}\u{2804}\u{2840}\u{2880}\u{2820}\u{2810}\u{2808} ")
-            .template("{spinner:.green} {msg}")
-            .expect("valid spinner template"),
-    );
-    pb.set_message(format!("Fetching posts for {handle}... 0 records"));
-    pb.enable_steady_tick(std::time::Duration::from_millis(120));
-    Some(pb)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -140,7 +163,7 @@ mod tests {
     #[test]
     fn test_make_spinner_quiet() {
         // When quiet=true, make_spinner must return None regardless of TTY state.
-        assert!(make_spinner(true, "alice.bsky.social").is_none());
+        assert!(make_spinner(false, "Fetching posts for alice.bsky.social... 0 records").is_none());
     }
 
     #[test]
@@ -158,5 +181,23 @@ mod tests {
             "path should contain 'bce' directory component: {}",
             path.display()
         );
+    }
+
+    #[test]
+    fn metadata_commands_map_to_shared_standard_command() {
+        assert_eq!(
+            tftio_cli_common::map_standard_command(&Command::Doctor, false),
+            StandardCommand::Doctor
+        );
+        assert_eq!(
+            tftio_cli_common::map_standard_command(&Command::Version, false),
+            StandardCommand::Version { json: false }
+        );
+    }
+
+    #[test]
+    fn run_returns_success_for_version_command() {
+        let cli = Cli::parse_from(["bce", "version"]);
+        assert_eq!(run(cli).expect("version command should succeed"), 0);
     }
 }
