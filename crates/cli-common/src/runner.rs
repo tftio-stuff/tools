@@ -2,6 +2,7 @@
 
 use crate::err_response;
 use serde_json::json;
+use std::fmt::Display;
 
 /// Shared fatal CLI error state.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -83,6 +84,22 @@ where
     }
 }
 
+/// Run a fallible CLI closure with shared fatal rendering for any displayable error type.
+#[must_use]
+pub fn run_with_display_error_handler<F, E>(
+    command: &str,
+    json_output: bool,
+    run: F,
+) -> i32
+where
+    F: FnOnce() -> Result<i32, E>,
+    E: Display,
+{
+    run_with_fatal_handler(|| {
+        run().map_err(|error| FatalCliError::new(command, json_output, error.to_string()))
+    })
+}
+
 /// Parse CLI state with one closure and execute it with another.
 #[must_use]
 pub fn parse_and_run<T, P, F>(parse: P, run: F) -> i32
@@ -104,9 +121,20 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::fmt;
+
     use crate::error::fatal_error;
 
     use super::*;
+
+    #[derive(Debug)]
+    struct DisplayOnlyError(&'static str);
+
+    impl fmt::Display for DisplayOnlyError {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "{}", self.0)
+        }
+    }
 
     #[test]
     fn run_with_fatal_handler_returns_success_code() {
@@ -138,5 +166,20 @@ mod tests {
         assert!(rendered.contains("\"ok\":false"));
         assert!(rendered.contains("\"code\":\"ERROR\""));
         assert!(rendered.contains("\"command\":\"scan\""));
+    }
+
+    #[test]
+    fn run_with_display_error_handler_returns_success_code() {
+        let exit_code =
+            run_with_display_error_handler("scan", false, || Ok::<i32, DisplayOnlyError>(9));
+        assert_eq!(exit_code, 9);
+    }
+
+    #[test]
+    fn run_with_display_error_handler_converts_display_errors() {
+        let exit_code = run_with_display_error_handler("scan", false, || {
+            Err::<i32, DisplayOnlyError>(DisplayOnlyError("bad"))
+        });
+        assert_eq!(exit_code, 1);
     }
 }

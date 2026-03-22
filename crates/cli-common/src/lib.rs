@@ -78,7 +78,10 @@ pub use error::{fatal_error, print_error};
 pub use json::{err_response, ok_response, render_response, render_response_parts, render_response_with};
 pub use license::display_license;
 pub use progress::make_spinner;
-pub use runner::{FatalCliError, parse_and_exit, parse_and_run, run_with_fatal_handler};
+pub use runner::{
+    FatalCliError, parse_and_exit, parse_and_run, run_with_display_error_handler,
+    run_with_fatal_handler,
+};
 
 #[cfg(test)]
 mod tests {
