@@ -83,6 +83,32 @@ pub struct FetchSummary {
     pub existing_count: u64,
 }
 
+/// Pagination metadata emitted as the first JSONL line for query mode.
+#[derive(Debug, Serialize, PartialEq, Eq)]
+pub struct QueryEnvelope {
+    /// Total number of posts stored in the database.
+    pub total: u64,
+    /// Number of rows skipped before this page.
+    pub offset: u64,
+    /// Maximum number of rows requested for this page.
+    pub limit: u64,
+    /// Whether more rows remain after this page.
+    pub has_more: bool,
+}
+
+/// Curated post fields emitted for each query result row.
+#[derive(Debug, Serialize, PartialEq, Eq)]
+pub struct QueryPost {
+    /// The AT URI identifying the post.
+    pub uri: String,
+    /// The decentralized identifier of the post author.
+    pub author_did: String,
+    /// The plain-text post body.
+    pub text: String,
+    /// The ISO 8601 timestamp recorded for the post.
+    pub created_at: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::{QueryEnvelope, QueryPost};
