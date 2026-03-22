@@ -7,15 +7,15 @@
 
 ### Authentication
 
-- [ ] **AUTH-01**: CLI accepts BlueSky handle and app password for authentication
-- [ ] **AUTH-02**: Session created via `com.atproto.server.createSession` with token refresh
+- [x] **AUTH-01**: CLI accepts BlueSky handle and app password for authentication
+- [x] **AUTH-02**: Session created via `com.atproto.server.createSession` with token refresh
 
 ### Extraction
 
-- [ ] **EXTR-01**: Retrieve all `app.bsky.feed.post` records for a user via `com.atproto.repo.listRecords`
-- [ ] **EXTR-02**: Paginate exhaustively through full post history (handle cursor-based pagination)
-- [ ] **EXTR-03**: Resolve user handle to DID when handle is provided
-- [ ] **EXTR-04**: Respect rate limits with backoff on HTTP 429
+- [x] **EXTR-01**: Retrieve all `app.bsky.feed.post` records for a user via `com.atproto.repo.listRecords`
+- [x] **EXTR-02**: Paginate exhaustively through full post history (handle cursor-based pagination)
+- [x] **EXTR-03**: Resolve user handle to DID when handle is provided
+- [x] **EXTR-04**: Respect rate limits with backoff on HTTP 429
 
 ### Storage
 
@@ -60,12 +60,12 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | Phase 3 | Pending |
-| AUTH-02 | Phase 3 | Pending |
-| EXTR-01 | Phase 3 | Pending |
-| EXTR-02 | Phase 3 | Pending |
-| EXTR-03 | Phase 3 | Pending |
-| EXTR-04 | Phase 3 | Pending |
+| AUTH-01 | Phase 3 | Complete |
+| AUTH-02 | Phase 3 | Complete |
+| EXTR-01 | Phase 3 | Complete |
+| EXTR-02 | Phase 3 | Complete |
+| EXTR-03 | Phase 3 | Complete |
+| EXTR-04 | Phase 3 | Complete |
 | STOR-01 | Phase 3 | Complete (03-01) |
 | STOR-02 | Phase 3 | Complete (03-01) |
 | STOR-03 | Phase 3 | Complete (03-01) |

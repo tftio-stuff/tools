@@ -21,7 +21,7 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full details.
 
 **Milestone Goal:** A working Rust workspace crate that exhaustively fetches a BlueSky user's post history via the AT Protocol and stores it in a queryable local SQLite database.
 
-- [ ] **Phase 3: Extraction Engine** - AT Protocol client, auth, exhaustive pagination, SQLite storage
+- [x] **Phase 3: Extraction Engine** - AT Protocol client, auth, exhaustive pagination, SQLite storage (completed 2026-03-22)
 - [ ] **Phase 4: CLI Surface** - clap interface, workspace integration, progress indicator
 
 ## Phase Details
@@ -36,7 +36,7 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full details.
   3. A handle (e.g., `alice.bsky.social`) is resolved to a DID before fetching records
   4. On HTTP 429, the client backs off and retries rather than crashing or returning partial results
   5. Posts are written to SQLite with AT URI, author DID, text, created_at, reply parent, and raw JSON; re-running does not produce duplicate rows
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 03-01-PLAN.md -- Crate scaffold, types/models/error, SQLite storage layer
 - [ ] 03-02-PLAN.md -- AT Protocol client: auth, handle resolution, exhaustive pagination, rate-limit backoff
@@ -61,5 +61,5 @@ Phases execute in numeric order: 3 -> 4
 |-------|-----------|----------------|--------|-----------|
 | 1. Sandbox Isolation | v1.0 | 1/1 | Complete | 2026-03-18 |
 | 2. YOLO Injection | v1.0 | 1/1 | Complete | 2026-03-18 |
-| 3. Extraction Engine | v1.1 | 1/2 | In progress | - |
+| 3. Extraction Engine | 2/2 | Complete   | 2026-03-22 | - |
 | 4. CLI Surface | v1.1 | 0/? | Not started | - |
