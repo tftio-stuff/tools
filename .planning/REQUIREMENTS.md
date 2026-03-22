@@ -19,9 +19,9 @@
 
 ### Storage
 
-- [ ] **STOR-01**: Store posts in SQLite with structured schema (AT URI, author DID, text, created_at, reply parent, raw JSON)
-- [ ] **STOR-02**: Idempotent writes -- re-running updates existing records, does not duplicate
-- [ ] **STOR-03**: Configurable database file path (default: `./bsky-posts.db`)
+- [x] **STOR-01**: Store posts in SQLite with structured schema (AT URI, author DID, text, created_at, reply parent, raw JSON)
+- [x] **STOR-02**: Idempotent writes -- re-running updates existing records, does not duplicate
+- [x] **STOR-03**: Configurable database file path (default: `./bsky-posts.db`)
 
 ### CLI
 
@@ -66,9 +66,9 @@
 | EXTR-02 | Phase 3 | Pending |
 | EXTR-03 | Phase 3 | Pending |
 | EXTR-04 | Phase 3 | Pending |
-| STOR-01 | Phase 3 | Pending |
-| STOR-02 | Phase 3 | Pending |
-| STOR-03 | Phase 3 | Pending |
+| STOR-01 | Phase 3 | Complete (03-01) |
+| STOR-02 | Phase 3 | Complete (03-01) |
+| STOR-03 | Phase 3 | Complete (03-01) |
 | CLI-01 | Phase 4 | Pending |
 | CLI-02 | Phase 4 | Pending |
 | CLI-03 | Phase 4 | Pending |
