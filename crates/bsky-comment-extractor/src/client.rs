@@ -222,6 +222,9 @@ impl BskyClient {
     /// if the post's `createdAt` is before the optional `since` cutoff. Saves
     /// the pagination cursor to the database after each page for resilience.
     ///
+    /// The `on_progress` callback, if provided, is invoked with the running
+    /// total of processed records after each post is stored.
+    ///
     /// Note: `rusqlite::Connection` is not `Send`; this future is intentionally
     /// single-threaded.
     #[allow(clippy::future_not_send)]
@@ -230,6 +233,7 @@ impl BskyClient {
         did: &str,
         since: Option<chrono::DateTime<chrono::Utc>>,
         conn: &rusqlite::Connection,
+        on_progress: Option<&dyn Fn(u64)>,
     ) -> Result<FetchSummary, ExtractorError> {
         let mut cursor: Option<String> = crate::db::load_resume_cursor(conn, did)?;
         let mut count = 0u64;
@@ -285,6 +289,9 @@ impl BskyClient {
                     new_count += 1;
                 } else {
                     existing_count += 1;
+                }
+                if let Some(cb) = on_progress {
+                    cb(count);
                 }
             }
 
