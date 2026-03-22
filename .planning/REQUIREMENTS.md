@@ -8,9 +8,9 @@
 ### Query
 
 - [ ] **QUERY-01**: `bce query` reads posts from local SQLite and outputs JSONL to stdout (one JSON object per line)
-- [ ] **QUERY-02**: `--limit N` controls page size (default: 50)
-- [ ] **QUERY-03**: `--offset N` skips N records for pagination
-- [ ] **QUERY-04**: `--db <path>` specifies database path (XDG default)
+- [x] **QUERY-02**: `--limit N` controls page size (default: 50)
+- [x] **QUERY-03**: `--offset N` skips N records for pagination
+- [x] **QUERY-04**: `--db <path>` specifies database path (XDG default)
 
 ### Agent Interface
 
@@ -42,9 +42,9 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | QUERY-01 | Phase 5 | Pending |
-| QUERY-02 | Phase 5 | Pending |
-| QUERY-03 | Phase 5 | Pending |
-| QUERY-04 | Phase 5 | Pending |
+| QUERY-02 | Phase 5 | Complete |
+| QUERY-03 | Phase 5 | Complete |
+| QUERY-04 | Phase 5 | Complete |
 | AGENT-02 | Phase 5 | Pending |
 | AGENT-01 | Phase 6 | Pending |
 
