@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 05-query-subcommand-02-PLAN.md
-last_updated: "2026-03-22T22:08:44.638Z"
+stopped_at: Completed 05-query-subcommand-01-PLAN.md
+last_updated: "2026-03-22T22:10:09.109Z"
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 ## Current Position
 
 Phase: 05 (query-subcommand) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 
 ## Performance Metrics
 
@@ -42,6 +42,7 @@ Plan: 2 of 3
 | Phase 04-cli-surface P01 | 4 | 2 tasks | 4 files |
 | Phase 04 P02 | 3.5min | 3 tasks | 6 files |
 | Phase 05-query-subcommand P02 | 2m | 2 tasks | 2 files |
+| Phase 05-query-subcommand P01 | 0 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -66,6 +67,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [bce-query-mode roadmap]: QUERY-01 through QUERY-04 and AGENT-02 grouped into Phase 5 (coherent query unit); AGENT-01 isolated in Phase 6 (separate agent-doc concern)
 - [Phase 05-query-subcommand]: 05-02: QueryArgs accepts only db, limit, and offset, with defaults 50 and 0.
 - [Phase 05-query-subcommand]: 05-02: Cli reserves agent-help as a top-level global flag and exposes optional fetch/query subcommands.
+- [Phase 05-query-subcommand]: Query pagination uses ORDER BY created_at DESC, uri DESC to keep page boundaries stable.
+- [Phase 05-query-subcommand]: Query mode opens SQLite with SQLITE_OPEN_READ_WRITE and no create flag so missing database paths fail fast.
 
 - [v1.1 init]: Use `com.atproto.repo.listRecords` over `getAuthorFeed` for completeness
 - [v1.1 init]: App password auth only (no OAuth/DPoP)
@@ -101,6 +104,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-22T22:08:38.352Z
-Stopped at: Completed 05-query-subcommand-02-PLAN.md
+Last session: 2026-03-22T22:10:09.107Z
+Stopped at: Completed 05-query-subcommand-01-PLAN.md
 Resume file: None
