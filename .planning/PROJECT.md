@@ -12,12 +12,13 @@ Complete, reliable extraction of a single BlueSky user's entire post and interac
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] Authenticate to BlueSky via app password — Phase 3
+- [x] Retrieve all posts (top-level and replies) for a given user handle or DID — Phase 3
+- [x] Use `com.atproto.repo.listRecords` for completeness over `getAuthorFeed` — Phase 3
+- [x] Store results in a local SQLite database — Phase 3
+- [x] Paginate exhaustively through full history — Phase 3
 
 ### Active
-
-- [ ] Authenticate to BlueSky via app password
-- [ ] Retrieve all posts (top-level and replies) for a given user handle or DID
 - [ ] Use `com.atproto.repo.listRecords` for completeness over `getAuthorFeed`
 - [ ] Store results in a local SQLite database
 - [ ] Support filtering by activity type: posts, likes, reposts, quote-posts, blocks, blocked-by
