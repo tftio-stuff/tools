@@ -2356,7 +2356,7 @@ dependencies = [
 
 [[package]]
 name = "tftio-gator"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "clap",
  "dirs",
@@ -2389,7 +2389,7 @@ dependencies = [
 
 [[package]]
 name = "tftio-silent-critic"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
