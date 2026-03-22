@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: bsky-comment-extractor
-status: executing
-stopped_at: "Completed 03-01-PLAN.md"
-last_updated: "2026-03-22T17:47:00Z"
+status: complete
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-03-22T16:16:16.677Z"
 progress:
   total_phases: 2
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -23,22 +23,22 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 
 ## Current Position
 
-Phase: 03 (extraction-engine) — EXECUTING
-Plan: 2 of 2
+Phase: 03 (extraction-engine) — COMPLETE
+Plan: 2 of 2 (all plans complete)
 
 ## Performance Metrics
 
 **Velocity (v1.1):**
 
-- Total plans completed: 1
-- Average duration: 4min
-- Total execution time: 4min
+- Total plans completed: 2
+- Average duration: ~4.5min
+- Total execution time: ~9min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 03-extraction-engine | 1 | 4min | 4min |
+| 03-extraction-engine | 2 | 9min | 4.5min |
 
 ## Accumulated Context
 
@@ -53,6 +53,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [03-01]: save_cursor uses SELECT + UPDATE/INSERT (not INSERT OR REPLACE) to preserve AUTOINCREMENT id on extractions table
 - [03-01]: u64 record_count stored via .cast_signed() for clippy pedantic cast_possible_wrap compliance
 - [03-01]: Technical nouns (SQLite, BlueSky) require backticks in doc comments under workspace pedantic clippy
+- [Phase 03-02]: execute() uses Option<Vec<u8>> for body to allow cloning across retry iterations
+- [Phase 03-02]: backoff_delay uses bit-shift not saturating_shl (unavailable on stable u64 MSRV)
+- [Phase 03-02]: future_not_send allowed on async fns taking &rusqlite::Connection (expected single-threaded)
 
 ### Pending Todos
 
@@ -65,6 +68,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-22T17:47:00Z
-Stopped at: Completed 03-01-PLAN.md
-Resume file: .planning/phases/03-extraction-engine/03-02-PLAN.md
+Last session: 2026-03-22T16:16:16.674Z
+Stopped at: Completed 03-02-PLAN.md
+Resume file: None
