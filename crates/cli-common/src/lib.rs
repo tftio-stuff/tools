@@ -67,13 +67,18 @@ pub mod update;
 
 // Re-export commonly used items
 pub use app::{ToolSpec, workspace_tool};
-pub use command::{NoDoctor, StandardCommand, run_standard_command_no_doctor};
+pub use command::{
+    NoDoctor, StandardCommand, StandardCommandMap, map_standard_command,
+    maybe_run_standard_command, maybe_run_standard_command_no_doctor,
+    run_standard_command_no_doctor,
+};
 pub use completions::{CompletionOutput, generate_completions, render_completion, render_completion_instructions, write_completion};
 pub use doctor::{DoctorReport, print_doctor_report_json, print_doctor_report_text, run_doctor};
-pub use error::print_error;
+pub use error::{fatal_error, print_error};
 pub use json::{err_response, ok_response, render_response};
 pub use license::display_license;
 pub use progress::make_spinner;
+pub use runner::{FatalCliError, parse_and_exit, parse_and_run, run_with_fatal_handler};
 
 #[cfg(test)]
 mod tests {

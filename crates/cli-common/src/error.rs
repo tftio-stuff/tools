@@ -1,18 +1,17 @@
 //! Shared error presentation.
 
-use serde_json::json;
+use crate::runner::FatalCliError;
 
-use crate::err_response;
+/// Build a shared fatal CLI error value.
+#[must_use]
+pub fn fatal_error(command: impl Into<String>, json_output: bool, message: impl Into<String>) -> FatalCliError {
+    FatalCliError::new(command, json_output, message)
+}
 
 /// Print a standard error response and return a failing exit code.
 #[must_use]
 pub fn print_error(command: &str, json_output: bool, message: &str) -> i32 {
-    if json_output {
-        println!("{}", err_response(command, "ERROR", message, json!({})));
-    } else {
-        eprintln!("error: {message}");
-    }
-    1
+    fatal_error(command, json_output, message).emit_and_exit_code()
 }
 
 #[cfg(test)]

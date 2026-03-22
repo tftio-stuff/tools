@@ -48,6 +48,53 @@ pub enum StandardCommand {
     },
 }
 
+/// Map crate-local metadata commands onto the shared [`StandardCommand`] surface.
+pub trait StandardCommandMap {
+    /// Convert a local metadata command into a shared command.
+    fn to_standard_command(&self, json: bool) -> StandardCommand;
+}
+
+/// Convert a crate-local metadata command into a shared [`StandardCommand`].
+#[must_use]
+pub fn map_standard_command<C>(command: &C, json: bool) -> StandardCommand
+where
+    C: StandardCommandMap + ?Sized,
+{
+    command.to_standard_command(json)
+}
+
+/// Run a mapped standard command when a tool exposes one.
+#[must_use]
+#[allow(clippy::single_option_map)]
+pub fn maybe_run_standard_command<T, D, C>(
+    spec: &ToolSpec,
+    command: Option<&C>,
+    json: bool,
+    doctor: Option<&D>,
+) -> Option<i32>
+where
+    T: CommandFactory,
+    D: DoctorChecks,
+    C: StandardCommandMap + ?Sized,
+{
+    command.map(|command| run_standard_command::<T, D>(spec, &map_standard_command(command, json), doctor))
+}
+
+/// Run a mapped standard command for a tool with no doctor support.
+#[must_use]
+#[allow(clippy::single_option_map)]
+pub fn maybe_run_standard_command_no_doctor<T, C>(
+    spec: &ToolSpec,
+    command: Option<&C>,
+    json: bool,
+) -> Option<i32>
+where
+    T: CommandFactory,
+    C: StandardCommandMap + ?Sized,
+{
+    command.map(|command| run_standard_command_no_doctor::<T>(spec, &map_standard_command(command, json)))
+}
+
 fn render_version(spec: &ToolSpec, json: bool) -> String {
     if json {
         format!(r#"{{"version":"{}"}}"#, spec.version)
@@ -112,6 +159,125 @@ where
     T: CommandFactory,
 {
     run_standard_command::<T, NoDoctor>(spec, command, None)
+}
+
+/// Implement [`StandardCommandMap`] for a crate-local metadata enum that uses the
+/// workspace-standard variant names.
+#[macro_export]
+macro_rules! impl_standard_command_map {
+    ($type:ty, global_json $(,)?) => {
+        impl $crate::command::StandardCommandMap for $type {
+            fn to_standard_command(&self, json: bool) -> $crate::StandardCommand {
+                match self {
+                    Self::Version => $crate::StandardCommand::Version { json },
+                    Self::License => $crate::StandardCommand::License,
+                    Self::Completions { shell } => {
+                        $crate::StandardCommand::Completions { shell: *shell }
+                    }
+                }
+            }
+        }
+    };
+    ($type:ty, global_json, doctor $(,)?) => {
+        impl $crate::command::StandardCommandMap for $type {
+            fn to_standard_command(&self, json: bool) -> $crate::StandardCommand {
+                match self {
+                    Self::Version => $crate::StandardCommand::Version { json },
+                    Self::License => $crate::StandardCommand::License,
+                    Self::Completions { shell } => {
+                        $crate::StandardCommand::Completions { shell: *shell }
+                    }
+                    Self::Doctor => $crate::StandardCommand::Doctor,
+                }
+            }
+        }
+    };
+    ($type:ty, global_json, doctor, update $(,)?) => {
+        impl $crate::command::StandardCommandMap for $type {
+            fn to_standard_command(&self, json: bool) -> $crate::StandardCommand {
+                match self {
+                    Self::Version => $crate::StandardCommand::Version { json },
+                    Self::License => $crate::StandardCommand::License,
+                    Self::Completions { shell } => {
+                        $crate::StandardCommand::Completions { shell: *shell }
+                    }
+                    Self::Doctor => $crate::StandardCommand::Doctor,
+                    Self::Update {
+                        version,
+                        force,
+                        install_dir,
+                    } => $crate::StandardCommand::Update {
+                        version: version.clone(),
+                        force: *force,
+                        install_dir: install_dir.clone(),
+                    },
+                }
+            }
+        }
+    };
+    ($type:ty, field_json $(,)?) => {
+        impl $crate::command::StandardCommandMap for $type {
+            fn to_standard_command(&self, _json: bool) -> $crate::StandardCommand {
+                match self {
+                    Self::Version { json } => $crate::StandardCommand::Version { json: *json },
+                    Self::License => $crate::StandardCommand::License,
+                    Self::Completions { shell } => {
+                        $crate::StandardCommand::Completions { shell: *shell }
+                    }
+                }
+            }
+        }
+    };
+    ($type:ty, fixed_json = $json:expr $(,)?) => {
+        impl $crate::command::StandardCommandMap for $type {
+            fn to_standard_command(&self, _json: bool) -> $crate::StandardCommand {
+                match self {
+                    Self::Version => $crate::StandardCommand::Version { json: $json },
+                    Self::License => $crate::StandardCommand::License,
+                    Self::Completions { shell } => {
+                        $crate::StandardCommand::Completions { shell: *shell }
+                    }
+                }
+            }
+        }
+    };
+    ($type:ty, fixed_json = $json:expr, doctor $(,)?) => {
+        impl $crate::command::StandardCommandMap for $type {
+            fn to_standard_command(&self, _json: bool) -> $crate::StandardCommand {
+                match self {
+                    Self::Version => $crate::StandardCommand::Version { json: $json },
+                    Self::License => $crate::StandardCommand::License,
+                    Self::Completions { shell } => {
+                        $crate::StandardCommand::Completions { shell: *shell }
+                    }
+                    Self::Doctor => $crate::StandardCommand::Doctor,
+                }
+            }
+        }
+    };
+    ($type:ty, fixed_json = $json:expr, doctor, update $(,)?) => {
+        impl $crate::command::StandardCommandMap for $type {
+            fn to_standard_command(&self, _json: bool) -> $crate::StandardCommand {
+                match self {
+                    Self::Version => $crate::StandardCommand::Version { json: $json },
+                    Self::License => $crate::StandardCommand::License,
+                    Self::Completions { shell } => {
+                        $crate::StandardCommand::Completions { shell: *shell }
+                    }
+                    Self::Doctor => $crate::StandardCommand::Doctor,
+                    Self::Update {
+                        version,
+                        force,
+                        install_dir,
+                    } => $crate::StandardCommand::Update {
+                        version: version.clone(),
+                        force: *force,
+                        install_dir: install_dir.clone(),
+                    },
+                }
+            }
+        }
+    };
 }
 
 #[cfg(test)]
@@ -180,6 +346,7 @@ mod tests {
         assert_eq!(exit_code, 0);
     }
 
+    #[allow(dead_code)]
     #[derive(Debug, Clone, PartialEq, Eq)]
     enum GlobalJsonMetaCommand {
         Version,
@@ -189,6 +356,7 @@ mod tests {
 
     impl_standard_command_map!(GlobalJsonMetaCommand, global_json);
 
+    #[allow(dead_code)]
     #[derive(Debug, Clone, PartialEq, Eq)]
     enum FixedJsonMetaCommand {
         Version,
@@ -199,6 +367,7 @@ mod tests {
 
     impl_standard_command_map!(FixedJsonMetaCommand, fixed_json = false, doctor);
 
+    #[allow(dead_code)]
     #[derive(Debug, Clone, PartialEq, Eq)]
     enum VersionFieldMetaCommand {
         Version { json: bool },
@@ -220,10 +389,46 @@ mod tests {
         assert_eq!(command, StandardCommand::Doctor);
     }
 
+    #[allow(dead_code)]
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    enum UpdateMetaCommand {
+        Version,
+        License,
+        Completions { shell: Shell },
+        Doctor,
+        Update {
+            version: Option<String>,
+            force: bool,
+            install_dir: Option<PathBuf>,
+        },
+    }
+
+    impl_standard_command_map!(UpdateMetaCommand, fixed_json = false, doctor, update);
+
     #[test]
     fn impl_standard_command_map_reads_json_from_version_field() {
         let command = map_standard_command(&VersionFieldMetaCommand::Version { json: true }, false);
         assert_eq!(command, StandardCommand::Version { json: true });
+    }
+
+    #[test]
+    fn impl_standard_command_map_clones_update_payload() {
+        let command = map_standard_command(
+            &UpdateMetaCommand::Update {
+                version: Some(String::from("1.0.0")),
+                force: true,
+                install_dir: Some(PathBuf::from("/tmp/install")),
+            },
+            false,
+        );
+        assert_eq!(
+            command,
+            StandardCommand::Update {
+                version: Some(String::from("1.0.0")),
+                force: true,
+                install_dir: Some(PathBuf::from("/tmp/install")),
+            }
+        );
     }
 
     #[test]
@@ -234,5 +439,15 @@ mod tests {
             false,
         );
         assert_eq!(exit_code, Some(0));
+    }
+
+    #[test]
+    fn maybe_run_standard_command_returns_none_without_metadata_command() {
+        let exit_code = maybe_run_standard_command_no_doctor::<TestCli, GlobalJsonMetaCommand>(
+            &spec(),
+            None,
+            false,
+        );
+        assert_eq!(exit_code, None);
     }
 }
