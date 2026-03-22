@@ -1,5 +1,5 @@
 use serde_json::Value;
-use todoer::output::ok_response;
+use tftio_cli_common::json::ok_response;
 
 #[test]
 fn ok_response_has_expected_shape() {

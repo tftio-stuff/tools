@@ -20,6 +20,11 @@ use cli::Cli;
 /// # Errors
 /// Returns an error string if any step fails.
 pub fn run(cli: &Cli) -> Result<(), String> {
+    let agent = cli
+        .agent
+        .as_ref()
+        .ok_or_else(|| "agent is required".to_string())?;
+
     // 1. Prepend clankers to PATH
     if let Some(home) = dirs::home_dir() {
         let clankers = home.join(".local/clankers/bin");
@@ -112,7 +117,7 @@ pub fn run(cli: &Cli) -> Result<(), String> {
     // 9. Build and exec command
     let inject_yolo = !cli.no_yolo && cli.session.is_none();
     let (cmd, _tempfiles) = agent::build_command(
-        &cli.agent,
+        agent,
         policy_file.path(),
         prompt.as_deref(),
         &cli.agent_args,

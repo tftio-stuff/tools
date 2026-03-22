@@ -5,7 +5,66 @@
 
 use clap::CommandFactory;
 use clap_complete::Shell;
-use std::io;
+use std::io::{self, Write};
+
+/// Completion content rendered in-memory before it is written anywhere.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CompletionOutput {
+    /// Installation instructions for the selected shell.
+    pub instructions: String,
+    /// Completion script emitted by `clap_complete`.
+    pub script: String,
+}
+
+/// Render completion installation instructions for a clap-based CLI.
+#[must_use]
+pub fn render_completion_instructions(shell: Shell, bin_name: &str) -> String {
+    match shell {
+        Shell::Bash => format!(
+            "# Shell completion for {bin_name}\n#\n# To enable completions, add this to your shell config:\n#\n#   source <({bin_name} completions bash)\n\n"
+        ),
+        Shell::Zsh => format!(
+            "# Shell completion for {bin_name}\n#\n# To enable completions, add this to your shell config:\n#\n#   {bin_name} completions zsh > ~/.zsh/completions/_{bin_name}\n#   # Ensure fpath includes ~/.zsh/completions\n\n"
+        ),
+        Shell::Fish => format!(
+            "# Shell completion for {bin_name}\n#\n# To enable completions, add this to your shell config:\n#\n#   {bin_name} completions fish | source\n\n"
+        ),
+        Shell::PowerShell => format!(
+            "# Shell completion for {bin_name}\n#\n# To enable completions, add this to your shell config:\n#\n#   {bin_name} completions powershell | Out-String | Invoke-Expression\n\n"
+        ),
+        Shell::Elvish => format!(
+            "# Shell completion for {bin_name}\n#\n# To enable completions, add this to your shell config:\n#\n#   {bin_name} completions elvish | eval\n\n"
+        ),
+        other => format!(
+            "# Shell completion for {bin_name}\n#\n# To enable completions, add this to your shell config:\n#\n#   {bin_name} completions {other}\n\n"
+        ),
+    }
+}
+
+/// Render shell completions fully in memory.
+#[must_use]
+pub fn render_completion<T: CommandFactory>(shell: Shell) -> CompletionOutput {
+    let mut cmd = T::command();
+    let bin_name = cmd.get_name().to_string();
+    let mut buffer = Vec::new();
+
+    clap_complete::generate(shell, &mut cmd, bin_name.clone(), &mut buffer);
+
+    CompletionOutput {
+        instructions: render_completion_instructions(shell, &bin_name),
+        script: String::from_utf8(buffer).expect("clap_complete output must be valid UTF-8"),
+    }
+}
+
+/// Write a previously rendered completion output to a writer.
+///
+/// # Errors
+///
+/// Returns an error if writing fails.
+pub fn write_completion(mut writer: impl Write, output: &CompletionOutput) -> io::Result<()> {
+    writer.write_all(output.instructions.as_bytes())?;
+    writer.write_all(output.script.as_bytes())
+}
 
 /// Generate shell completion scripts for a clap-based CLI.
 ///
@@ -31,39 +90,8 @@ use std::io;
 /// generate_completions::<Cli>(clap_complete::Shell::Bash);
 /// ```
 pub fn generate_completions<T: CommandFactory>(shell: Shell) {
-    let mut cmd = T::command();
-    let bin_name = cmd.get_name().to_string();
-
-    // Print instructions
-    println!("# Shell completion for {bin_name}");
-    println!("#");
-    println!("# To enable completions, add this to your shell config:");
-    println!("#");
-
-    match shell {
-        Shell::Bash => {
-            println!("# For bash (~/.bashrc):");
-            println!("#   source <({bin_name} completions bash)");
-        }
-        Shell::Zsh => {
-            println!("# For zsh (~/.zshrc):");
-            println!("#   {bin_name} completions zsh > ~/.zsh/completions/_{bin_name}");
-            println!("#   # Ensure fpath includes ~/.zsh/completions");
-        }
-        Shell::Fish => {
-            println!("# For fish (~/.config/fish/config.fish):");
-            println!("#   {bin_name} completions fish | source");
-        }
-        _ => {
-            println!("# For {shell}:");
-            println!("#   {bin_name} completions {shell} > /path/to/completions/_{bin_name}");
-        }
-    }
-
-    println!();
-
-    // Generate completions
-    clap_complete::generate(shell, &mut cmd, bin_name, &mut io::stdout());
+    let output = render_completion::<T>(shell);
+    write_completion(io::stdout(), &output).expect("failed to write completions");
 }
 
 #[cfg(test)]
@@ -123,5 +151,13 @@ mod tests {
         for shell in shells {
             generate_completions::<TestCli>(shell);
         }
+    }
+
+    #[test]
+    fn render_completion_separates_instructions_from_script() {
+        let output = render_completion::<TestCli>(Shell::Bash);
+
+        assert!(output.instructions.contains("source <(test-cli completions bash)"));
+        assert!(output.script.contains("complete"));
     }
 }
