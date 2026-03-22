@@ -1,9 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: bce-query-mode
-milestone_name: bce-query-mode
-status: roadmap_defined
-last_updated: "2026-03-22"
+milestone: v1.0
+milestone_name: milestone
+status: planning
+stopped_at: Phase 5 context gathered
+last_updated: "2026-03-22T21:37:37.633Z"
+last_activity: 2026-03-22 -- bce-query-mode roadmap created
 progress:
   total_phases: 2
   completed_phases: 0
@@ -81,6 +83,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-22
-Stopped at: bce-query-mode roadmap created
-Resume file: None
+Last session: 2026-03-22T21:37:37.631Z
+Stopped at: Phase 5 context gathered
+Resume file: .planning/phases/05-query-subcommand/05-CONTEXT.md
