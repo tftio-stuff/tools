@@ -56,7 +56,7 @@ Plans:
   2. Running with `--db /path/to/file.db` writes to the specified path instead
   3. A progress indicator updates in the terminal during extraction showing records retrieved
   4. The crate compiles and passes `just ci` (format, lint, test, audit, deny) as a workspace member
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
 - [ ] 04-01-PLAN.md -- Extend library API: FetchSummary new/existing counts, progress callback
 - [ ] 04-02-PLAN.md -- CLI binary: clap args, tokio runtime, spinner, XDG paths, summary line
@@ -71,4 +71,4 @@ Phases execute in numeric order: 3 -> 4
 | 1. Sandbox Isolation | v1.0 | 1/1 | Complete | 2026-03-18 |
 | 2. YOLO Injection | v1.0 | 1/1 | Complete | 2026-03-18 |
 | 3. Extraction Engine | v1.1 | 2/2 | Complete | 2026-03-22 |
-| 4. CLI Surface | v1.1 | 0/2 | Not started | - |
+| 4. CLI Surface | 1/2 | In Progress|  | - |
