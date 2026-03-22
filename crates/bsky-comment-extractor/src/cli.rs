@@ -1,23 +1,46 @@
 //! Command-line argument definitions for the `bce` binary.
 
-use clap::Parser;
+use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 
-/// Extract a `BlueSky` user's complete post history to a local `SQLite` database.
+/// Extract and query `BlueSky` posts from a local `SQLite` database.
 #[derive(Parser, Debug)]
 #[command(name = "bce")]
 #[command(version)]
-#[command(about = "Extract a BlueSky user's post history to SQLite")]
+#[command(about = "Extract and query BlueSky posts from a local SQLite database")]
 #[command(after_help = "\
 CREDENTIALS:
   Set BSKY_APP_PASSWORD before running.
   Create an app password at https://bsky.app/settings/app-passwords
 
 EXAMPLES:
-  bce alice.bsky.social
-  bce alice.bsky.social --since '3 months ago'
-  bce did:plc:abc123 --db /tmp/posts.db")]
+  bce fetch <HANDLE>
+  bce fetch alice.bsky.social
+  bce fetch alice.bsky.social --since '3 months ago'
+  bce query --limit 25 --offset 50
+  bce --agent-help")]
 pub struct Cli {
+    /// Show top-level agent reference help instead of running a subcommand.
+    #[arg(long, global = true)]
+    pub agent_help: bool,
+
+    /// Select the networked fetch path or the local read-only query path.
+    #[command(subcommand)]
+    pub command: Option<Command>,
+}
+
+/// Available `bce` subcommands.
+#[derive(Subcommand, Debug)]
+pub enum Command {
+    /// Fetch posts from the network into the local database.
+    Fetch(FetchArgs),
+    /// Query posts from the local database without making network requests.
+    Query(QueryArgs),
+}
+
+/// Arguments for the networked extractor path.
+#[derive(Args, Debug)]
+pub struct FetchArgs {
     /// `BlueSky` handle (e.g. alice.bsky.social) or DID (e.g. did:plc:abc123).
     pub handle: String,
 
@@ -36,6 +59,22 @@ pub struct Cli {
     /// Suppress the progress spinner.
     #[arg(short, long)]
     pub quiet: bool,
+}
+
+/// Arguments for the read-only local query path.
+#[derive(Args, Debug)]
+pub struct QueryArgs {
+    /// Path to the existing `SQLite` database file.
+    #[arg(long, value_name = "PATH")]
+    pub db: Option<PathBuf>,
+
+    /// Maximum number of posts to return.
+    #[arg(long, default_value_t = 50)]
+    pub limit: u64,
+
+    /// Number of posts to skip before returning results.
+    #[arg(long, default_value_t = 0)]
+    pub offset: u64,
 }
 
 #[cfg(test)]
