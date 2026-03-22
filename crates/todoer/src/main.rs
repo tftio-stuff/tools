@@ -1,8 +1,12 @@
 use clap::Parser;
 use serde_json::json;
 use std::io::Read;
+use tftio_cli_common::{
+    LicenseType, StandardCommand, ToolSpec, command::run_standard_command_no_doctor,
+    render_response, workspace_tool,
+};
 
-use todoer::cli::{Cli, Command, TaskCommand, TaskUpdateCommand};
+use todoer::cli::{Cli, Command, MetaCommand, TaskCommand, TaskUpdateCommand};
 use todoer::commands::{
     init::run_init,
     list::run_list,
@@ -11,10 +15,20 @@ use todoer::commands::{
 };
 use todoer::config::load_config;
 use todoer::input::resolve_input;
-use todoer::output::{err_response, ok_response, render_task_table};
+use todoer::output::render_task_table;
 use todoer::project::{
     find_project_file, load_project_name, resolve_init_project, resolve_project,
 };
+
+const TOOL_SPEC: ToolSpec = workspace_tool(
+    "todoer",
+    "Todoer",
+    env!("CARGO_PKG_VERSION"),
+    LicenseType::CC0,
+    true,
+    false,
+    false,
+);
 
 fn main() {
     let cli = Cli::parse();
@@ -24,6 +38,14 @@ fn main() {
 
 fn run(cli: Cli) -> i32 {
     match cli.command {
+        Command::Meta { command } => {
+            let standard_command = match command {
+                MetaCommand::Version { json } => StandardCommand::Version { json },
+                MetaCommand::License => StandardCommand::License,
+                MetaCommand::Completions { shell } => StandardCommand::Completions { shell },
+            };
+            run_standard_command_no_doctor::<Cli>(&TOOL_SPEC, &standard_command)
+        }
         Command::Init { project, json } => {
             let config = match load_config() {
                 Ok(c) => c,
@@ -43,25 +65,28 @@ fn run(cli: Cli) -> i32 {
                     Ok(p) => p,
                     Err(e) => return print_error("init", json, e),
                 };
-            match run_init(&config, &proj) {
-                Ok(result) => {
-                    if json {
-                        let out = ok_response(
-                            "init",
-                            json!({
-                                "project": {"name": proj.name, "key": proj.key},
-                                "db_path": result.db_path,
-                                "schema_created": result.schema_created
-                            }),
+                match run_init(&config, &proj) {
+                    Ok(result) => {
+                        println!(
+                            "{}",
+                            render_response(
+                                "init",
+                                json,
+                                json!({
+                                    "project": {"name": proj.name, "key": proj.key},
+                                    "db_path": result.db_path,
+                                    "schema_created": result.schema_created
+                                }),
+                                format!(
+                                    "project: {}\ndb: {}",
+                                    proj.name,
+                                    result.db_path.display()
+                                ),
+                            )
                         );
-                        println!("{}", out);
-                    } else {
-                        println!("project: {}", proj.name);
-                        println!("db: {}", result.db_path.display());
+                        0
                     }
-                    0
-                }
-                Err(e) => print_error("init", json, e),
+                    Err(e) => print_error("init", json, e),
             }
         }
         Command::New {
@@ -102,17 +127,20 @@ fn run(cli: Cli) -> i32 {
             };
             match run_new(&config, &proj, &desc) {
                 Ok(result) => {
-                    if json {
-                        let out = ok_response("new", json!({"task": result.task}));
-                        println!("{}", out);
-                    } else {
-                        println!(
-                            "{} {} {}",
-                            result.task.id,
-                            result.task.status.as_str(),
-                            result.task.description
-                        );
-                    }
+                    println!(
+                        "{}",
+                        render_response(
+                            "new",
+                            json,
+                            json!({"task": result.task}),
+                            format!(
+                                "{} {} {}",
+                                result.task.id,
+                                result.task.status.as_str(),
+                                result.task.description
+                            ),
+                        )
+                    );
                     0
                 }
                 Err(e) => print_error("new", json, e),
@@ -152,13 +180,11 @@ fn run(cli: Cli) -> i32 {
             };
             match run_list(&config, proj.as_ref(), all) {
                 Ok(result) => {
-                    if json {
-                        let out = ok_response("list", json!({"tasks": result.tasks}));
-                        println!("{}", out);
-                    } else {
-                        let table = render_task_table(&result.tasks);
-                        print!("{}", table);
-                    }
+                    let table = render_task_table(&result.tasks);
+                    println!(
+                        "{}",
+                        render_response("list", json, json!({"tasks": result.tasks}), table)
+                    );
                     0
                 }
                 Err(e) => print_error("list", json, e),
@@ -172,24 +198,24 @@ fn run(cli: Cli) -> i32 {
                 };
                 match run_status(&config, &id) {
                     Ok(result) => {
-                        if json {
-                            let out = ok_response(
+                        println!(
+                            "{}",
+                            render_response(
                                 "task.status",
+                                json,
                                 json!({
                                     "description": result.description,
                                     "status": result.status,
                                     "created_at": result.created_at
                                 }),
-                            );
-                            println!("{}", out);
-                        } else {
-                            println!(
-                                "{}\n{}\n{}",
-                                result.description,
-                                result.status.as_str(),
-                                result.created_at
-                            );
-                        }
+                                format!(
+                                    "{}\n{}\n{}",
+                                    result.description,
+                                    result.status.as_str(),
+                                    result.created_at
+                                ),
+                            )
+                        );
                         0
                     }
                     Err(e) => print_error("task.status", json, e),
@@ -203,16 +229,20 @@ fn run(cli: Cli) -> i32 {
                 match run_show(&config, &id) {
                     Ok(result) => {
                         if json {
-                            let out = ok_response(
-                                "task.show",
-                                json!({
-                                    "description": result.description,
-                                    "status": result.status,
-                                    "created_at": result.created_at,
-                                    "notes": result.notes
-                                }),
+                            println!(
+                                "{}",
+                                render_response(
+                                    "task.show",
+                                    true,
+                                    json!({
+                                        "description": result.description,
+                                        "status": result.status,
+                                        "created_at": result.created_at,
+                                        "notes": result.notes
+                                    }),
+                                    String::new(),
+                                )
                             );
-                            println!("{}", out);
                         } else {
                             println!(
                                 "{}\n{}\n{}",
@@ -240,12 +270,15 @@ fn run(cli: Cli) -> i32 {
                 };
                 match run_note(&config, &id, &note) {
                     Ok(result) => {
-                        if json {
-                            let out = ok_response("task.note", json!({"note": result.note}));
-                            println!("{}", out);
-                        } else {
-                            println!("note added: {}", result.note.id);
-                        }
+                        println!(
+                            "{}",
+                            render_response(
+                                "task.note",
+                                json,
+                                json!({"note": result.note}),
+                                format!("note added: {}", result.note.id),
+                            )
+                        );
                         0
                     }
                     Err(e) => print_error("task.note", json, e),
@@ -259,15 +292,15 @@ fn run(cli: Cli) -> i32 {
                     };
                     match run_update_status(&config, &id, status) {
                         Ok(result) => {
-                            if json {
-                                let out = ok_response(
+                            println!(
+                                "{}",
+                                render_response(
                                     "task.update.status",
+                                    json,
                                     json!({"status": result.status}),
-                                );
-                                println!("{}", out);
-                            } else {
-                                println!("{}", result.status.as_str());
-                            }
+                                    result.status.as_str().to_string(),
+                                )
+                            );
                             0
                         }
                         Err(e) => print_error("task.update.status", json, e),
@@ -320,11 +353,51 @@ fn git_repo_name(cwd: &std::path::Path) -> Option<String> {
 }
 
 fn print_error(command: &str, json: bool, err: anyhow::Error) -> i32 {
-    if json {
-        let out = err_response(command, "ERROR", &err.to_string(), json!({}));
-        println!("{}", out);
-    } else {
-        eprintln!("{}", err);
+    tftio_cli_common::error::print_error(command, json, &err.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use todoer::commands::task::{ShowResult, StatusResult};
+    use todoer::models::{Status, TaskNote};
+
+    #[test]
+    fn render_status_response_uses_text_payload_for_text_mode() {
+        let rendered = render_status_response(
+            &StatusResult {
+                description: String::from("write tests"),
+                status: Status::InProgress,
+                created_at: String::from("2026-03-22T10:00:00Z"),
+            },
+            false,
+        );
+
+        assert_eq!(
+            rendered,
+            "write tests\nIN-PROGRESS\n2026-03-22T10:00:00Z"
+        );
     }
-    1
+
+    #[test]
+    fn render_show_response_wraps_json_output() {
+        let rendered = render_show_response(
+            &ShowResult {
+                description: String::from("write tests"),
+                status: Status::Completed,
+                created_at: String::from("2026-03-22T10:00:00Z"),
+                notes: vec![TaskNote {
+                    id: 7,
+                    task_id: String::from("task-1"),
+                    created_at: String::from("2026-03-22T11:00:00Z"),
+                    note: String::from("done"),
+                }],
+            },
+            true,
+        );
+
+        assert!(rendered.contains("\"ok\":true"));
+        assert!(rendered.contains("\"command\":\"task.show\""));
+        assert!(rendered.contains("\"description\":\"write tests\""));
+    }
 }
