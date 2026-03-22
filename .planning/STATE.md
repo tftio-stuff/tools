@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to plan
-stopped_at: Completed 05-query-subcommand-03-PLAN.md
-last_updated: "2026-03-22T22:19:51.641Z"
+stopped_at: Phase 7 context gathered
+last_updated: "2026-03-22T23:41:06.050Z"
 progress:
-  total_phases: 2
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_phases: 3
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -97,6 +97,10 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 05-query-subcommand]: Query failures emit structured stderr JSON with db_not_found for missing databases and query_failed for other runtime errors.
 - [Phase 05-query-subcommand]: The global --agent-help flag remains parseable but hidden from subcommand help so bce query --help exposes only query options.
 
+### Roadmap Evolution
+
+- Phase 7 added: Add shared --agent-help and --agent-skill support across CLI crates
+
 ### Pending Todos
 
 None.
@@ -108,6 +112,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-22T22:16:28.147Z
-Stopped at: Completed 05-query-subcommand-03-PLAN.md
-Resume file: None
+Last session: 2026-03-22T23:41:06.047Z
+Stopped at: Phase 7 context gathered
+Resume file: .planning/phases/07-add-shared-agent-help-and-agent-skill-support-across-cli-crates/07-CONTEXT.md
