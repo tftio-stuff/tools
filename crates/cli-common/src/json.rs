@@ -32,10 +32,20 @@ pub fn err_response(command: &str, code: &str, message: &str, details: Value) ->
 #[must_use]
 #[allow(clippy::needless_pass_by_value)]
 pub fn render_response(command: &str, json_output: bool, data: Value, text: impl Into<String>) -> String {
+    render_response_with(command, json_output, data, || text.into())
+}
+
+/// Render either the shared JSON envelope or lazily-built plain text for a command response.
+#[must_use]
+#[allow(clippy::needless_pass_by_value)]
+pub fn render_response_with<F>(command: &str, json_output: bool, data: Value, text: F) -> String
+where
+    F: FnOnce() -> String,
+{
     if json_output {
         ok_response(command, data).to_string()
     } else {
-        text.into()
+        text()
     }
 }
 

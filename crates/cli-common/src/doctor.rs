@@ -34,6 +34,20 @@ impl DoctorReport {
         }
     }
 
+    /// Create a doctor report scaffold for a tool using the standard header, version, and checks.
+    #[must_use]
+    pub fn for_tool<T: DoctorChecks>(tool: &T) -> Self {
+        Self::with_tool_header(tool, format!("🏥 {} health check", T::repo_info().name))
+    }
+
+    /// Create a doctor report scaffold for a tool with a caller-provided header.
+    #[must_use]
+    pub fn with_tool_header<T: DoctorChecks>(tool: &T, header: impl Into<String>) -> Self {
+        Self::new(header)
+            .with_checks(tool.tool_checks())
+            .with_version(T::current_version())
+    }
+
     /// Set the report checks.
     #[must_use]
     pub fn with_checks(mut self, checks: Vec<DoctorCheck>) -> Self {
@@ -173,6 +187,16 @@ impl DoctorReport {
 
         output
     }
+
+    /// Emit the report in the selected format and return its exit code.
+    #[must_use]
+    pub fn emit(&self, json: bool) -> i32 {
+        if json {
+            print_doctor_report_json(self)
+        } else {
+            print_doctor_report_text(self)
+        }
+    }
 }
 
 /// Trait for tools that support doctor health checks.
@@ -205,9 +229,7 @@ pub fn run_doctor<T: DoctorChecks>(tool: &T) -> i32 {
 }
 
 fn build_doctor_report<T: DoctorChecks>(tool: &T, header: &str) -> DoctorReport {
-    DoctorReport::new(header)
-        .with_checks(tool.tool_checks())
-        .with_version(T::current_version())
+    DoctorReport::with_tool_header(tool, header)
 }
 
 fn render_doctor_with_header<T: DoctorChecks>(tool: &T, header: &str) -> (String, i32) {
