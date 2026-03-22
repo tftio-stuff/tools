@@ -6,8 +6,9 @@ use anyhow::{Context, Result, bail};
 use clap::Parser;
 use directories::ProjectDirs;
 use tftio_cli_common::{
-    DoctorChecks, LicenseType, StandardCommand, ToolSpec, command::run_standard_command,
-    error::print_error, progress::make_spinner, workspace_tool,
+    DoctorChecks, FatalCliError, LicenseType, StandardCommand, StandardCommandMap, ToolSpec,
+    command::maybe_run_standard_command, error::fatal_error, parse_and_exit,
+    progress::make_spinner, workspace_tool,
 };
 
 use bsky_comment_extractor::cli::{Cli, Command};
@@ -35,29 +36,33 @@ const TOOL_SPEC: ToolSpec = workspace_tool(
 );
 
 fn main() {
-    let cli = Cli::parse();
-    let code = run(cli);
-    std::process::exit(code);
+    parse_and_exit(Cli::parse, run);
 }
 
-fn run(cli: Cli) -> i32 {
-    if let Some(command) = &cli.command {
-        let standard_command = match command {
+fn run(cli: Cli) -> Result<i32, FatalCliError> {
+    let doctor = BceDoctor;
+    let command = cli.command.as_ref().map(BceMetadataCommand);
+    if let Some(exit_code) =
+        maybe_run_standard_command::<Cli, BceDoctor, _>(&TOOL_SPEC, command.as_ref(), false, Some(&doctor))
+    {
+        return Ok(exit_code);
+    }
+
+    execute(cli)
+        .map(|()| 0)
+        .map_err(|error| fatal_error("extract", false, format!("{error:#}")))
+}
+
+#[derive(Clone, Copy)]
+struct BceMetadataCommand<'a>(&'a Command);
+
+impl StandardCommandMap for BceMetadataCommand<'_> {
+    fn to_standard_command(&self, _json: bool) -> StandardCommand {
+        match self.0 {
             Command::Version => StandardCommand::Version { json: false },
             Command::License => StandardCommand::License,
             Command::Completions { shell } => StandardCommand::Completions { shell: *shell },
             Command::Doctor => StandardCommand::Doctor,
-        };
-
-        let doctor = BceDoctor;
-        return run_standard_command::<Cli, BceDoctor>(&TOOL_SPEC, &standard_command, Some(&doctor));
-    }
-
-    match execute(cli) {
-        Ok(()) => 0,
-        Err(e) => {
-            let _ = print_error("extract", false, &format!("{e:#}"));
-            1
         }
     }
 }
@@ -186,11 +191,11 @@ mod tests {
     #[test]
     fn metadata_commands_map_to_shared_standard_command() {
         assert_eq!(
-            tftio_cli_common::map_standard_command(&Command::Doctor, false),
+            BceMetadataCommand(&Command::Doctor).to_standard_command(false),
             StandardCommand::Doctor
         );
         assert_eq!(
-            tftio_cli_common::map_standard_command(&Command::Version, false),
+            BceMetadataCommand(&Command::Version).to_standard_command(false),
             StandardCommand::Version { json: false }
         );
     }
