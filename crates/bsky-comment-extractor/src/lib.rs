@@ -55,5 +55,7 @@ pub async fn run_extraction(
     };
 
     // 5. Fetch all posts with pagination and cursor persistence
-    bsky_client.fetch_all_posts(&did, since, &conn, on_progress).await
+    bsky_client
+        .fetch_all_posts(&did, since, &conn, on_progress)
+        .await
 }

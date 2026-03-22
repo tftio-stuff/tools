@@ -223,7 +223,15 @@ mod tests {
             conn.query_row(
                 "SELECT uri, author_did, text, created_at, raw_json FROM posts LIMIT 1",
                 [],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                    ))
+                },
             )
             .unwrap();
         assert_eq!(uri, "at://did:plc:abc/app.bsky.feed.post/001");
@@ -237,20 +245,39 @@ mod tests {
     fn test_upsert_post_idempotent() {
         let conn = test_db();
         let uri = "at://did:plc:abc/app.bsky.feed.post/001";
-        upsert_post(&conn, uri, "did:plc:abc", "First", "2024-01-01T00:00:00Z", "{}")
-            .unwrap();
-        upsert_post(&conn, uri, "did:plc:abc", "Updated", "2024-01-01T00:00:00Z", "{}")
-            .unwrap();
+        upsert_post(
+            &conn,
+            uri,
+            "did:plc:abc",
+            "First",
+            "2024-01-01T00:00:00Z",
+            "{}",
+        )
+        .unwrap();
+        upsert_post(
+            &conn,
+            uri,
+            "did:plc:abc",
+            "Updated",
+            "2024-01-01T00:00:00Z",
+            "{}",
+        )
+        .unwrap();
 
         let count: i64 = conn
             .query_row("SELECT COUNT(*) FROM posts", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(count, 1, "inserting same URI twice must not create a duplicate row");
+        assert_eq!(
+            count, 1,
+            "inserting same URI twice must not create a duplicate row"
+        );
 
         let text: String = conn
-            .query_row("SELECT text FROM posts WHERE uri = ?1", params![uri], |row| {
-                row.get(0)
-            })
+            .query_row(
+                "SELECT text FROM posts WHERE uri = ?1",
+                params![uri],
+                |row| row.get(0),
+            )
             .unwrap();
         assert_eq!(text, "Updated");
     }
@@ -290,8 +317,15 @@ mod tests {
     fn test_db_has_uri_true() {
         let conn = test_db();
         let uri = "at://did:plc:abc/app.bsky.feed.post/001";
-        upsert_post(&conn, uri, "did:plc:abc", "text", "2024-01-01T00:00:00Z", "{}")
-            .unwrap();
+        upsert_post(
+            &conn,
+            uri,
+            "did:plc:abc",
+            "text",
+            "2024-01-01T00:00:00Z",
+            "{}",
+        )
+        .unwrap();
         assert!(db_has_uri(&conn, uri).unwrap());
     }
 
@@ -305,8 +339,15 @@ mod tests {
     fn test_upsert_post_returns_true_for_new() {
         let conn = test_db();
         let uri = "at://did:plc:abc/app.bsky.feed.post/new001";
-        let is_new = upsert_post(&conn, uri, "did:plc:abc", "text", "2024-01-01T00:00:00Z", "{}")
-            .unwrap();
+        let is_new = upsert_post(
+            &conn,
+            uri,
+            "did:plc:abc",
+            "text",
+            "2024-01-01T00:00:00Z",
+            "{}",
+        )
+        .unwrap();
         assert!(is_new, "upsert_post must return true when the URI is new");
     }
 
@@ -314,11 +355,28 @@ mod tests {
     fn test_upsert_post_returns_false_for_existing() {
         let conn = test_db();
         let uri = "at://did:plc:abc/app.bsky.feed.post/existing001";
-        upsert_post(&conn, uri, "did:plc:abc", "first", "2024-01-01T00:00:00Z", "{}")
-            .unwrap();
-        let is_new = upsert_post(&conn, uri, "did:plc:abc", "updated", "2024-01-01T00:00:00Z", "{}")
-            .unwrap();
-        assert!(!is_new, "upsert_post must return false when the URI already exists");
+        upsert_post(
+            &conn,
+            uri,
+            "did:plc:abc",
+            "first",
+            "2024-01-01T00:00:00Z",
+            "{}",
+        )
+        .unwrap();
+        let is_new = upsert_post(
+            &conn,
+            uri,
+            "did:plc:abc",
+            "updated",
+            "2024-01-01T00:00:00Z",
+            "{}",
+        )
+        .unwrap();
+        assert!(
+            !is_new,
+            "upsert_post must return false when the URI already exists"
+        );
     }
 
     #[test]

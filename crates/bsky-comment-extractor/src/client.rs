@@ -49,9 +49,7 @@ impl BskyClient {
         let base_url = if credentials.is_some() {
             PDS_BASE.to_string()
         } else {
-            tracing::warn!(
-                "No BSKY_APP_PASSWORD set; using public API with lower rate limits"
-            );
+            tracing::warn!("No BSKY_APP_PASSWORD set; using public API with lower rate limits");
             PUBLIC_API_BASE.to_string()
         };
         Self {
@@ -88,9 +86,7 @@ impl BskyClient {
         if !resp.status().is_success() {
             let status = resp.status();
             let body_text = resp.text().await.unwrap_or_default();
-            return Err(ExtractorError::AuthFailed(format!(
-                "{status}: {body_text}"
-            )));
+            return Err(ExtractorError::AuthFailed(format!("{status}: {body_text}")));
         }
 
         let session: CreateSessionResponse = resp.json().await.map_err(ExtractorError::Network)?;
@@ -121,7 +117,8 @@ impl BskyClient {
             return Err(ExtractorError::AuthExpired);
         }
 
-        let session: CreateSessionResponse = resp.json().await.map_err(|_| ExtractorError::AuthExpired)?;
+        let session: CreateSessionResponse =
+            resp.json().await.map_err(|_| ExtractorError::AuthExpired)?;
         self.access_jwt = Some(session.access_jwt);
         self.refresh_jwt = Some(session.refresh_jwt);
         Ok(())
@@ -190,8 +187,8 @@ impl BskyClient {
                 }
                 Err(e) => return Err(ExtractorError::Network(e)),
                 Ok(resp) if resp.status() == StatusCode::TOO_MANY_REQUESTS => {
-                    let wait = parse_retry_after(resp.headers())
-                        .unwrap_or_else(|| backoff_delay(attempt));
+                    let wait =
+                        parse_retry_after(resp.headers()).unwrap_or_else(|| backoff_delay(attempt));
                     if attempt >= MAX_RETRIES {
                         return Err(ExtractorError::RateLimitExhausted);
                     }
@@ -255,7 +252,12 @@ impl BskyClient {
                 params.iter().map(|(k, v)| (*k, v.as_str())).collect();
 
             let page_bytes = self
-                .execute(Method::GET, "/xrpc/com.atproto.repo.listRecords", &param_refs, None)
+                .execute(
+                    Method::GET,
+                    "/xrpc/com.atproto.repo.listRecords",
+                    &param_refs,
+                    None,
+                )
                 .await?;
             let page: ListRecordsResponse = serde_json::from_slice(&page_bytes)?;
 
@@ -263,7 +265,12 @@ impl BskyClient {
                 // Incremental stop: hit a URI we already have
                 if crate::db::db_has_uri(conn, &record.uri)? {
                     crate::db::complete_extraction(conn, did, count)?;
-                    return Ok(FetchSummary { count, done: true, new_count, existing_count });
+                    return Ok(FetchSummary {
+                        count,
+                        done: true,
+                        new_count,
+                        existing_count,
+                    });
                 }
 
                 // Extract text and created_at from the record value
@@ -277,13 +284,19 @@ impl BskyClient {
                     if let Ok(ts) = chrono::DateTime::parse_from_rfc3339(&created_at) {
                         if ts.with_timezone(&chrono::Utc) < cutoff {
                             crate::db::complete_extraction(conn, did, count)?;
-                            return Ok(FetchSummary { count, done: true, new_count, existing_count });
+                            return Ok(FetchSummary {
+                                count,
+                                done: true,
+                                new_count,
+                                existing_count,
+                            });
                         }
                     }
                 }
 
                 let raw_json = serde_json::to_string(&record.value)?;
-                let is_new = crate::db::upsert_post(conn, &record.uri, did, &text, &created_at, &raw_json)?;
+                let is_new =
+                    crate::db::upsert_post(conn, &record.uri, did, &text, &created_at, &raw_json)?;
                 count += 1;
                 if is_new {
                     new_count += 1;
@@ -305,7 +318,12 @@ impl BskyClient {
         }
 
         crate::db::complete_extraction(conn, did, count)?;
-        Ok(FetchSummary { count, done: true, new_count, existing_count })
+        Ok(FetchSummary {
+            count,
+            done: true,
+            new_count,
+            existing_count,
+        })
     }
 
     /// Build a full URL from a path relative to `base_url`.
@@ -464,7 +482,10 @@ mod tests {
         let result = extract_post_fields(&value);
         assert_eq!(
             result,
-            Some(("Hello world".to_string(), "2024-01-01T00:00:00Z".to_string()))
+            Some((
+                "Hello world".to_string(),
+                "2024-01-01T00:00:00Z".to_string()
+            ))
         );
     }
 
@@ -513,8 +534,15 @@ mod tests {
     fn test_incremental_stop_on_known_uri() {
         let conn = test_db();
         let uri = "at://did:plc:abc/app.bsky.feed.post/001";
-        crate::db::upsert_post(&conn, uri, "did:plc:abc", "text", "2024-01-01T00:00:00Z", "{}")
-            .unwrap();
+        crate::db::upsert_post(
+            &conn,
+            uri,
+            "did:plc:abc",
+            "text",
+            "2024-01-01T00:00:00Z",
+            "{}",
+        )
+        .unwrap();
         assert!(crate::db::db_has_uri(&conn, uri).unwrap());
     }
 
