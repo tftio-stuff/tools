@@ -65,11 +65,11 @@ Plans:
 **Goal:** Remove the remaining reusable metadata-mapping, fatal-runner, response-emitter, and doctor-provider scaffolding from individual tools so `cli-common` owns the full shared CLI substrate.
 **Depends on:** Phase 02
 **Requirements**: CLI-SHARE-04, CLI-SHARE-05, CLI-SHARE-06
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 Plans:
 - [x] 03-01-PLAN.md -- Expand `cli-common` with the final shared metadata, runner, response, and doctor helper layer
-- [ ] 03-02-PLAN.md -- Migrate `gator`, `bce`, and `todoer` off the remaining thin-entrypoint glue
+- [x] 03-02-PLAN.md -- Migrate `gator`, `bce`, and `todoer` off the remaining thin-entrypoint glue
 - [ ] 03-03-PLAN.md -- Migrate `silent-critic`, `unvenv`, `asana-cli`, and `prompter` off the remaining richer glue
 - [ ] 03-04-PLAN.md -- Enforce the thinner boundary, document it, and run the full suite
 
@@ -83,4 +83,4 @@ Plans:
 | 4. CLI Surface | v1.1 | 2/2 | Complete | 2026-03-22 |
 | 01. CLI Common Unification | cli-common-unification | 4/4 | Complete | 2026-03-22 |
 | 02. Maximize cli-common sharing | cli-common-maximal-sharing | 4/4 | Complete | 2026-03-22 |
-| 03. Extract remaining CLI glue into `cli-common` | cli-common-maximal-sharing | 1/4 | In Progress|  |
+| 03. Extract remaining CLI glue into `cli-common` | cli-common-maximal-sharing | 2/4 | In Progress|  |

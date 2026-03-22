@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-03-22T22:19:31.560Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-03-22T22:31:12.565Z"
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 8
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 ## Current Position
 
 Phase: 03 (extract-remaining-cli-glue-into-cli-common-metadata-mapping-fatal-runners-response-emitters-and-doctor-scaffolding) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 
 ## Performance Metrics
 
@@ -43,6 +43,7 @@ Plan: 2 of 4
 | Phase 04 P02 | 3.5min | 3 tasks | 6 files |
 | Phase 01 P01 | 4 min | 2 tasks | 9 files |
 | Phase 03 P01 | 3 min | 2 tasks | 6 files |
+| Phase 03 P02 | 5 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 03]: Metadata helpers support global JSON flags, version-local JSON flags, and doctor/update variants through one shared mapping trait and macro.
 - [Phase 03]: Fatal CLI handling stays closure-based so tools can keep their clap layouts while centralizing error printing and exit-code behavior.
 - [Phase 03]: Response and doctor helpers stay infrastructure-only: text formatting remains caller-owned while cli-common owns the JSON/text branch and doctor scaffolding.
+- [Phase 03]: gator uses a local StandardCommandMap wrapper for library-owned clap enums so shared metadata dispatch can replace repeated StandardCommand matches.
+- [Phase 03]: bce keeps a minimal DoctorChecks provider while maybe_run_standard_command handles its shared metadata dispatch without changing doctor behavior.
+- [Phase 03]: todoer task output now keeps text formatting local while cli-common owns JSON-text branching and direct shared error rendering.
 
 ### Pending Todos
 
@@ -100,6 +104,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-22T22:19:24.526Z
-Stopped At: Completed 03-01-PLAN.md
+Last session: 2026-03-22T22:31:12.563Z
+Stopped At: Completed 03-02-PLAN.md
 Resume file: None
