@@ -2,13 +2,13 @@
 
 ## Milestones
 
-- checkmark **v1.0 Gator Sandbox Hardening** -- Phases 1-2 (shipped 2026-03-18)
-- wip **v1.1 bsky-comment-extractor** -- Phases 3-4 (in progress)
+- [x] **v1.0 Gator Sandbox Hardening** -- Phases 1-2 (shipped 2026-03-18)
+- [x] **v1.1 bsky-comment-extractor** -- Phases 3-4 (shipped 2026-03-22)
 
 ## Phases
 
 <details>
-<summary>checkmark v1.0 Gator Sandbox Hardening (Phases 1-2) -- SHIPPED 2026-03-18</summary>
+<summary>[x] v1.0 Gator Sandbox Hardening (Phases 1-2) -- SHIPPED 2026-03-18</summary>
 
 - [x] Phase 1: Sandbox Isolation (1/1 plans) -- completed 2026-03-18
 - [x] Phase 2: YOLO Injection (1/1 plans) -- completed 2026-03-18
@@ -17,52 +17,21 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full details.
 
 </details>
 
-### v1.1 bsky-comment-extractor (In Progress)
+<details>
+<summary>[x] v1.1 bsky-comment-extractor (Phases 3-4) -- SHIPPED 2026-03-22</summary>
 
-**Milestone Goal:** A working Rust workspace crate that exhaustively fetches a BlueSky user's post history via the AT Protocol and stores it in a queryable local SQLite database.
+- [x] Phase 3: Extraction Engine (2/2 plans) -- completed 2026-03-22
+- [x] Phase 4: CLI Surface (2/2 plans) -- completed 2026-03-22
 
-- [x] **Phase 3: Extraction Engine** - AT Protocol client, auth, exhaustive pagination, SQLite storage (completed 2026-03-22)
-- [x] **Phase 4: CLI Surface** - clap interface, workspace integration, progress indicator (completed 2026-03-22)
+See: `.planning/milestones/v1.1-ROADMAP.md` for full details.
 
-## Phase Details
-
-### Phase 3: Extraction Engine
-**Goal**: A user's complete BlueSky post history can be fetched and stored in SQLite
-**Depends on**: Nothing (new crate, no prior phases)
-**Requirements**: AUTH-01, AUTH-02, EXTR-01, EXTR-02, EXTR-03, EXTR-04, STOR-01, STOR-02, STOR-03
-**Success Criteria** (what must be TRUE):
-  1. Given a BlueSky handle and app password, the tool authenticates and receives a valid session token via `com.atproto.server.createSession`
-  2. All posts for a user are retrieved via `com.atproto.repo.listRecords` with cursor-based pagination until no cursor remains
-  3. A handle (e.g., `alice.bsky.social`) is resolved to a DID before fetching records
-  4. On HTTP 429, the client backs off and retries rather than crashing or returning partial results
-  5. Posts are written to SQLite with AT URI, author DID, text, created_at, reply parent, and raw JSON; re-running does not produce duplicate rows
-**Plans:** 2/2 plans complete
-Plans:
-- [x] 03-01-PLAN.md -- Crate scaffold, types/models/error, SQLite storage layer
-- [x] 03-02-PLAN.md -- AT Protocol client: auth, handle resolution, exhaustive pagination, rate-limit backoff
-
-### Phase 4: CLI Surface
-**Goal**: The extraction engine is usable as a first-class CLI tool following workspace conventions
-**Depends on**: Phase 3
-**Requirements**: CLI-01, CLI-02, CLI-03, CLI-04
-**Success Criteria** (what must be TRUE):
-  1. Running `bce <handle>` with credentials triggers extraction and writes to `~/.local/share/bce/bsky-posts.db` by default
-  2. Running with `--db /path/to/file.db` writes to the specified path instead
-  3. A progress indicator updates in the terminal during extraction showing records retrieved
-  4. The crate compiles and passes `just ci` (format, lint, test, audit, deny) as a workspace member
-**Plans:** 2/2 plans complete
-Plans:
-- [ ] 04-01-PLAN.md -- Extend library API: FetchSummary new/existing counts, progress callback
-- [ ] 04-02-PLAN.md -- CLI binary: clap args, tokio runtime, spinner, XDG paths, summary line
+</details>
 
 ## Progress
-
-**Execution Order:**
-Phases execute in numeric order: 3 -> 4
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1. Sandbox Isolation | v1.0 | 1/1 | Complete | 2026-03-18 |
 | 2. YOLO Injection | v1.0 | 1/1 | Complete | 2026-03-18 |
 | 3. Extraction Engine | v1.1 | 2/2 | Complete | 2026-03-22 |
-| 4. CLI Surface | 2/2 | Complete   | 2026-03-22 | - |
+| 4. CLI Surface | v1.1 | 2/2 | Complete | 2026-03-22 |
