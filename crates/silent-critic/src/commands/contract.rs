@@ -20,8 +20,8 @@ pub struct ContractCriterionView {
 }
 
 pub fn run_show(conn: &rusqlite::Connection, id: &str, role: &str) -> Result<ContractView> {
-    let contract = db::get_contract(conn, id)?
-        .ok_or_else(|| anyhow::anyhow!("contract not found: {id}"))?;
+    let contract =
+        db::get_contract(conn, id)?.ok_or_else(|| anyhow::anyhow!("contract not found: {id}"))?;
 
     let role: SessionRole = role.parse().map_err(|e: String| anyhow::anyhow!(e))?;
     let contract_criteria = db::list_contract_criteria(conn, id)?;

@@ -26,15 +26,14 @@ fn run(cli: &Cli) -> Result<i32, FatalCliError> {
     let json = cli.json;
     let meta_command = metadata_command(cli.command.as_ref());
 
-    if let Some(exit_code) = maybe_run_standard_command_no_doctor::<Cli, _>(
-        &TOOL_SPEC,
-        meta_command.as_ref(),
-        json,
-    ) {
+    if let Some(exit_code) =
+        maybe_run_standard_command_no_doctor::<Cli, _>(&TOOL_SPEC, meta_command.as_ref(), json)
+    {
         return Ok(exit_code);
     }
 
-    cli.validate().map_err(|error| fatal_error("error", json, error))?;
+    cli.validate()
+        .map_err(|error| fatal_error("error", json, error))?;
     gator::run(cli).map_err(|error| fatal_error("error", json, error))?;
     Ok(0)
 }

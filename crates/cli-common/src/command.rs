@@ -77,7 +77,9 @@ where
     D: DoctorChecks,
     C: StandardCommandMap + ?Sized,
 {
-    command.map(|command| run_standard_command::<T, D>(spec, &map_standard_command(command, json), doctor))
+    command.map(|command| {
+        run_standard_command::<T, D>(spec, &map_standard_command(command, json), doctor)
+    })
 }
 
 /// Run a mapped standard command for a tool with no doctor support.
@@ -92,7 +94,9 @@ where
     T: CommandFactory,
     C: StandardCommandMap + ?Sized,
 {
-    command.map(|command| run_standard_command_no_doctor::<T>(spec, &map_standard_command(command, json)))
+    command.map(|command| {
+        run_standard_command_no_doctor::<T>(spec, &map_standard_command(command, json))
+    })
 }
 
 fn render_version(spec: &ToolSpec, json: bool) -> String {
@@ -394,7 +398,9 @@ mod tests {
     enum UpdateMetaCommand {
         Version,
         License,
-        Completions { shell: Shell },
+        Completions {
+            shell: Shell,
+        },
         Doctor,
         Update {
             version: Option<String>,

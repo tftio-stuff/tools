@@ -62,8 +62,5 @@ pub fn run_init(config: &Config, name: Option<&str>) -> Result<InitResult> {
     };
     db::insert_audit_event(&conn, &ae)?;
 
-    Ok(InitResult {
-        project,
-        db_path,
-    })
+    Ok(InitResult { project, db_path })
 }

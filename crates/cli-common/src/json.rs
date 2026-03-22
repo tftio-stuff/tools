@@ -31,7 +31,12 @@ pub fn err_response(command: &str, code: &str, message: &str, details: Value) ->
 /// Render either the shared JSON envelope or plain text for a command response.
 #[must_use]
 #[allow(clippy::needless_pass_by_value)]
-pub fn render_response(command: &str, json_output: bool, data: Value, text: impl Into<String>) -> String {
+pub fn render_response(
+    command: &str,
+    json_output: bool,
+    data: Value,
+    text: impl Into<String>,
+) -> String {
     render_response_parts(command, json_output, || data, || text.into())
 }
 
@@ -48,12 +53,7 @@ where
 /// Render either the shared JSON envelope or lazily-built command data and plain text.
 #[must_use]
 #[allow(clippy::needless_pass_by_value)]
-pub fn render_response_parts<D, T>(
-    command: &str,
-    json_output: bool,
-    data: D,
-    text: T,
-) -> String
+pub fn render_response_parts<D, T>(command: &str, json_output: bool, data: D, text: T) -> String
 where
     D: FnOnce() -> Value,
     T: FnOnce() -> String,
@@ -116,10 +116,15 @@ mod tests {
     #[test]
     fn render_response_parts_skips_text_builder_for_json_output() {
         let called = Cell::new(false);
-        let value = render_response_parts("list", true, || json!({"x": 1}), || {
-            called.set(true);
-            String::from("text")
-        });
+        let value = render_response_parts(
+            "list",
+            true,
+            || json!({"x": 1}),
+            || {
+                called.set(true);
+                String::from("text")
+            },
+        );
 
         assert!(value.contains("\"ok\":true"));
         assert!(!called.get());

@@ -15,11 +15,7 @@ pub struct FatalCliError {
 impl FatalCliError {
     /// Create a fatal CLI error with the shared renderer contract.
     #[must_use]
-    pub fn new(
-        command: impl Into<String>,
-        json_output: bool,
-        message: impl Into<String>,
-    ) -> Self {
+    pub fn new(command: impl Into<String>, json_output: bool, message: impl Into<String>) -> Self {
         Self {
             command: command.into(),
             json_output,
@@ -86,11 +82,7 @@ where
 
 /// Run a fallible CLI closure with shared fatal rendering for any displayable error type.
 #[must_use]
-pub fn run_with_display_error_handler<F, E>(
-    command: &str,
-    json_output: bool,
-    run: F,
-) -> i32
+pub fn run_with_display_error_handler<F, E>(command: &str, json_output: bool, run: F) -> i32
 where
     F: FnOnce() -> Result<i32, E>,
     E: Display,
@@ -150,13 +142,16 @@ mod tests {
 
     #[test]
     fn parse_and_run_passes_parsed_value_to_runner() {
-        let exit_code = parse_and_run(|| String::from("parsed"), |cli| {
-            if cli == "parsed" {
-                Ok(0)
-            } else {
-                Err(fatal_error("scan", false, "unexpected cli"))
-            }
-        });
+        let exit_code = parse_and_run(
+            || String::from("parsed"),
+            |cli| {
+                if cli == "parsed" {
+                    Ok(0)
+                } else {
+                    Err(fatal_error("scan", false, "unexpected cli"))
+                }
+            },
+        );
         assert_eq!(exit_code, 0);
     }
 

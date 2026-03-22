@@ -2,7 +2,10 @@ use crate::models::{DecisionType, EvaluatorType, ExportFormat};
 use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
-#[command(name = "silent-critic", about = "Supervision framework for agentic software development")]
+#[command(
+    name = "silent-critic",
+    about = "Supervision framework for agentic software development"
+)]
 pub struct Cli {
     /// Output JSON instead of plain text
     #[arg(long, global = true)]
@@ -105,7 +108,6 @@ pub enum CriterionCommand {
         /// JSON schema for parameters
         #[arg(long)]
         parameter_schema: Option<String>,
-
     },
     /// List criteria
     List {

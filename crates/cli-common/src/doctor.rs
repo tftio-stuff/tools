@@ -4,8 +4,8 @@
 //! with tool-specific diagnostics.
 
 use crate::types::{DoctorCheck, RepoInfo};
-use std::fmt::Write as _;
 use serde_json::{Map, Value, json};
+use std::fmt::Write as _;
 
 /// Structured doctor report reusable for text and JSON output.
 #[derive(Debug, Clone)]
@@ -145,7 +145,8 @@ impl DoctorReport {
     pub fn render_text(&self) -> String {
         let mut output = String::new();
         writeln!(&mut output, "{}", self.header).expect("write to string");
-        writeln!(&mut output, "{}", "=".repeat(self.header.chars().count())).expect("write to string");
+        writeln!(&mut output, "{}", "=".repeat(self.header.chars().count()))
+            .expect("write to string");
         writeln!(&mut output).expect("write to string");
 
         if !self.checks.is_empty() {
@@ -182,7 +183,8 @@ impl DoctorReport {
         if self.exit_code() == 0 {
             writeln!(&mut output, "✨ Everything looks healthy!").expect("write to string");
         } else {
-            writeln!(&mut output, "❌ Issues found - see above for details").expect("write to string");
+            writeln!(&mut output, "❌ Issues found - see above for details")
+                .expect("write to string");
         }
 
         output

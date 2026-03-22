@@ -200,14 +200,7 @@ mod tests {
 
     #[test]
     fn parse_agent_args_after_separator() {
-        let cli = Cli::parse_from([
-            "gator",
-            "claude",
-            "rust.full",
-            "--",
-            "--model",
-            "opus",
-        ]);
+        let cli = Cli::parse_from(["gator", "claude", "rust.full", "--", "--model", "opus"]);
         assert_eq!(cli.profiles, vec!["rust.full"]);
         assert_eq!(cli.agent_args, vec!["--model", "opus"]);
     }

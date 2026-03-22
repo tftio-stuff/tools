@@ -1360,9 +1360,7 @@ pub fn render_to_vec(
 ///
 /// # Errors
 /// Returns an error if config resolution or parsing fails.
-pub fn available_profiles(
-    config_override: Option<&Path>,
-) -> Result<Vec<String>, String> {
+pub fn available_profiles(config_override: Option<&Path>) -> Result<Vec<String>, String> {
     let cfg_path = resolve_config_path(config_override)?;
     let cfg_text = read_config_with_path(&cfg_path)?;
     let cfg = parse_config_toml(&cfg_text)?;

@@ -50,9 +50,12 @@ fn run(cli: Cli) -> Result<i32, FatalCliError> {
     if let Some(ref cmd) = cli.command {
         if is_metadata_command(cmd) {
             let metadata_cmd = BceMetadataCommand(cmd);
-            if let Some(exit_code) =
-                maybe_run_standard_command::<Cli, BceDoctor, _>(&TOOL_SPEC, Some(&metadata_cmd), false, Some(&doctor))
-            {
+            if let Some(exit_code) = maybe_run_standard_command::<Cli, BceDoctor, _>(
+                &TOOL_SPEC,
+                Some(&metadata_cmd),
+                false,
+                Some(&doctor),
+            ) {
                 return Ok(exit_code);
             }
         }
@@ -133,7 +136,10 @@ fn execute_fetch(fetch: FetchArgs) -> Result<()> {
         })
         .transpose()?;
 
-    let spinner = make_spinner(!fetch.quiet, &format!("Fetching posts for {}... 0 records", &fetch.handle));
+    let spinner = make_spinner(
+        !fetch.quiet,
+        &format!("Fetching posts for {}... 0 records", &fetch.handle),
+    );
 
     let progress_cb = |count: u64| {
         if let Some(ref pb) = spinner {
@@ -213,7 +219,10 @@ fn execute_query(query: QueryArgs) -> Result<()> {
 fn handle_query_error(err: ExtractorError, db_path: &Path) -> Result<()> {
     match &err {
         ExtractorError::Io(io_err) if io_err.kind() == std::io::ErrorKind::NotFound => {
-            write_json_error("db_not_found", &format!("database not found: {}", db_path.display()));
+            write_json_error(
+                "db_not_found",
+                &format!("database not found: {}", db_path.display()),
+            );
         }
         _ => write_json_error("query_failed", &err.to_string()),
     }

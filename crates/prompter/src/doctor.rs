@@ -1,10 +1,8 @@
 //! Health check and diagnostics module.
 
-use std::path::Path;
 use serde_json::json;
-use tftio_cli_common::{
-    DoctorCheck, DoctorChecks, DoctorReport, RepoInfo,
-};
+use std::path::Path;
+use tftio_cli_common::{DoctorCheck, DoctorChecks, DoctorReport, RepoInfo};
 
 pub struct PrompterDoctor;
 
@@ -49,7 +47,10 @@ impl DoctorChecks for PrompterDoctor {
         } else {
             checks.push(DoctorCheck::fail(
                 "Library directory",
-                format!("Library directory not found: {}", state.library_path.display()),
+                format!(
+                    "Library directory not found: {}",
+                    state.library_path.display()
+                ),
             ));
         }
 

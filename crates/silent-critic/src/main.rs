@@ -137,7 +137,13 @@ fn dispatch(cli: Cli) -> anyhow::Result<String> {
                         json!({"criterion": c}),
                         format!(
                             "id: {}\nnamespace: {}\nname: {}\nclaim: {}\nevaluator: {}\ncheck_spec: {}\ncreated: {}",
-                            c.id, c.namespace, c.name, c.claim, c.evaluator_type, c.check_spec, c.created_at
+                            c.id,
+                            c.namespace,
+                            c.name,
+                            c.claim,
+                            c.evaluator_type,
+                            c.check_spec,
+                            c.created_at
                         ),
                     ))
                 }
@@ -247,14 +253,19 @@ fn dispatch(cli: Cli) -> anyhow::Result<String> {
                         || {
                             let mut out = format!(
                                 "session: {}\nstatus: {}\nworktree: {}\nstarted: {}",
-                                report.session_id, report.status, report.worktree, report.started_at
+                                report.session_id,
+                                report.status,
+                                report.worktree,
+                                report.started_at
                             );
                             if let Some(ref goal) = report.goal {
                                 out.push_str(&format!("\ngoal: {goal}"));
                             }
                             out.push_str(&format!(
                                 "\ncriteria: {}\nevidence: {}\ndiscovery items: {}",
-                                report.criteria_count, report.evidence_count, report.discovery_count
+                                report.criteria_count,
+                                report.evidence_count,
+                                report.discovery_count
                             ));
                             out
                         },
@@ -339,8 +350,10 @@ fn dispatch(cli: Cli) -> anyhow::Result<String> {
                         id.clone()
                     } else {
                         // Fall back to active session
-                        let active = silent_critic::db::get_active_session(&conn)?
-                            .ok_or_else(|| anyhow::anyhow!("no active session and no session ID provided"))?;
+                        let active =
+                            silent_critic::db::get_active_session(&conn)?.ok_or_else(|| {
+                                anyhow::anyhow!("no active session and no session ID provided")
+                            })?;
                         active.id
                     };
                     let output = session::run_session_sandbox(&conn, &sid)?;
@@ -375,9 +388,7 @@ fn dispatch(cli: Cli) -> anyhow::Result<String> {
                 }
                 SessionCommand::Go { prompt_only } => {
                     if !prompt_only {
-                        anyhow::bail!(
-                            "--prompt-only is required (process spawning not supported)"
-                        );
+                        anyhow::bail!("--prompt-only is required (process spawning not supported)");
                     }
                     let result = session::run_go_prompt_only(&conn)?;
                     Ok(render_response_parts(
@@ -443,8 +454,10 @@ fn dispatch(cli: Cli) -> anyhow::Result<String> {
                             })
                         },
                         || {
-                            let mut out =
-                                format!("Contract: {}\nGoal: {}\n\nCriteria:\n", view.id, view.goal);
+                            let mut out = format!(
+                                "Contract: {}\nGoal: {}\n\nCriteria:\n",
+                                view.id, view.goal
+                            );
                             for c in &view.criteria {
                                 out.push_str(&format!(
                                     "  [{}] {} -- {} ({})\n",
@@ -465,13 +478,8 @@ fn dispatch(cli: Cli) -> anyhow::Result<String> {
             evidence_refs,
         } => {
             let conn = open_project_db(&config)?;
-            let d = decide::run_decide(
-                &conn,
-                &contract,
-                &r#type,
-                &basis,
-                evidence_refs.as_deref(),
-            )?;
+            let d =
+                decide::run_decide(&conn, &contract, &r#type, &basis, evidence_refs.as_deref())?;
             Ok(render_response_parts(
                 "decide",
                 json,

@@ -4,7 +4,11 @@ use crate::runner::FatalCliError;
 
 /// Build a shared fatal CLI error value.
 #[must_use]
-pub fn fatal_error(command: impl Into<String>, json_output: bool, message: impl Into<String>) -> FatalCliError {
+pub fn fatal_error(
+    command: impl Into<String>,
+    json_output: bool,
+    message: impl Into<String>,
+) -> FatalCliError {
     FatalCliError::new(command, json_output, message)
 }
 

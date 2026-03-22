@@ -2,14 +2,8 @@ use clap::Parser;
 use serde_json::json;
 use std::io::Read;
 use tftio_cli_common::{
-    command::run_standard_command_no_doctor,
-    error::print_error,
-    render_response,
-    render_response_with,
-    workspace_tool,
-    LicenseType,
-    StandardCommand,
-    ToolSpec,
+    LicenseType, StandardCommand, ToolSpec, command::run_standard_command_no_doctor,
+    error::print_error, render_response, render_response_with, workspace_tool,
 };
 
 use todoer::cli::{Cli, Command, MetaCommand, TaskCommand, TaskUpdateCommand};
@@ -18,8 +12,8 @@ use todoer::commands::{
     list::run_list,
     new::run_new,
     task::{
-        run_note, run_show, run_status, run_update_status, NoteResult, ShowResult, StatusResult,
-        UpdateStatusResult,
+        NoteResult, ShowResult, StatusResult, UpdateStatusResult, run_note, run_show, run_status,
+        run_update_status,
     },
 };
 use todoer::config::load_config;
@@ -69,15 +63,11 @@ fn run(cli: Cli) -> i32 {
                 None => return print_error("init", json, "no home dir"),
             };
             let git_name = git_repo_name(&cwd);
-            let project = match resolve_init_project(
-                project.as_deref(),
-                &cwd,
-                &home,
-                git_name.as_deref(),
-            ) {
-                Ok(project) => project,
-                Err(error) => return print_error("init", json, &error.to_string()),
-            };
+            let project =
+                match resolve_init_project(project.as_deref(), &cwd, &home, git_name.as_deref()) {
+                    Ok(project) => project,
+                    Err(error) => return print_error("init", json, &error.to_string()),
+                };
 
             match run_init(&config, &project) {
                 Ok(result) => {
@@ -259,7 +249,7 @@ fn run(cli: Cli) -> i32 {
                     let config = match load_config() {
                         Ok(config) => config,
                         Err(error) => {
-                            return print_error("task.update.status", json, &error.to_string())
+                            return print_error("task.update.status", json, &error.to_string());
                         }
                     };
                     match run_update_status(&config, &id, status) {
@@ -267,9 +257,7 @@ fn run(cli: Cli) -> i32 {
                             println!("{}", render_update_status_response(&result, json));
                             0
                         }
-                        Err(error) => {
-                            print_error("task.update.status", json, &error.to_string())
-                        }
+                        Err(error) => print_error("task.update.status", json, &error.to_string()),
                     }
                 }
             },

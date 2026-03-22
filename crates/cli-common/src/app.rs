@@ -127,7 +127,15 @@ mod tests {
 
     #[test]
     fn workspace_tool_uses_workspace_repo_defaults() {
-        let spec = workspace_tool("tool", "Tool", "1.2.3", LicenseType::MIT, true, false, false);
+        let spec = workspace_tool(
+            "tool",
+            "Tool",
+            "1.2.3",
+            LicenseType::MIT,
+            true,
+            false,
+            false,
+        );
 
         assert_eq!(spec.repo.owner, WORKSPACE_REPO.owner);
         assert_eq!(spec.repo.name, WORKSPACE_REPO.name);

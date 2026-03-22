@@ -157,7 +157,11 @@ mod tests {
     fn render_completion_separates_instructions_from_script() {
         let output = render_completion::<TestCli>(Shell::Bash);
 
-        assert!(output.instructions.contains("source <(test-cli completions bash)"));
+        assert!(
+            output
+                .instructions
+                .contains("source <(test-cli completions bash)")
+        );
         assert!(output.script.contains("complete"));
     }
 }

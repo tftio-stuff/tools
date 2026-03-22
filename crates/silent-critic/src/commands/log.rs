@@ -4,7 +4,11 @@ use serde_json::json;
 use crate::db;
 use crate::models::ExportFormat;
 
-pub fn run_log(conn: &rusqlite::Connection, contract_id: &str, format: &ExportFormat) -> Result<String> {
+pub fn run_log(
+    conn: &rusqlite::Connection,
+    contract_id: &str,
+    format: &ExportFormat,
+) -> Result<String> {
     let contract = db::get_contract(conn, contract_id)?
         .ok_or_else(|| anyhow::anyhow!("contract not found: {contract_id}"))?;
 
