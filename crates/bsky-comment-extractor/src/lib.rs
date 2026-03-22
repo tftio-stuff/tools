@@ -1,4 +1,4 @@
-//! Extract BlueSky post history to SQLite via the AT Protocol.
+//! Extract `BlueSky` post history to `SQLite` via the AT Protocol.
 
 pub mod client;
 pub mod db;
