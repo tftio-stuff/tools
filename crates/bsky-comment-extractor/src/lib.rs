@@ -17,6 +17,9 @@ pub use error::ExtractorError;
 /// `since` parameter optionally limits extraction to posts after the given
 /// `UTC` timestamp.
 ///
+/// The `on_progress` callback, if provided, is invoked with the running
+/// total of processed records after each post is stored.
+///
 /// # Errors
 ///
 /// Returns `ExtractorError::AuthFailed` if authentication fails,
@@ -27,6 +30,7 @@ pub async fn run_extraction(
     handle: &str,
     db_path: &std::path::Path,
     since: Option<chrono::DateTime<chrono::Utc>>,
+    on_progress: Option<&dyn Fn(u64)>,
 ) -> Result<models::FetchSummary, error::ExtractorError> {
     // 1. Open + init DB
     let conn = db::open_db(db_path)?;
@@ -36,11 +40,10 @@ pub async fn run_extraction(
     let password = std::env::var("BSKY_APP_PASSWORD").ok();
 
     // 3. Create BskyClient (with or without credentials)
-    let mut bsky_client = if let Some(ref pw) = password {
-        BskyClient::new(Some((handle, pw.as_str())))
-    } else {
-        BskyClient::new(None)
-    };
+    let mut bsky_client = password.as_ref().map_or_else(
+        || BskyClient::new(None),
+        |pw| BskyClient::new(Some((handle, pw.as_str()))),
+    );
 
     // 4. If credentials present: authenticate and get DID from response
     //    If no credentials: resolve handle to DID via public API
@@ -51,5 +54,5 @@ pub async fn run_extraction(
     };
 
     // 5. Fetch all posts with pagination and cursor persistence
-    bsky_client.fetch_all_posts(&did, since, &conn).await
+    bsky_client.fetch_all_posts(&did, since, &conn, on_progress).await
 }
