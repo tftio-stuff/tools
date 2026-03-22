@@ -1,0 +1,25 @@
+[package]
+name = "tftio-bsky-comment-extractor"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Extract BlueSky post history to SQLite"
+
+[lints]
+workspace = true
+
+[lib]
+name = "bsky_comment_extractor"
+path = "src/lib.rs"
+
+[dependencies]
+chrono = { workspace = true, features = ["std", "clock"] }
+reqwest.workspace = true
+rusqlite.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["time"] }
+tracing.workspace = true

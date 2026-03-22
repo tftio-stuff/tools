@@ -2323,6 +2323,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "tftio-bsky-comment-extractor"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "reqwest",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "tftio-cli-common"
 version = "0.5.0"
 dependencies = [
