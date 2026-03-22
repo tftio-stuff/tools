@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: bce-query-mode
 milestone_name: bce-query-mode
-status: defining_requirements
+status: roadmap_defined
 last_updated: "2026-03-22"
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -18,14 +18,19 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Complete, reliable extraction of a single BlueSky user's entire post and interaction history into a queryable local store.
-**Current focus:** Defining requirements for bce-query-mode
+**Current focus:** bce-query-mode -- Phase 5: Query Subcommand
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 5 -- Query Subcommand (not started)
 Plan: --
-Status: Defining requirements
-Last activity: 2026-03-22 -- Milestone bce-query-mode started
+Status: Roadmap defined, ready for planning
+Last activity: 2026-03-22 -- bce-query-mode roadmap created
+
+```
+[Phase 5: Query Subcommand] [ ] [ ] [ ] [ ] [ ]
+[Phase 6: Agent Help      ] [ ]
+```
 
 ## Performance Metrics
 
@@ -63,6 +68,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 04-01]: upsert_post checks db_has_uri before INSERT OR REPLACE rather than conn.changes() -- semantically unambiguous, avoids surprising delete+insert change count
 - [Phase 04-02]: make_spinner returns None when quiet=true OR stdout is not TTY, matching workspace UX pattern
 - [Phase 04-02]: test_db_path_default checks path contains bce and ends with bsky-posts.db for cross-platform correctness
+- [bce-query-mode roadmap]: QUERY-01 through QUERY-04 and AGENT-02 grouped into Phase 5 (coherent query unit); AGENT-01 isolated in Phase 6 (separate agent-doc concern)
 
 ### Pending Todos
 
@@ -75,6 +81,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-22T17:53:51.873Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-03-22
+Stopped at: bce-query-mode roadmap created
 Resume file: None
