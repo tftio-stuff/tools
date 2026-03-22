@@ -1,9 +1,10 @@
 //! `SQLite` storage layer for post records and extraction metadata.
 
-use rusqlite::{Connection, OptionalExtension, params};
+use rusqlite::{Connection, OpenFlags, OptionalExtension, params};
 use std::path::Path;
 
 use crate::error::ExtractorError;
+use crate::models::QueryPost;
 
 /// Open (or create) a `SQLite` database at the given path.
 ///
@@ -18,6 +19,24 @@ pub fn open_db(path: &Path) -> Result<Connection, ExtractorError> {
         "PRAGMA foreign_keys = ON;
          PRAGMA journal_mode = WAL;",
     )?;
+    Ok(conn)
+}
+
+/// Open an existing `SQLite` database for query mode without creating a file.
+///
+/// This helper rejects missing paths before opening the connection so the
+/// query subcommand cannot silently create an empty database on typoed paths.
+pub fn open_existing_db(path: &Path) -> Result<Connection, ExtractorError> {
+    if !path.exists() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("database not found: {}", path.display()),
+        )
+        .into());
+    }
+
+    let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_WRITE)?;
+    conn.execute_batch("PRAGMA foreign_keys = ON;")?;
     Ok(conn)
 }
 
@@ -57,6 +76,12 @@ pub fn init_db(conn: &Connection) -> Result<(), ExtractorError> {
     Ok(())
 }
 
+/// Count the total number of stored posts for query pagination metadata.
+pub fn count_posts(conn: &Connection) -> Result<u64, ExtractorError> {
+    let total: i64 = conn.query_row("SELECT COUNT(*) FROM posts", [], |row| row.get(0))?;
+    Ok(u64::try_from(total).expect("COUNT(*) must be non-negative"))
+}
+
 /// Insert or replace a post record in the `posts` table.
 ///
 /// Uses `INSERT OR REPLACE` semantics so that inserting the same AT URI a
@@ -79,6 +104,46 @@ pub fn upsert_post(
         params![uri, author_did, text, created_at, raw_json],
     )?;
     Ok(is_new)
+}
+
+/// Read a deterministic page of curated posts ordered by recency and URI.
+///
+/// Results are ordered by `created_at DESC, uri DESC` so repeated runs with the
+/// same inputs produce stable page boundaries for agent consumers.
+pub fn query_posts(
+    conn: &Connection,
+    limit: u64,
+    offset: u64,
+) -> Result<Vec<QueryPost>, ExtractorError> {
+    let limit = i64::try_from(limit).map_err(|_| {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "limit exceeds i64::MAX",
+        )
+    })?;
+    let offset = i64::try_from(offset).map_err(|_| {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "offset exceeds i64::MAX",
+        )
+    })?;
+
+    let mut stmt = conn.prepare(
+        "SELECT uri, author_did, text, created_at
+         FROM posts
+         ORDER BY created_at DESC, uri DESC
+         LIMIT ?1 OFFSET ?2",
+    )?;
+    let rows = stmt.query_map(params![limit, offset], |row| {
+        Ok(QueryPost {
+            uri: row.get(0)?,
+            author_did: row.get(1)?,
+            text: row.get(2)?,
+            created_at: row.get(3)?,
+        })
+    })?;
+
+    rows.collect::<Result<Vec<_>, _>>().map_err(ExtractorError::from)
 }
 
 /// Return `true` if a post with the given AT URI exists in the database.
@@ -386,5 +451,95 @@ mod tests {
         let conn = open_db(&db_path).unwrap();
         init_db(&conn).unwrap();
         assert!(db_path.exists());
+    }
+
+    #[test]
+    fn test_open_existing_db_missing_file_fails() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("missing.db");
+
+        let error = open_existing_db(&db_path).unwrap_err();
+
+        assert!(matches!(error, ExtractorError::Io(_)));
+        assert!(!db_path.exists());
+    }
+
+    #[test]
+    fn test_count_posts_empty_db_returns_zero() {
+        let conn = test_db();
+        assert_eq!(count_posts(&conn).unwrap(), 0);
+    }
+
+    #[test]
+    fn test_query_posts_orders_by_created_at_then_uri_desc() {
+        let conn = test_db();
+        let rows = [
+            (
+                "at://did:plc:abc/app.bsky.feed.post/001",
+                "2024-01-01T00:00:00Z",
+            ),
+            (
+                "at://did:plc:abc/app.bsky.feed.post/004",
+                "2024-01-04T00:00:00Z",
+            ),
+            (
+                "at://did:plc:abc/app.bsky.feed.post/003",
+                "2024-01-02T12:00:00Z",
+            ),
+            (
+                "at://did:plc:abc/app.bsky.feed.post/002",
+                "2024-01-02T12:00:00Z",
+            ),
+        ];
+
+        for (uri, created_at) in rows {
+            upsert_post(&conn, uri, "did:plc:abc", "text", created_at, "{}").unwrap();
+        }
+
+        let posts = query_posts(&conn, 10, 0).unwrap();
+        let uris: Vec<&str> = posts.iter().map(|post| post.uri.as_str()).collect();
+
+        assert_eq!(
+            uris,
+            vec![
+                "at://did:plc:abc/app.bsky.feed.post/004",
+                "at://did:plc:abc/app.bsky.feed.post/003",
+                "at://did:plc:abc/app.bsky.feed.post/002",
+                "at://did:plc:abc/app.bsky.feed.post/001",
+            ]
+        );
+    }
+
+    #[test]
+    fn test_query_posts_applies_limit_and_offset() {
+        let conn = test_db();
+        let rows = [
+            (
+                "at://did:plc:abc/app.bsky.feed.post/001",
+                "2024-01-01T00:00:00Z",
+            ),
+            (
+                "at://did:plc:abc/app.bsky.feed.post/004",
+                "2024-01-04T00:00:00Z",
+            ),
+            (
+                "at://did:plc:abc/app.bsky.feed.post/003",
+                "2024-01-02T12:00:00Z",
+            ),
+            (
+                "at://did:plc:abc/app.bsky.feed.post/002",
+                "2024-01-02T12:00:00Z",
+            ),
+        ];
+
+        for (uri, created_at) in rows {
+            upsert_post(&conn, uri, "did:plc:abc", "text", created_at, "{}").unwrap();
+        }
+
+        let all_posts = query_posts(&conn, 10, 0).unwrap();
+        let page = query_posts(&conn, 2, 1).unwrap();
+
+        assert_eq!(page.len(), 2);
+        assert_eq!(page, all_posts[1..3]);
     }
 }

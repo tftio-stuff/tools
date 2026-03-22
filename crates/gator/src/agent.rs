@@ -186,45 +186,46 @@ mod tests {
     fn build_command_claude_yolo() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
         let (cmd, _) = build_command(&Agent::Claude, tmp.path(), None, &[], true).unwrap();
-        assert!(cmd
+        let args: Vec<_> = cmd
             .get_args()
             .map(|a| a.to_string_lossy().to_string())
-            .any(|arg| arg == "--dangerously-skip-permissions"));
+            .collect();
+        assert!(args.contains(&"--dangerously-skip-permissions".to_owned()));
     }
 
     #[test]
     fn build_command_codex_yolo() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
         let (cmd, _) = build_command(&Agent::Codex, tmp.path(), None, &[], true).unwrap();
-        assert!(cmd
+        let args: Vec<_> = cmd
             .get_args()
             .map(|a| a.to_string_lossy().to_string())
-            .any(|arg| arg == "--full-auto"));
+            .collect();
+        assert!(args.contains(&"--full-auto".to_owned()));
     }
 
     #[test]
     fn build_command_gemini_yolo_no_arg() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
         let (cmd, _) = build_command(&Agent::Gemini, tmp.path(), None, &[], true).unwrap();
+        let args: Vec<_> = cmd
+            .get_args()
+            .map(|a| a.to_string_lossy().to_string())
+            .collect();
         // Gemini has no YOLO flag -- only sandbox-exec plumbing + "gemini"
-        assert!(!cmd
-            .get_args()
-            .map(|a| a.to_string_lossy().to_string())
-            .any(|arg| arg == "--dangerously-skip-permissions"));
-        assert!(!cmd
-            .get_args()
-            .map(|a| a.to_string_lossy().to_string())
-            .any(|arg| arg == "--full-auto"));
+        assert!(!args.contains(&"--dangerously-skip-permissions".to_owned()));
+        assert!(!args.contains(&"--full-auto".to_owned()));
     }
 
     #[test]
     fn build_command_no_yolo_skips_injection() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
         let (cmd, _) = build_command(&Agent::Claude, tmp.path(), None, &[], false).unwrap();
-        assert!(!cmd
+        let args: Vec<_> = cmd
             .get_args()
             .map(|a| a.to_string_lossy().to_string())
-            .any(|arg| arg == "--dangerously-skip-permissions"));
+            .collect();
+        assert!(!args.contains(&"--dangerously-skip-permissions".to_owned()));
     }
 
     #[test]

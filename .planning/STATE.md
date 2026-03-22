@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: cli-common-maximal-sharing
-milestone_name: cli-common-maximal-sharing
-current_phase: "03"
-status: milestone archived
-stopped_at: Archived symbolic milestone cli-common-maximal-sharing
-last_updated: "2026-03-22T23:55:00.000Z"
+milestone: reconciled
+milestone_name: bce-query-mode + cli-common-maximal-sharing reconciliation
+status: reconciled
+stopped_at: Merged main (bce-query-mode) and feature/add-agent-help-to-all-tools (cli-common-maximal-sharing)
+last_updated: "2026-03-22T23:59:00.000Z"
 last_activity: "2026-03-22"
 progress:
   total_phases: 3
   completed_phases: 3
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 15
+  completed_plans: 15
   percent: 100
 ---
 
@@ -22,53 +21,39 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Complete, reliable extraction of a single BlueSky user's entire post and interaction history into a queryable local store.
-**Current focus:** No active symbolic milestone. The most recently archived milestone is `cli-common-maximal-sharing`.
+**Current focus:** Both symbolic milestones `bce-query-mode` and `cli-common-maximal-sharing` have been completed and reconciled.
 
 ## Current Position
 
-Phase: 03 (extract-remaining-cli-glue-into-cli-common) — COMPLETE
-Milestone: `cli-common-maximal-sharing` — ARCHIVED
-Plan: 4 of 4 (completed)
+Milestone: Reconciled merge of bce-query-mode (Phase 5, 3 plans) and cli-common-maximal-sharing (Phases 01-03, 12 plans)
+Status: All phases complete, features integrated
+Total plans completed: 15 (3 from bce-query-mode + 12 from cli-common-maximal-sharing)
 
-## Performance Metrics
+## Completed Milestones
 
-**Velocity (symbolic CLI refactor milestones):**
+### bce-query-mode (Completed 2026-03-22)
+- Phase 5: Query Subcommand (3/3 plans)
+- Features: `bce query` with JSONL pagination, QueryEnvelope, QueryPost models
 
-- Total archived symbolic milestones: 2
-- Latest archived milestone: `cli-common-maximal-sharing`
-- Latest milestone phases: 2
-- Latest milestone plans: 8
+### cli-common-maximal-sharing (Completed 2026-03-22)
+- Phase 01: CLI Common Unification (4/4 plans)
+- Phase 02: Maximize cli-common sharing (4/4 plans)
+- Phase 03: Extract remaining CLI glue (4/4 plans)
+- Features: Shared metadata commands, StandardCommandMap pattern, unified workspace CLI UX
 
-## Accumulated Context
+## Integration Status
 
-### Decisions
+The two parallel workstreams have been successfully merged:
+- `bce` now supports both query functionality (from main) and cli-common infrastructure (from feature branch)
+- CLI structure: `bce fetch|query|version|license|completions|doctor`
+- All workspace tools now share consistent metadata command UX via tftio-cli-common
 
-Decisions are logged in PROJECT.md Key Decisions table.
+## Next Steps
 
-- [Milestone]: release-please milestones use symbolic names in planning artifacts instead of manual semantic version tags
-- [Milestone]: `cli-common-unification` archived as the first symbolic CLI refactor milestone
-- [Milestone]: `cli-common-maximal-sharing` archived after Phases 02-03 completed and passed automated verification
-- [Phase 02-01]: `cli-common` now provides `workspace_tool`, the shared doctorless adapter, buffer-first completion rendering, structured doctor reports, and shared response rendering helpers
-- [Phase 03]: `cli-common` now provides metadata mapping helpers, fatal runner helpers, lazy response emitters, doctor report builders, and repository shell boundary enforcement
+No active milestone. Recommended:
+- Start new symbolic milestone with GSD workflow if architectural work needed
+- Continue product features (activity-type filtering) when ready
+- Release versioning managed by release-please
 
-### Pending Todos
-
-None.
-
-### Blockers/Concerns
-
-- `bce` activity-type filtering remains future product work
-- Release packaging and semantic tags remain owned by release-please rather than milestone completion
-
-### Roadmap Evolution
-
-- Phase 1 added: examine all tool code and extract common CLI behavior into `cli-common`
-- Phase 2 added: maximize shared or generally useful functionality in `cli-common`
-- Phase 3 added: extract the remaining metadata, fatal-runner, response, and doctor glue into `cli-common`
-- Symbolic milestone `cli-common-maximal-sharing` archived on 2026-03-22 after 2 phases, 8 plans, and automated UAT passed
-
-## Session Continuity
-
-Last session: 2026-03-22T23:55:00.000Z
-Stopped At: Archived symbolic milestone cli-common-maximal-sharing
-Resume file: None
+---
+*Last updated: 2026-03-22 after reconciling bce-query-mode and cli-common-maximal-sharing milestones*
