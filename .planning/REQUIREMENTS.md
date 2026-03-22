@@ -41,18 +41,18 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| QUERY-01 | TBD | Pending |
-| QUERY-02 | TBD | Pending |
-| QUERY-03 | TBD | Pending |
-| QUERY-04 | TBD | Pending |
-| AGENT-01 | TBD | Pending |
-| AGENT-02 | TBD | Pending |
+| QUERY-01 | Phase 5 | Pending |
+| QUERY-02 | Phase 5 | Pending |
+| QUERY-03 | Phase 5 | Pending |
+| QUERY-04 | Phase 5 | Pending |
+| AGENT-02 | Phase 5 | Pending |
+| AGENT-01 | Phase 6 | Pending |
 
 **Coverage:**
 - bce-query-mode requirements: 6 total
-- Mapped to phases: 0
-- Unmapped: 6
+- Mapped to phases: 6
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-22*
-*Last updated: 2026-03-22 after initial definition*
+*Last updated: 2026-03-22 after bce-query-mode roadmap creation*
