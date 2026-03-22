@@ -2,64 +2,68 @@
 
 ## What This Is
 
-A Rust CLI tool that exhaustively retrieves a BlueSky user's network activity via the AT Protocol, stores it in a local SQLite database, and supports filtering by activity type. A new crate in the existing `tools` Cargo workspace.
+A Rust CLI tool (`bce`) that exhaustively retrieves a BlueSky user's post history via the AT Protocol and stores it in a local SQLite database. A workspace member of the `tools` Cargo monorepo.
 
 ## Core Value
 
-Complete, reliable extraction of a single BlueSky user's entire post and interaction history into a queryable local store.
+Complete, reliable extraction of a single BlueSky user's entire post history into a queryable local store.
 
 ## Requirements
 
+### Validated
+
+- [x] Authenticate to BlueSky via app password -- v1.1
+- [x] Retrieve all posts via `com.atproto.repo.listRecords` with exhaustive pagination -- v1.1
+- [x] Resolve handle to DID, rate-limit backoff on HTTP 429 -- v1.1
+- [x] Store posts in SQLite with structured schema, idempotent writes -- v1.1
+- [x] Configurable database path (`--db` flag, XDG default) -- v1.1
+- [x] CLI interface following workspace conventions (clap, cli-common, indicatif) -- v1.1
+
 ### Active
+
 - [ ] Support filtering by activity type: posts, likes, reposts, quote-posts, blocks, blocked-by
 - [ ] Default filter: posts (all posts including replies) when no filter specified
 
-### Validated
-- [x] CLI interface following workspace conventions (clap, cli-common) — Phase 4
-- [x] Authenticate to BlueSky via app password — Phase 3
-- [x] Retrieve all posts (top-level and replies) for a given user handle or DID — Phase 3
-- [x] Use `com.atproto.repo.listRecords` for completeness over `getAuthorFeed` — Phase 3
-- [x] Store results in a local SQLite database — Phase 3
-- [x] Paginate exhaustively through full history — Phase 3
-
 ### Out of Scope
 
-- Firehose/streaming consumption — batch retrieval only
+- Firehose/streaming consumption -- batch retrieval only
 - Multi-user extraction in a single invocation
 - Real-time monitoring or polling
-- OAuth authentication — app passwords are sufficient
-- Search by keyword — this extracts a user's activity, not search results
-- Output formats other than SQLite (JSONL, CSV, etc.) — may revisit later
+- OAuth authentication -- app passwords sufficient
+- Search by keyword -- extracts activity, not search results
+- Output formats other than SQLite (JSONL, CSV) -- may revisit later
 
 ## Context
 
-- BlueSky's `com.atproto.repo.listRecords` provides raw repository records by collection, giving complete historical data without the gaps that `getAuthorFeed` may have
-- Relevant AT Protocol collections: `app.bsky.feed.post`, `app.bsky.feed.like`, `app.bsky.feed.repost`, `app.bsky.graph.block`
-- Quote-posts are regular posts with an embed of type `app.bsky.embed.record` — filtered client-side
-- "Blocked-by" is not stored in the user's own repo; requires `app.bsky.graph.getBlocks` or similar API call
-- The workspace already uses `rusqlite` (bundled) and `reqwest` with rustls — reuse these
-- Rate limit: ~3,000 requests per 5 minutes; `listRecords` paginated at up to 100 records per request
-- No auth needed for public read endpoints, but authenticated requests may have higher limits
+- 1,416 lines of Rust across 7 source files in `crates/bsky-comment-extractor/`
+- Binary: `bce` (installed via `cargo install tftio-bsky-comment-extractor`)
+- 32 tests (9 db, 14 client, 4 cli parse, 2 main, 3 ignored integration)
+- Dependencies: reqwest (rustls), rusqlite (bundled), clap, tokio, serde, chrono, indicatif, dateparser, directories, anyhow, thiserror
+- AT Protocol collections: `app.bsky.feed.post` (v1); `app.bsky.feed.like`, `app.bsky.feed.repost`, `app.bsky.graph.block` planned for v2
+- Rate limit: ~3,000 requests per 5 minutes; `listRecords` paginated at 100 records per request
 
 ## Constraints
 
-- **Tech stack**: Rust, workspace member of `tools/`. Must follow workspace lint config, dependency patterns, and crate structure
-- **Dependencies**: Prefer workspace-level deps (`reqwest`, `rusqlite`, `serde`, `serde_json`, `clap`, `tokio`, `thiserror`, `chrono`). Add AT Protocol-specific deps as needed
+- **Tech stack**: Rust, workspace member of `tools/`. Follows workspace lint config, dependency patterns, and crate structure
+- **Dependencies**: Workspace-level deps via `dep.workspace = true`
 - **Auth**: App password only (no OAuth complexity)
-- **API approach**: `com.atproto.repo.listRecords` as primary data source for owned-repo collections; API endpoints for data not in user's repo (blocked-by)
+- **API approach**: `com.atproto.repo.listRecords` as primary data source
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| SQLite output | Queryable, structured, consistent with workspace (todoer, silent-critic) | — Pending |
-| `listRecords` over `getAuthorFeed` | Completeness over richness; raw repo data captures everything | — Pending |
-| App password auth only | Simple, well-supported, OAuth adds DPoP complexity for no gain here | — Pending |
-| Workspace crate, not standalone | Shares deps, lint config, CI, release tooling | — Pending |
+| SQLite output | Queryable, structured, consistent with workspace (todoer, silent-critic) | Good -- works well for single-user extraction |
+| `listRecords` over `getAuthorFeed` | Completeness over richness; raw repo data captures everything | Good -- exhaustive, no gaps |
+| App password auth only | Simple, well-supported, OAuth adds DPoP complexity for no gain here | Good -- sufficient for CLI tool |
+| Workspace crate, not standalone | Shares deps, lint config, CI, release tooling | Good -- seamless workspace integration |
+| Reply parent in raw_json, not dedicated column | Queryable via `json_extract()`, avoids schema rigidity | Good -- flexible for future query needs |
+| Sync main + RuntimeBuilder (not `#[tokio::main]`) | Matches workspace pattern (asana-cli) | Good -- consistent conventions |
+| XDG default path via `directories` crate | `~/.local/share/bce/bsky-posts.db` with auto-created parent dirs | Good -- follows platform conventions |
 
 ## Current State
 
-Phase 4 (CLI Surface) complete — `bce` binary is functional with clap args, XDG default paths, indicatif spinner, and summary line. All four milestone phases (1-4) for v1.1 are complete. Filtering by activity type remains as future work.
+**v1.1 shipped 2026-03-22.** The `bce` binary is functional: authenticated extraction, exhaustive pagination, SQLite storage, progress spinner, completion summary. Filtering by activity type remains as future work (v2).
 
 ---
-*Last updated: 2026-03-22 after Phase 4 completion*
+*Last updated: 2026-03-22 after v1.1 milestone*
