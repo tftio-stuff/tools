@@ -75,7 +75,7 @@ pub use command::{
 pub use completions::{CompletionOutput, generate_completions, render_completion, render_completion_instructions, write_completion};
 pub use doctor::{DoctorReport, print_doctor_report_json, print_doctor_report_text, run_doctor};
 pub use error::{fatal_error, print_error};
-pub use json::{err_response, ok_response, render_response, render_response_with};
+pub use json::{err_response, ok_response, render_response, render_response_parts, render_response_with};
 pub use license::display_license;
 pub use progress::make_spinner;
 pub use runner::{FatalCliError, parse_and_exit, parse_and_run, run_with_fatal_handler};

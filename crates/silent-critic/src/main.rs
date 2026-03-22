@@ -1,12 +1,25 @@
 use clap::Parser;
 use serde_json::json;
+use tftio_cli_common::{
+    LicenseType, StandardCommand, ToolSpec, command::run_standard_command_no_doctor,
+    error::print_error, render_response, render_response_parts, workspace_tool,
+};
 
 use silent_critic::cli::{
-    Cli, Command, ContractCommand, CriterionCommand, ProjectCommand, SessionCommand,
+    Cli, Command, ContractCommand, CriterionCommand, MetaCommand, ProjectCommand, SessionCommand,
 };
 use silent_critic::commands::{contract, criterion, decide, log, project, session};
 use silent_critic::config::load_config;
-use silent_critic::output::{err_response, ok_response};
+
+const TOOL_SPEC: ToolSpec = workspace_tool(
+    "silent-critic",
+    "Silent Critic",
+    env!("CARGO_PKG_VERSION"),
+    LicenseType::MIT,
+    true,
+    false,
+    false,
+);
 
 fn main() {
     let cli = Cli::parse();
@@ -17,21 +30,31 @@ fn main() {
 fn run(cli: Cli) -> i32 {
     let json = cli.json;
 
+    if let Command::Meta { command } = &cli.command {
+        let standard_command = match command {
+            MetaCommand::Version => StandardCommand::Version { json },
+            MetaCommand::License => StandardCommand::License,
+            MetaCommand::Completions { shell } => StandardCommand::Completions { shell: *shell },
+        };
+        return run_standard_command_no_doctor::<Cli>(&TOOL_SPEC, &standard_command);
+    }
+
     match dispatch(cli) {
         Ok(output) => {
             println!("{output}");
             0
         }
-        Err(e) => {
-            if json {
-                let out = err_response("error", "ERROR", &e.to_string(), json!({}));
-                println!("{out}");
-            } else {
-                eprintln!("error: {e}");
-            }
-            1
-        }
+        Err(e) => print_error("error", json, &e.to_string()),
     }
+}
+
+fn command_output(
+    command: &str,
+    json: bool,
+    data: serde_json::Value,
+    text: impl Into<String>,
+) -> String {
+    render_response(command, json, data, text)
 }
 
 fn dispatch(cli: Cli) -> anyhow::Result<String> {
@@ -39,27 +62,25 @@ fn dispatch(cli: Cli) -> anyhow::Result<String> {
     let config = load_config()?;
 
     match cli.command {
+        Command::Meta { .. } => unreachable!("meta commands are handled before dispatch"),
         Command::Project { command } => match command {
             ProjectCommand::Init { name } => {
                 let result = project::run_init(&config, name.as_deref())?;
-                if json {
-                    Ok(ok_response(
-                        "project.init",
-                        json!({
-                            "project_id": result.project.id,
-                            "project_name": result.project.name,
-                            "repo_hash": result.project.repo_hash,
-                            "db_path": result.db_path.display().to_string(),
-                        }),
-                    )
-                    .to_string())
-                } else {
-                    Ok(format!(
+                Ok(command_output(
+                    "project.init",
+                    json,
+                    json!({
+                        "project_id": result.project.id,
+                        "project_name": result.project.name,
+                        "repo_hash": result.project.repo_hash,
+                        "db_path": result.db_path.display().to_string(),
+                    }),
+                    format!(
                         "project: {}\ndb: {}",
                         result.project.name,
                         result.db_path.display()
-                    ))
-                }
+                    ),
+                ))
             }
         },
 
@@ -83,38 +104,42 @@ fn dispatch(cli: Cli) -> anyhow::Result<String> {
                         check_spec.as_deref(),
                         parameter_schema.as_deref(),
                     )?;
-                    if json {
-                        Ok(ok_response("criterion.create", json!({"criterion": c})).to_string())
-                    } else {
-                        Ok(format!("{} [{}] {}", c.id, c.namespace, c.name))
-                    }
+                    Ok(command_output(
+                        "criterion.create",
+                        json,
+                        json!({"criterion": c}),
+                        format!("{} [{}] {}", c.id, c.namespace, c.name),
+                    ))
                 }
                 CriterionCommand::List { namespace } => {
                     let criteria = criterion::run_list(&conn, namespace.as_deref())?;
-                    if json {
-                        Ok(ok_response("criterion.list", json!({"criteria": criteria}))
-                            .to_string())
-                    } else {
-                        let mut out = String::new();
-                        for c in &criteria {
-                            out.push_str(&format!(
-                                "{}\t[{}]\t{}\t{}\n",
-                                c.id, c.namespace, c.name, c.claim
-                            ));
-                        }
-                        Ok(out)
-                    }
+                    Ok(render_response_parts(
+                        "criterion.list",
+                        json,
+                        || json!({"criteria": &criteria}),
+                        || {
+                            let mut out = String::new();
+                            for c in &criteria {
+                                out.push_str(&format!(
+                                    "{}\t[{}]\t{}\t{}\n",
+                                    c.id, c.namespace, c.name, c.claim
+                                ));
+                            }
+                            out
+                        },
+                    ))
                 }
                 CriterionCommand::Show { id } => {
                     let c = criterion::run_show(&conn, &id)?;
-                    if json {
-                        Ok(ok_response("criterion.show", json!({"criterion": c})).to_string())
-                    } else {
-                        Ok(format!(
+                    Ok(command_output(
+                        "criterion.show",
+                        json,
+                        json!({"criterion": c}),
+                        format!(
                             "id: {}\nnamespace: {}\nname: {}\nclaim: {}\nevaluator: {}\ncheck_spec: {}\ncreated: {}",
                             c.id, c.namespace, c.name, c.claim, c.evaluator_type, c.check_spec, c.created_at
-                        ))
-                    }
+                        ),
+                    ))
                 }
                 CriterionCommand::Update {
                     id,
@@ -133,35 +158,39 @@ fn dispatch(cli: Cli) -> anyhow::Result<String> {
                         evaluator_type.as_ref(),
                         check_spec.as_deref(),
                     )?;
-                    if json {
-                        Ok(ok_response("criterion.update", json!({"criterion": c})).to_string())
-                    } else {
-                        Ok(format!("updated: {} [{}] {}", c.id, c.namespace, c.name))
-                    }
+                    Ok(command_output(
+                        "criterion.update",
+                        json,
+                        json!({"criterion": c}),
+                        format!("updated: {} [{}] {}", c.id, c.namespace, c.name),
+                    ))
                 }
                 CriterionCommand::Deprecate { id } => {
                     criterion::run_deprecate(&conn, &id)?;
-                    if json {
-                        Ok(ok_response("criterion.deprecate", json!({"id": id})).to_string())
-                    } else {
-                        Ok(format!("deprecated: {id}"))
-                    }
+                    Ok(command_output(
+                        "criterion.deprecate",
+                        json,
+                        json!({"id": id}),
+                        format!("deprecated: {id}"),
+                    ))
                 }
                 CriterionCommand::Export { id } => {
                     let toml_str = criterion::run_export(&conn, &id)?;
-                    if json {
-                        Ok(ok_response("criterion.export", json!({"toml": toml_str})).to_string())
-                    } else {
-                        Ok(toml_str)
-                    }
+                    Ok(command_output(
+                        "criterion.export",
+                        json,
+                        json!({"toml": toml_str}),
+                        toml_str,
+                    ))
                 }
                 CriterionCommand::Import { file } => {
                     let c = criterion::run_import(&conn, &file)?;
-                    if json {
-                        Ok(ok_response("criterion.import", json!({"criterion": c})).to_string())
-                    } else {
-                        Ok(format!("imported: {} [{}] {}", c.id, c.namespace, c.name))
-                    }
+                    Ok(command_output(
+                        "criterion.import",
+                        json,
+                        json!({"criterion": c}),
+                        format!("imported: {} [{}] {}", c.id, c.namespace, c.name),
+                    ))
                 }
             }
         }
@@ -171,139 +200,136 @@ fn dispatch(cli: Cli) -> anyhow::Result<String> {
             match command {
                 SessionCommand::New { worktree } => {
                     let s = session::run_new(&conn, &worktree)?;
-                    if json {
-                        Ok(ok_response(
-                            "session.new",
-                            json!({
-                                "session_id": s.id,
-                                "status": s.status.as_str(),
-                                "operator_token": s.operator_token,
-                            }),
-                        )
-                        .to_string())
-                    } else {
-                        Ok(format!(
+                    Ok(command_output(
+                        "session.new",
+                        json,
+                        json!({
+                            "session_id": s.id,
+                            "status": s.status.as_str(),
+                            "operator_token": s.operator_token,
+                        }),
+                        format!(
                             "session: {}\nstatus: {}\noperator token: {}",
                             s.id, s.status, s.operator_token
-                        ))
-                    }
+                        ),
+                    ))
                 }
                 SessionCommand::Discover { docs } => {
                     let contexts = session::run_discover(&conn, &docs)?;
-                    if json {
-                        Ok(ok_response(
-                            "session.discover",
-                            json!({
-                                "context_count": contexts.len(),
-                                "contexts": contexts,
-                            }),
-                        )
-                        .to_string())
-                    } else {
-                        Ok(format!("discovered {} context items", contexts.len()))
-                    }
+                    Ok(command_output(
+                        "session.discover",
+                        json,
+                        json!({
+                            "context_count": contexts.len(),
+                            "contexts": contexts,
+                        }),
+                        format!("discovered {} context items", contexts.len()),
+                    ))
                 }
                 SessionCommand::Status => {
                     let report = session::run_status(&conn)?;
-                    if json {
-                        Ok(ok_response(
-                            "session.status",
+                    Ok(render_response_parts(
+                        "session.status",
+                        json,
+                        || {
                             json!({
-                                "session_id": report.session_id,
+                                "session_id": &report.session_id,
                                 "status": report.status.as_str(),
-                                "worktree": report.worktree,
-                                "contract_id": report.contract_id,
-                                "goal": report.goal,
+                                "worktree": &report.worktree,
+                                "contract_id": &report.contract_id,
+                                "goal": &report.goal,
                                 "criteria_count": report.criteria_count,
                                 "evidence_count": report.evidence_count,
                                 "discovery_count": report.discovery_count,
-                                "started_at": report.started_at,
-                            }),
-                        )
-                        .to_string())
-                    } else {
-                        let mut out = format!(
-                            "session: {}\nstatus: {}\nworktree: {}\nstarted: {}",
-                            report.session_id, report.status, report.worktree, report.started_at
-                        );
-                        if let Some(ref goal) = report.goal {
-                            out.push_str(&format!("\ngoal: {goal}"));
-                        }
-                        out.push_str(&format!(
-                            "\ncriteria: {}\nevidence: {}\ndiscovery items: {}",
-                            report.criteria_count, report.evidence_count, report.discovery_count
-                        ));
-                        Ok(out)
-                    }
+                                "started_at": &report.started_at,
+                            })
+                        },
+                        || {
+                            let mut out = format!(
+                                "session: {}\nstatus: {}\nworktree: {}\nstarted: {}",
+                                report.session_id, report.status, report.worktree, report.started_at
+                            );
+                            if let Some(ref goal) = report.goal {
+                                out.push_str(&format!("\ngoal: {goal}"));
+                            }
+                            out.push_str(&format!(
+                                "\ncriteria: {}\nevidence: {}\ndiscovery items: {}",
+                                report.criteria_count, report.evidence_count, report.discovery_count
+                            ));
+                            out
+                        },
+                    ))
                 }
                 SessionCommand::End => {
                     let report = session::run_end(&conn)?;
-                    if json {
-                        Ok(ok_response(
-                            "session.end",
+                    Ok(render_response_parts(
+                        "session.end",
+                        json,
+                        || {
                             json!({
-                                "session_id": report.session_id,
-                                "contract_id": report.contract_id,
+                                "session_id": &report.session_id,
+                                "contract_id": &report.contract_id,
                                 "total_criteria": report.total_criteria,
                                 "total_evidence": report.total_evidence,
                                 "residual_count": report.residuals.len(),
                                 "residuals": report.residuals.iter().map(|r| json!({
-                                    "criterion_id": r.criterion_id,
-                                    "criterion_name": r.criterion_name,
-                                    "reason": r.reason,
+                                    "criterion_id": &r.criterion_id,
+                                    "criterion_name": &r.criterion_name,
+                                    "reason": &r.reason,
                                 })).collect::<Vec<_>>(),
-                            }),
-                        )
-                        .to_string())
-                    } else {
-                        let mut out = format!(
-                            "session ended\ncontract: {}\ncriteria: {}\nevidence: {}",
-                            report.contract_id, report.total_criteria, report.total_evidence
-                        );
-                        if report.residuals.is_empty() {
-                            out.push_str("\nresiduals: none");
-                        } else {
-                            out.push_str(&format!("\nresiduals: {}", report.residuals.len()));
-                            for r in &report.residuals {
-                                out.push_str(&format!(
-                                    "\n  - {} ({}): {}",
-                                    r.criterion_name, r.criterion_id, r.reason
-                                ));
+                            })
+                        },
+                        || {
+                            let mut out = format!(
+                                "session ended\ncontract: {}\ncriteria: {}\nevidence: {}",
+                                report.contract_id, report.total_criteria, report.total_evidence
+                            );
+                            if report.residuals.is_empty() {
+                                out.push_str("\nresiduals: none");
+                            } else {
+                                out.push_str(&format!("\nresiduals: {}", report.residuals.len()));
+                                for r in &report.residuals {
+                                    out.push_str(&format!(
+                                        "\n  - {} ({}): {}",
+                                        r.criterion_name, r.criterion_id, r.reason
+                                    ));
+                                }
                             }
-                        }
-                        Ok(out)
-                    }
+                            out
+                        },
+                    ))
                 }
                 SessionCommand::Manifest => {
                     let token = std::env::var("SILENT_CRITIC_TOKEN")
                         .map_err(|_| anyhow::anyhow!("SILENT_CRITIC_TOKEN not set"))?;
                     let report = session::run_manifest(&conn, &token)?;
-                    if json {
-                        Ok(ok_response(
-                            "session.manifest",
+                    Ok(render_response_parts(
+                        "session.manifest",
+                        json,
+                        || {
                             json!({
-                                "goal": report.goal,
+                                "goal": &report.goal,
                                 "criteria": report.criteria.iter().map(|c| json!({
-                                    "id": c.id,
-                                    "namespace": c.namespace,
-                                    "name": c.name,
-                                    "claim": c.claim,
-                                    "check_spec": c.check_spec,
+                                    "id": &c.id,
+                                    "namespace": &c.namespace,
+                                    "name": &c.name,
+                                    "claim": &c.claim,
+                                    "check_spec": &c.check_spec,
                                     "tier": c.tier.as_str(),
                                 })).collect::<Vec<_>>(),
-                            }),
-                        )
-                        .to_string())
-                    } else {
-                        let mut out = format!("Goal: {}\n\nCriteria:\n", report.goal);
-                        for c in &report.criteria {
-                            out.push_str(&format!(
-                                "  {} [{}] {} -- {}\n    check: {}\n",
-                                c.id, c.namespace, c.name, c.claim, c.check_spec
-                            ));
-                        }
-                        Ok(out)
-                    }
+                            })
+                        },
+                        || {
+                            let mut out = format!("Goal: {}\n\nCriteria:\n", report.goal);
+                            for c in &report.criteria {
+                                out.push_str(&format!(
+                                    "  {} [{}] {} -- {}\n    check: {}\n",
+                                    c.id, c.namespace, c.name, c.claim, c.check_spec
+                                ));
+                            }
+                            out
+                        },
+                    ))
                 }
                 SessionCommand::Sandbox {
                     session_id,
@@ -325,26 +351,27 @@ fn dispatch(cli: Cli) -> anyhow::Result<String> {
                     let mut input = String::new();
                     std::io::Read::read_to_string(&mut std::io::stdin(), &mut input)?;
                     let result = session::run_compose_from(&conn, &input)?;
-                    if json {
-                        Ok(ok_response(
-                            "session.compose_from",
+                    Ok(render_response_parts(
+                        "session.compose_from",
+                        json,
+                        || {
                             json!({
-                                "contract_id": result.contract.id,
-                                "goal": result.contract.goal,
+                                "contract_id": &result.contract.id,
+                                "goal": &result.contract.goal,
                                 "criteria_created": result.criteria_created,
                                 "criteria_reused": result.criteria_reused,
-                            }),
-                        )
-                        .to_string())
-                    } else {
-                        Ok(format!(
-                            "contract: {}\ngoal: {}\ncriteria created: {}\ncriteria reused: {}",
-                            result.contract.id,
-                            result.contract.goal,
-                            result.criteria_created,
-                            result.criteria_reused
-                        ))
-                    }
+                            })
+                        },
+                        || {
+                            format!(
+                                "contract: {}\ngoal: {}\ncriteria created: {}\ncriteria reused: {}",
+                                result.contract.id,
+                                result.contract.goal,
+                                result.criteria_created,
+                                result.criteria_reused
+                            )
+                        },
+                    ))
                 }
                 SessionCommand::Go { prompt_only } => {
                     if !prompt_only {
@@ -353,42 +380,42 @@ fn dispatch(cli: Cli) -> anyhow::Result<String> {
                         );
                     }
                     let result = session::run_go_prompt_only(&conn)?;
-                    if json {
-                        Ok(ok_response(
-                            "session.go",
+                    Ok(render_response_parts(
+                        "session.go",
+                        json,
+                        || {
                             json!({
-                                "worker_token": result.worker_token,
-                                "prompt": result.prompt,
-                            }),
-                        )
-                        .to_string())
-                    } else {
-                        Ok(result.prompt)
-                    }
+                                "worker_token": &result.worker_token,
+                                "prompt": &result.prompt,
+                            })
+                        },
+                        || result.prompt.clone(),
+                    ))
                 }
                 SessionCommand::Submit { criterion } => {
                     let token = std::env::var("SILENT_CRITIC_TOKEN")
                         .map_err(|_| anyhow::anyhow!("SILENT_CRITIC_TOKEN not set"))?;
                     let e = session::run_submit(&conn, &token, &criterion)?;
-                    if json {
-                        Ok(ok_response(
-                            "session.submit",
+                    Ok(render_response_parts(
+                        "session.submit",
+                        json,
+                        || {
                             json!({
-                                "evidence_id": e.id,
-                                "criterion_id": e.criterion_id,
+                                "evidence_id": &e.id,
+                                "criterion_id": &e.criterion_id,
                                 "exit_code": e.exit_code,
                                 "pass": e.exit_code == 0,
-                            }),
-                        )
-                        .to_string())
-                    } else {
-                        Ok(format!(
-                            "evidence: {}\nexit code: {}\npass: {}",
-                            e.id,
-                            e.exit_code,
-                            e.exit_code == 0
-                        ))
-                    }
+                            })
+                        },
+                        || {
+                            format!(
+                                "evidence: {}\nexit code: {}\npass: {}",
+                                e.id,
+                                e.exit_code,
+                                e.exit_code == 0
+                            )
+                        },
+                    ))
                 }
             }
         }
@@ -398,33 +425,35 @@ fn dispatch(cli: Cli) -> anyhow::Result<String> {
             match command {
                 ContractCommand::Show { id, role } => {
                     let view = contract::run_show(&conn, &id, &role)?;
-                    if json {
-                        Ok(ok_response(
-                            "contract.show",
+                    Ok(render_response_parts(
+                        "contract.show",
+                        json,
+                        || {
                             json!({
-                                "id": view.id,
-                                "goal": view.goal,
+                                "id": &view.id,
+                                "goal": &view.goal,
                                 "criteria": view.criteria.iter().map(|c| json!({
-                                    "criterion_id": c.criterion_id,
-                                    "namespace": c.namespace,
-                                    "name": c.name,
-                                    "claim": c.claim,
+                                    "criterion_id": &c.criterion_id,
+                                    "namespace": &c.namespace,
+                                    "name": &c.name,
+                                    "claim": &c.claim,
                                     "visibility": c.visibility.as_str(),
                                     "tier": c.tier,
                                 })).collect::<Vec<_>>(),
-                            }),
-                        )
-                        .to_string())
-                    } else {
-                        let mut out = format!("Contract: {}\nGoal: {}\n\nCriteria:\n", view.id, view.goal);
-                        for c in &view.criteria {
-                            out.push_str(&format!(
-                                "  [{}] {} -- {} ({})\n",
-                                c.namespace, c.name, c.claim, c.visibility
-                            ));
-                        }
-                        Ok(out)
-                    }
+                            })
+                        },
+                        || {
+                            let mut out =
+                                format!("Contract: {}\nGoal: {}\n\nCriteria:\n", view.id, view.goal);
+                            for c in &view.criteria {
+                                out.push_str(&format!(
+                                    "  [{}] {} -- {} ({})\n",
+                                    c.namespace, c.name, c.claim, c.visibility
+                                ));
+                            }
+                            out
+                        },
+                    ))
                 }
             }
         }
@@ -443,22 +472,23 @@ fn dispatch(cli: Cli) -> anyhow::Result<String> {
                 &basis,
                 evidence_refs.as_deref(),
             )?;
-            if json {
-                Ok(ok_response(
-                    "decide",
+            Ok(render_response_parts(
+                "decide",
+                json,
+                || {
                     json!({
-                        "decision_id": d.id,
+                        "decision_id": &d.id,
                         "type": d.decision_type.as_str(),
-                        "outcome": d.outcome,
-                    }),
-                )
-                .to_string())
-            } else {
-                Ok(format!(
-                    "decision: {}\ntype: {}\noutcome: {}",
-                    d.id, d.decision_type, d.outcome
-                ))
-            }
+                        "outcome": &d.outcome,
+                    })
+                },
+                || {
+                    format!(
+                        "decision: {}\ntype: {}\noutcome: {}",
+                        d.id, d.decision_type, d.outcome
+                    )
+                },
+            ))
         }
 
         Command::Log { contract, format } => {
