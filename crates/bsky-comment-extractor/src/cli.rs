@@ -21,7 +21,7 @@ EXAMPLES:
   bce --agent-help")]
 pub struct Cli {
     /// Show top-level agent reference help instead of running a subcommand.
-    #[arg(long, global = true)]
+    #[arg(long, global = true, hide = true)]
     pub agent_help: bool,
 
     /// Select the networked fetch path or the local read-only query path.
@@ -80,7 +80,7 @@ pub struct QueryArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use clap::Parser;
+    use clap::{CommandFactory, Parser};
 
     #[test]
     fn test_cli_parse_fetch_subcommand() {
@@ -166,5 +166,23 @@ mod tests {
     #[test]
     fn test_cli_parse_query_rejects_since_flag() {
         assert!(Cli::try_parse_from(["bce", "query", "--since", "2025-01-01"]).is_err());
+    }
+
+    #[test]
+    fn test_query_help_hides_agent_help_flag() {
+        let mut command = Cli::command();
+        let query = command
+            .find_subcommand_mut("query")
+            .expect("query subcommand must exist");
+        let mut output = Vec::new();
+        query
+            .write_long_help(&mut output)
+            .expect("query help must render");
+
+        let help = String::from_utf8(output).expect("help must be utf-8");
+        assert!(help.contains("--db"));
+        assert!(help.contains("--limit"));
+        assert!(help.contains("--offset"));
+        assert!(!help.contains("--agent-help"));
     }
 }
