@@ -2326,12 +2326,19 @@ dependencies = [
 name = "tftio-bsky-comment-extractor"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "chrono",
+ "clap",
+ "dateparser",
+ "directories",
+ "indicatif",
+ "is-terminal",
  "reqwest",
  "rusqlite",
  "serde",
  "serde_json",
  "tempfile",
+ "tftio-cli-common",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
