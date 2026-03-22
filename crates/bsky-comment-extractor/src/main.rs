@@ -42,8 +42,7 @@ fn execute(cli: Cli) -> Result<()> {
 
     // 3. Create parent directories if they don't exist
     if let Some(parent) = db_path.parent() {
-        std::fs::create_dir_all(parent)
-            .context("failed to create database directory")?;
+        std::fs::create_dir_all(parent).context("failed to create database directory")?;
     }
 
     // 4. Parse --since date if provided
@@ -64,8 +63,7 @@ fn execute(cli: Cli) -> Result<()> {
         if let Some(ref pb) = spinner {
             pb.set_message(format!(
                 "Fetching posts for {}... {} records",
-                &cli.handle,
-                count
+                &cli.handle, count
             ));
         }
     };
