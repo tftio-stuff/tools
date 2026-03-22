@@ -47,7 +47,7 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full details.
   5. Each output batch is wrapped in a JSON envelope with `total`, `offset`, `limit`, and `has_more` fields
 **Plans**: 3 plans
 Plans:
-- [ ] 05-01-PLAN.md — add query models and read-only SQLite pagination helpers
+- [x] 05-01-PLAN.md — add query models and read-only SQLite pagination helpers
 - [x] 05-02-PLAN.md — migrate clap parser to fetch/query subcommands with top-level `--agent-help`
 - [ ] 05-03-PLAN.md — wire main.rs query JSONL output, structured query errors, and integration tests
 
