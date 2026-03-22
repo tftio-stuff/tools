@@ -676,9 +676,7 @@ mod tests {
         assert!(SessionStatus::Composing.can_transition_to(&SessionStatus::Ready));
         assert!(SessionStatus::Ready.can_transition_to(&SessionStatus::Executing));
         assert!(SessionStatus::Executing.can_transition_to(&SessionStatus::AwaitingAdjudication));
-        assert!(
-            SessionStatus::AwaitingAdjudication.can_transition_to(&SessionStatus::Adjudicated)
-        );
+        assert!(SessionStatus::AwaitingAdjudication.can_transition_to(&SessionStatus::Adjudicated));
         assert!(!SessionStatus::Adjudicated.can_transition_to(&SessionStatus::Discovering));
     }
 

@@ -42,6 +42,24 @@ format-check:
 lint:
     cargo clippy --workspace --all-targets -- -D warnings
 
+# Workspace-wide base CLI UX consistency checks
+cli-consistency:
+    just cli-metadata-consistency
+    cargo run -q -p tftio-unvenv -- --help >/dev/null
+    cargo run -q -p tftio-gator -- --help >/dev/null
+    cargo run -q -p tftio-todoer -- --help >/dev/null
+    cargo run -q -p tftio-silent-critic -- --help >/dev/null
+    cargo run -q -p tftio-prompter -- --help >/dev/null
+    cargo run -q -p tftio-asana-cli -- --help >/dev/null
+    cargo run -q -p tftio-bsky-comment-extractor -- --help >/dev/null
+    out="$(cargo run -q -p tftio-gator -- claude --session abc --no-yolo --json 2>/dev/null || true)"; printf '%s' "$out" | grep '"ok"' >/dev/null; printf '%s' "$out" | grep '"command"' >/dev/null
+    out="$(cargo run -q -p tftio-todoer -- list --all --json 2>/dev/null || true)"; printf '%s' "$out" | grep '"ok"' >/dev/null; printf '%s' "$out" | grep '"command"' >/dev/null
+    out="$(cargo run -q -p tftio-silent-critic -- --json project init --name consistency-check 2>/dev/null || true)"; printf '%s' "$out" | grep '"ok"' >/dev/null; printf '%s' "$out" | grep '"command"' >/dev/null
+
+# Shell-based smoke test for shared metadata-command UX
+cli-metadata-consistency:
+    /Users/jfb/Projects/tools/feature-add-agent-help-to-all-tools/scripts/test-cli-metadata-consistency.sh
+
 # Security audit
 audit:
     cargo audit

@@ -52,17 +52,41 @@ pub use license::LicenseType;
 pub use types::{DoctorCheck, RepoInfo};
 
 // Public modules
+pub mod app;
+pub mod command;
 pub mod completions;
 pub mod doctor;
+pub mod error;
+pub mod json;
 pub mod license;
 pub mod output;
+pub mod progress;
+pub mod runner;
 pub mod types;
 pub mod update;
 
 // Re-export commonly used items
-pub use completions::generate_completions;
-pub use doctor::run_doctor;
+pub use app::{ToolSpec, workspace_tool};
+pub use command::{
+    NoDoctor, StandardCommand, StandardCommandMap, map_standard_command,
+    maybe_run_standard_command, maybe_run_standard_command_no_doctor,
+    run_standard_command_no_doctor,
+};
+pub use completions::{
+    CompletionOutput, generate_completions, render_completion, render_completion_instructions,
+    write_completion,
+};
+pub use doctor::{DoctorReport, print_doctor_report_json, print_doctor_report_text, run_doctor};
+pub use error::{fatal_error, print_error};
+pub use json::{
+    err_response, ok_response, render_response, render_response_parts, render_response_with,
+};
 pub use license::display_license;
+pub use progress::make_spinner;
+pub use runner::{
+    FatalCliError, parse_and_exit, parse_and_run, run_with_display_error_handler,
+    run_with_fatal_handler,
+};
 
 #[cfg(test)]
 mod tests {

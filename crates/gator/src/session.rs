@@ -60,8 +60,7 @@ pub fn fetch_session_sandbox(session_id: &str) -> Result<SessionSandbox, String>
     let stdout = String::from_utf8(output.stdout)
         .map_err(|e| format!("invalid UTF-8 from silent-critic: {e}"))?;
 
-    serde_json::from_str(&stdout)
-        .map_err(|e| format!("cannot parse silent-critic output: {e}"))
+    serde_json::from_str(&stdout).map_err(|e| format!("cannot parse silent-critic output: {e}"))
 }
 
 /// Convert a `SessionSandbox` into gator's internal types.

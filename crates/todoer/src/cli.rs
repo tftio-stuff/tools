@@ -10,6 +10,10 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
+    Meta {
+        #[command(subcommand)]
+        command: MetaCommand,
+    },
     Init {
         #[arg(long)]
         project: Option<String>,
@@ -60,4 +64,16 @@ pub enum TaskCommand {
 #[derive(Subcommand, Debug)]
 pub enum TaskUpdateCommand {
     Status { id: String, status: Status },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum MetaCommand {
+    Version {
+        #[arg(long)]
+        json: bool,
+    },
+    License,
+    Completions {
+        shell: clap_complete::Shell,
+    },
 }

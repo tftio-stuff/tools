@@ -4,5 +4,4 @@ pub mod config;
 pub mod db;
 pub mod discovery;
 pub mod models;
-pub mod output;
 pub mod project;

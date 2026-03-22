@@ -1,5 +1,5 @@
 use clap::Parser;
-use todoer::cli::{Cli, Command, TaskCommand, TaskUpdateCommand};
+use todoer::cli::{Cli, Command, MetaCommand, TaskCommand, TaskUpdateCommand};
 
 #[test]
 fn parse_list_all_flag() {
@@ -31,5 +31,17 @@ fn parse_task_update_status() {
             }
         }
         _ => panic!("expected task command"),
+    }
+}
+
+#[test]
+fn parse_meta_version_json() {
+    let cli = Cli::parse_from(["todoer", "meta", "version", "--json"]);
+    match cli.command {
+        Command::Meta { command } => match command {
+            MetaCommand::Version { json } => assert!(json),
+            _ => panic!("expected meta version command"),
+        },
+        _ => panic!("expected meta command"),
     }
 }
