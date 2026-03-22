@@ -2,15 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Phase 5 context gathered
-last_updated: "2026-03-22T21:37:37.633Z"
-last_activity: 2026-03-22 -- bce-query-mode roadmap created
+status: Ready to execute
+stopped_at: Completed 05-query-subcommand-02-PLAN.md
+last_updated: "2026-03-22T22:08:44.638Z"
 progress:
   total_phases: 2
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 3
+  completed_plans: 1
 ---
 
 # Project State
@@ -20,19 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Complete, reliable extraction of a single BlueSky user's entire post and interaction history into a queryable local store.
-**Current focus:** bce-query-mode -- Phase 5: Query Subcommand
+**Current focus:** Phase 05 — query-subcommand
 
 ## Current Position
 
-Phase: 5 -- Query Subcommand (not started)
-Plan: --
-Status: Roadmap defined, ready for planning
-Last activity: 2026-03-22 -- bce-query-mode roadmap created
-
-```
-[Phase 5: Query Subcommand] [ ] [ ] [ ] [ ] [ ]
-[Phase 6: Agent Help      ] [ ]
-```
+Phase: 05 (query-subcommand) — EXECUTING
+Plan: 2 of 3
 
 ## Performance Metrics
 
@@ -49,6 +41,7 @@ Last activity: 2026-03-22 -- bce-query-mode roadmap created
 | 03-extraction-engine | 2 | 9min | 4.5min |
 | Phase 04-cli-surface P01 | 4 | 2 tasks | 4 files |
 | Phase 04 P02 | 3.5min | 3 tasks | 6 files |
+| Phase 05-query-subcommand P02 | 2m | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -71,6 +64,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 04-02]: make_spinner returns None when quiet=true OR stdout is not TTY, matching workspace UX pattern
 - [Phase 04-02]: test_db_path_default checks path contains bce and ends with bsky-posts.db for cross-platform correctness
 - [bce-query-mode roadmap]: QUERY-01 through QUERY-04 and AGENT-02 grouped into Phase 5 (coherent query unit); AGENT-01 isolated in Phase 6 (separate agent-doc concern)
+- [Phase 05-query-subcommand]: 05-02: QueryArgs accepts only db, limit, and offset, with defaults 50 and 0.
+- [Phase 05-query-subcommand]: 05-02: Cli reserves agent-help as a top-level global flag and exposes optional fetch/query subcommands.
 
 ### Pending Todos
 
@@ -83,6 +78,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-22T21:37:37.631Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-query-subcommand/05-CONTEXT.md
+Last session: 2026-03-22T22:08:38.352Z
+Stopped at: Completed 05-query-subcommand-02-PLAN.md
+Resume file: None
