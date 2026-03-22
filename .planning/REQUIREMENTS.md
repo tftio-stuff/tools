@@ -1,0 +1,84 @@
+# Requirements: bsky-comment-extractor
+
+**Defined:** 2026-03-22
+**Core Value:** Complete, reliable extraction of a single BlueSky user's entire post and interaction history into a queryable local store.
+
+## v1 Requirements
+
+### Authentication
+
+- [ ] **AUTH-01**: CLI accepts BlueSky handle and app password for authentication
+- [ ] **AUTH-02**: Session created via `com.atproto.server.createSession` with token refresh
+
+### Extraction
+
+- [ ] **EXTR-01**: Retrieve all `app.bsky.feed.post` records for a user via `com.atproto.repo.listRecords`
+- [ ] **EXTR-02**: Paginate exhaustively through full post history (handle cursor-based pagination)
+- [ ] **EXTR-03**: Resolve user handle to DID when handle is provided
+- [ ] **EXTR-04**: Respect rate limits with backoff on HTTP 429
+
+### Storage
+
+- [ ] **STOR-01**: Store posts in SQLite with structured schema (AT URI, author DID, text, created_at, reply parent, raw JSON)
+- [ ] **STOR-02**: Idempotent writes — re-running updates existing records, does not duplicate
+- [ ] **STOR-03**: Configurable database file path (default: `./bsky-posts.db`)
+
+### CLI
+
+- [ ] **CLI-01**: Accept user handle or DID as positional argument
+- [ ] **CLI-02**: `--db` flag for database path
+- [ ] **CLI-03**: Progress indicator during extraction
+- [ ] **CLI-04**: Follow workspace conventions (clap, cli-common integration)
+
+## v2 Requirements
+
+### Additional Activity Types
+
+- **LIKE-01**: Retrieve all `app.bsky.feed.like` records for a user
+- **RPST-01**: Retrieve all `app.bsky.feed.repost` records for a user
+- **BLCK-01**: Retrieve all `app.bsky.graph.block` records for a user
+- **BLCK-02**: Retrieve blocked-by list via `app.bsky.graph.getBlocks`
+- **FILT-01**: `--type` flag to filter by activity type (posts, likes, reposts, blocks, blocked-by)
+
+### Enhanced Output
+
+- **OUT-01**: Optional JSONL output to stdout
+- **OUT-02**: Optional CSV export
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Firehose/streaming | Batch retrieval only; user tolerates latency |
+| Multi-user extraction | Single user per invocation; script for multiples |
+| Real-time monitoring | No polling or watch mode |
+| OAuth authentication | App passwords sufficient; OAuth adds DPoP complexity |
+| Keyword search | This extracts activity, not search results |
+| Quote-post detection | v1 stores all posts; quote-post filtering is a v2 concern |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| AUTH-01 | — | Pending |
+| AUTH-02 | — | Pending |
+| EXTR-01 | — | Pending |
+| EXTR-02 | — | Pending |
+| EXTR-03 | — | Pending |
+| EXTR-04 | — | Pending |
+| STOR-01 | — | Pending |
+| STOR-02 | — | Pending |
+| STOR-03 | — | Pending |
+| CLI-01 | — | Pending |
+| CLI-02 | — | Pending |
+| CLI-03 | — | Pending |
+| CLI-04 | — | Pending |
+
+**Coverage:**
+- v1 requirements: 13 total
+- Mapped to phases: 0
+- Unmapped: 13
+
+---
+*Requirements defined: 2026-03-22*
+*Last updated: 2026-03-22 after initial definition*
