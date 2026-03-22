@@ -1,15 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: bsky-comment-extractor
-status: unknown
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-03-22T18:04:04.718Z"
+milestone: bce-query-mode
+milestone_name: bce-query-mode
+status: defining_requirements
+last_updated: "2026-03-22"
 progress:
-  total_phases: 2
-  completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -19,12 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Complete, reliable extraction of a single BlueSky user's entire post and interaction history into a queryable local store.
-**Current focus:** Phase 04 — cli-surface
+**Current focus:** Defining requirements for bce-query-mode
 
 ## Current Position
 
-Phase: 04 (cli-surface) — EXECUTING
-Plan: 1 of 2
+Phase: Not started (defining requirements)
+Plan: --
+Status: Defining requirements
+Last activity: 2026-03-22 -- Milestone bce-query-mode started
 
 ## Performance Metrics
 
