@@ -22,7 +22,7 @@ See: `.planning/milestones/v1.0-ROADMAP.md` for full details.
 **Milestone Goal:** A working Rust workspace crate that exhaustively fetches a BlueSky user's post history via the AT Protocol and stores it in a queryable local SQLite database.
 
 - [x] **Phase 3: Extraction Engine** - AT Protocol client, auth, exhaustive pagination, SQLite storage (completed 2026-03-22)
-- [ ] **Phase 4: CLI Surface** - clap interface, workspace integration, progress indicator
+- [x] **Phase 4: CLI Surface** - clap interface, workspace integration, progress indicator (completed 2026-03-22)
 
 **Goal**: Make bce's stored data queryable by LLM agents via JSON output with pagination.
 
@@ -56,7 +56,7 @@ Plans:
   2. Running with `--db /path/to/file.db` writes to the specified path instead
   3. A progress indicator updates in the terminal during extraction showing records retrieved
   4. The crate compiles and passes `just ci` (format, lint, test, audit, deny) as a workspace member
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 04-01-PLAN.md -- Extend library API: FetchSummary new/existing counts, progress callback
 - [ ] 04-02-PLAN.md -- CLI binary: clap args, tokio runtime, spinner, XDG paths, summary line
@@ -71,4 +71,4 @@ Phases execute in numeric order: 3 -> 4
 | 1. Sandbox Isolation | v1.0 | 1/1 | Complete | 2026-03-18 |
 | 2. YOLO Injection | v1.0 | 1/1 | Complete | 2026-03-18 |
 | 3. Extraction Engine | v1.1 | 2/2 | Complete | 2026-03-22 |
-| 4. CLI Surface | 1/2 | In Progress|  | - |
+| 4. CLI Surface | 2/2 | Complete   | 2026-03-22 | - |
