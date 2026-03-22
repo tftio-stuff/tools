@@ -82,3 +82,46 @@ pub struct FetchSummary {
     /// Number of posts that already existed and were updated.
     pub existing_count: u64,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{QueryEnvelope, QueryPost};
+
+    #[test]
+    fn test_query_post_serializes_only_curated_fields() {
+        let post = QueryPost {
+            uri: "at://did:plc:abc/app.bsky.feed.post/123".to_string(),
+            author_did: "did:plc:abc".to_string(),
+            text: "hello".to_string(),
+            created_at: "2024-01-01T00:00:00Z".to_string(),
+        };
+
+        let value = serde_json::to_value(post).unwrap();
+        let object = value.as_object().unwrap();
+
+        assert_eq!(object.len(), 4);
+        assert!(object.contains_key("uri"));
+        assert!(object.contains_key("author_did"));
+        assert!(object.contains_key("text"));
+        assert!(object.contains_key("created_at"));
+    }
+
+    #[test]
+    fn test_query_envelope_serializes_required_fields() {
+        let envelope = QueryEnvelope {
+            total: 3,
+            offset: 1,
+            limit: 2,
+            has_more: false,
+        };
+
+        let value = serde_json::to_value(envelope).unwrap();
+        let object = value.as_object().unwrap();
+
+        assert_eq!(object.len(), 4);
+        assert!(object.contains_key("total"));
+        assert!(object.contains_key("offset"));
+        assert!(object.contains_key("limit"));
+        assert!(object.contains_key("has_more"));
+    }
+}
