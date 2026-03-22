@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: bsky-comment-extractor
-status: unknown
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-03-22T18:04:04.718Z"
+milestone: v1.0
+milestone_name: milestone
+status: Ready to execute
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-03-22T22:19:31.560Z"
 progress:
   total_phases: 2
-  completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  completed_phases: 1
+  total_plans: 8
+  completed_plans: 5
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Complete, reliable extraction of a single BlueSky user's entire post and interaction history into a queryable local store.
-**Current focus:** Phase 04 — cli-surface
+**Current focus:** Phase 03 — extract-remaining-cli-glue-into-cli-common-metadata-mapping-fatal-runners-response-emitters-and-doctor-scaffolding
 
 ## Current Position
 
-Phase: 04 (cli-surface) — EXECUTING
-Plan: 1 of 2
+Phase: 03 (extract-remaining-cli-glue-into-cli-common-metadata-mapping-fatal-runners-response-emitters-and-doctor-scaffolding) — EXECUTING
+Plan: 2 of 4
 
 ## Performance Metrics
 
@@ -41,6 +41,8 @@ Plan: 1 of 2
 | 03-extraction-engine | 2 | 9min | 4.5min |
 | Phase 04-cli-surface P01 | 4 | 2 tasks | 4 files |
 | Phase 04 P02 | 3.5min | 3 tasks | 6 files |
+| Phase 01 P01 | 4 min | 2 tasks | 9 files |
+| Phase 03 P01 | 3 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -62,6 +64,21 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 04-01]: upsert_post checks db_has_uri before INSERT OR REPLACE rather than conn.changes() -- semantically unambiguous, avoids surprising delete+insert change count
 - [Phase 04-02]: make_spinner returns None when quiet=true OR stdout is not TTY, matching workspace UX pattern
 - [Phase 04-02]: test_db_path_default checks path contains bce and ends with bsky-posts.db for cross-platform correctness
+- [Phase 01-01]: `ToolSpec` and `StandardCommand` centralize shared CLI metadata, doctor, completions, version, and update wiring in `cli-common`
+- [Phase 01-02]: `gator`, `todoer`, and `silent-critic` share one JSON envelope and one top-level error renderer from `cli-common`
+- [Phase 01-03]: `unvenv`, `bce`, and `asana-cli` keep their invocation ergonomics while sharing base metadata, progress, and error primitives
+- [Phase 01-04]: `prompter` joins the shared base contract and workspace drift is checked through `just cli-consistency`
+- [Milestone]: release-please milestones use symbolic names in planning artifacts instead of manual semantic version tags
+- [Milestone]: cli-common-maximal-sharing started to continue extracting shared CLI behavior into `tftio-cli-common`
+- [Phase 02 planning]: remaining high-value extractions are adapter helpers, completion buffering, structured doctor reporting, and repository-level drift enforcement
+- [Phase 02-01]: `cli-common` now provides `workspace_tool`, the shared doctorless adapter, buffer-first completion rendering, structured doctor reports, and shared response rendering helpers
+- [Phase 02-02]: `gator`, `todoer`, `silent-critic`, and `bce` now consume the richer shared metadata surface and the shell suite enforces deleted boilerplate patterns
+- [Phase 02-03]: `prompter` now uses shared completion rendering and JSON doctor reporting helpers; `unvenv` and `asana-cli` now use shared workspace tool presets
+- [Phase 02-04]: workspace docs and CLI consistency automation now describe and enforce the maximal-sharing boundary
+- [Phase 03 planning]: the remaining shared CLI glue is metadata mapping, fatal-runner plumbing, richer response emission, and doctor-provider scaffolding
+- [Phase 03]: Metadata helpers support global JSON flags, version-local JSON flags, and doctor/update variants through one shared mapping trait and macro.
+- [Phase 03]: Fatal CLI handling stays closure-based so tools can keep their clap layouts while centralizing error printing and exit-code behavior.
+- [Phase 03]: Response and doctor helpers stay infrastructure-only: text formatting remains caller-owned while cli-common owns the JSON/text branch and doctor scaffolding.
 
 ### Pending Todos
 
@@ -72,8 +89,17 @@ None.
 - "blocked-by" data is not in the user's own repo; requires a separate API call (`app.bsky.graph.getBlocks`) -- deferred to v2
 - Rate limit: ~3,000 req/5min; plan for backoff from the start
 
+### Roadmap Evolution
+
+- Phase 1 added: I want you to examine all the code here and extract into the cli-common create all common functionality. Be extremely thorough; I want these tools to have a completely uniform base UI/UX, and I want all dependencies to be centralized.
+- Phase 2 added: Audit the tools and `cli-common`, then move as much shared or generally useful functionality as possible into `cli-common`.
+- Phase 3 added: Extract remaining CLI glue into `cli-common`: metadata mapping, fatal runners, response emitters, and doctor scaffolding.
+- Phase 2 planned: 4 plans across 4 waves for maximal extraction into `tftio-cli-common`.
+- Phase 2 executed: shared CLI adapters, completion rendering, doctor reporting, response helpers, and drift tests expanded across the workspace.
+- Phase 3 planned: 4 plans across 4 waves to remove the remaining metadata, runner, response, and doctor glue from tool crates.
+
 ## Session Continuity
 
-Last session: 2026-03-22T17:53:51.873Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-03-22T22:19:24.526Z
+Stopped At: Completed 03-01-PLAN.md
 Resume file: None
