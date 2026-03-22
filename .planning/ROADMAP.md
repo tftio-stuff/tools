@@ -45,7 +45,11 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full details.
   3. `--offset N` skips records, enabling sequential page traversal
   4. `--db <path>` points the query at a non-default database file
   5. Each output batch is wrapped in a JSON envelope with `total`, `offset`, `limit`, and `has_more` fields
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 05-01-PLAN.md — add query models and read-only SQLite pagination helpers
+- [x] 05-02-PLAN.md — migrate clap parser to fetch/query subcommands with top-level `--agent-help`
+- [ ] 05-03-PLAN.md — wire main.rs query JSONL output, structured query errors, and integration tests
 
 ### Phase 6: Agent Help
 **Goal**: LLM agents can discover how to use `bce` without reading source code
@@ -65,5 +69,5 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full details.
 | 2. YOLO Injection | v1.0 | 1/1 | Complete | 2026-03-18 |
 | 3. Extraction Engine | v1.1 | 2/2 | Complete | 2026-03-22 |
 | 4. CLI Surface | v1.1 | 2/2 | Complete | 2026-03-22 |
-| 5. Query Subcommand | bce-query-mode | 0/? | Not started | - |
+| 5. Query Subcommand | bce-query-mode | 1/3 | In Progress | - |
 | 6. Agent Help | bce-query-mode | 0/? | Not started | - |
