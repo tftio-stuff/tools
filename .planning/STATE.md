@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 05-query-subcommand-01-PLAN.md
-last_updated: "2026-03-22T22:10:09.109Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 05-query-subcommand-03-PLAN.md
+last_updated: "2026-03-22T22:16:28.149Z"
 progress:
   total_phases: 2
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -43,6 +43,7 @@ Plan: 3 of 3
 | Phase 04 P02 | 3.5min | 3 tasks | 6 files |
 | Phase 05-query-subcommand P02 | 2m | 2 tasks | 2 files |
 | Phase 05-query-subcommand P01 | 0 min | 2 tasks | 3 files |
+| Phase 05-query-subcommand P03 | 3m 23s | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 05-query-subcommand]: 05-02: Cli reserves agent-help as a top-level global flag and exposes optional fetch/query subcommands.
 - [Phase 05-query-subcommand]: Query pagination uses ORDER BY created_at DESC, uri DESC to keep page boundaries stable.
 - [Phase 05-query-subcommand]: Query mode opens SQLite with SQLITE_OPEN_READ_WRITE and no create flag so missing database paths fail fast.
+- [Phase 05-query-subcommand]: Query execution stays synchronous and never reads BSKY_APP_PASSWORD or starts tokio.
+- [Phase 05-query-subcommand]: Query failures emit structured stderr JSON with db_not_found for missing databases and query_failed for other runtime errors.
+- [Phase 05-query-subcommand]: The global --agent-help flag remains parseable but hidden from subcommand help so bce query --help exposes only query options.
 
 ### Pending Todos
 
@@ -81,6 +85,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-22T22:10:09.107Z
-Stopped at: Completed 05-query-subcommand-01-PLAN.md
+Last session: 2026-03-22T22:16:28.147Z
+Stopped at: Completed 05-query-subcommand-03-PLAN.md
 Resume file: None
