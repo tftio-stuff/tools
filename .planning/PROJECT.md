@@ -60,14 +60,25 @@ Complete, reliable extraction of a single BlueSky user's entire post history int
 | Reply parent in raw_json, not dedicated column | Queryable via `json_extract()`, avoids schema rigidity | Good -- flexible for future query needs |
 | Sync main + RuntimeBuilder (not `#[tokio::main]`) | Matches workspace pattern (asana-cli) | Good -- consistent conventions |
 | XDG default path via `directories` crate | `~/.local/share/bce/bsky-posts.db` with auto-created parent dirs | Good -- follows platform conventions |
+| Symbolic CLI refactor milestones | Release-please owns releases; planning milestones archive shared refactors without manual version tags | Good -- consistent with repository release workflow |
+| Shared CLI substrate in `cli-common` | Workspace CLI UX stays consistent when metadata, runner, response, doctor, and shell enforcement live in one crate | Good -- final shared/local split is now explicit and enforced |
 
 ## Current State
 
-**Recent refactor:** The symbolic milestone `cli-common-unification` completed on 2026-03-22, and Phase 03 of `cli-common-maximal-sharing` finished the remaining extraction wave. `tftio-cli-common` now owns the shared workspace tool preset, metadata-command mapping helpers, doctorless adapter, buffer-first completion rendering, shared response branching, structured doctor reports/builders, fatal runner handling, and repository shell-enforcement helpers.
+**Shipped product:** `bce` shipped in v1.1 on 2026-03-22. The binary supports authenticated extraction, exhaustive pagination, SQLite storage, progress reporting, and completion summaries.
 
-**Shared/local boundary:** Tool crates now keep only domain command trees, domain summaries, and data collection needed before shared rendering. The intentional local exceptions are `gator`'s clap-enum bridge, `bce`'s minimal doctor provider plus extraction summary, `todoer`'s task/project formatting, and `prompter`'s dynamic completion augmentation plus doctor state collection.
+**Latest shipped planning milestone:** The symbolic milestone `cli-common-maximal-sharing` shipped on 2026-03-22. Across Phases 02-03, the repository moved the remaining reusable CLI infrastructure into `tftio-cli-common`: workspace tool presets, metadata-command mapping, fatal runner handling, lazy JSON/text response emission, doctor report builders, and repository shell-enforcement helpers.
 
-**Product state:** `bce` shipped in v1.1 on 2026-03-22. The binary is functional: authenticated extraction, exhaustive pagination, SQLite storage, progress spinner, and completion summary. The later symbolic milestones unified the workspace CLI base UX and extracted the reusable CLI substrate into `tftio-cli-common`. Filtering by activity type remains future work.
+**Shared/local boundary:** Tool crates now keep domain command trees, domain summaries, and data collection required before shared rendering. Intentional local exceptions are limited to tool-specific clap enum bridges, tool-specific doctor state collection, domain formatting, and `prompter`'s dynamic completion augmentation.
+
+## Next Milestone Goals
+
+No new symbolic milestone is defined yet.
+
+Recommended next steps:
+- Start the next symbolic milestone with `$gsd-new-milestone`
+- Continue product work on BlueSky activity-type filtering when ready
+- Keep release tagging/versioning under release-please rather than milestone completion
 
 ---
-*Last updated: 2026-03-22 after Phase 03 execution*
+*Last updated: 2026-03-22 after archiving symbolic milestone `cli-common-maximal-sharing`*
