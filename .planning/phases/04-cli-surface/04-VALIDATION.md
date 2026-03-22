@@ -7,7 +7,7 @@ wave_0_complete: false
 created: 2026-03-22
 ---
 
-# Phase 4 — Validation Strategy
+# Phase 4 -- Validation Strategy
 
 > Per-phase validation contract for feedback sampling during execution.
 
@@ -18,7 +18,7 @@ created: 2026-03-22
 | Property | Value |
 |----------|-------|
 | **Framework** | Rust built-in (`cargo test`) |
-| **Config file** | none — workspace uses `just test` |
+| **Config file** | none -- workspace uses `just test` |
 | **Quick run command** | `cargo test -p tftio-bsky-comment-extractor` |
 | **Full suite command** | `just ci` |
 | **Estimated runtime** | ~30 seconds |
@@ -38,22 +38,23 @@ created: 2026-03-22
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 04-01-01 | 01 | 1 | CLI-01 | unit | `cargo test -p tftio-bsky-comment-extractor test_cli_parse` | ❌ W0 | ⬜ pending |
-| 04-01-02 | 01 | 1 | CLI-02 | unit | `cargo test -p tftio-bsky-comment-extractor test_db_path_override` | ❌ W0 | ⬜ pending |
-| 04-01-03 | 01 | 1 | CLI-03 | unit | `cargo test -p tftio-bsky-comment-extractor test_spinner_quiet` | ❌ W0 | ⬜ pending |
-| 04-01-04 | 01 | 1 | CLI-04 | smoke | `just ci` | ❌ W0 | ⬜ pending |
+| 04-02-01 | 02 | 2 | CLI-01 | unit | `cargo test -p tftio-bsky-comment-extractor test_cli_parse` | W0 (Task 1 creates) | pending |
+| 04-02-02 | 02 | 2 | CLI-02 | unit | `cargo test -p tftio-bsky-comment-extractor test_db_path_default` | W0 (Task 2 creates) | pending |
+| 04-02-03 | 02 | 2 | CLI-03 | unit | `cargo test -p tftio-bsky-comment-extractor test_make_spinner_quiet` | W0 (Task 2 creates) | pending |
+| 04-02-04 | 02 | 2 | CLI-04 | smoke | `just ci` | N/A | pending |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+*Status: pending / green / red / flaky*
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] `crates/bsky-comment-extractor/src/main.rs` — binary entry point (currently missing)
-- [ ] `crates/bsky-comment-extractor/src/cli.rs` — clap Cli struct with argument parsing
-- [ ] Unit tests in `src/cli.rs` for argument parsing and path resolution
+- [ ] `crates/bsky-comment-extractor/src/main.rs` -- binary entry point (currently missing)
+- [ ] `crates/bsky-comment-extractor/src/cli.rs` -- clap Cli struct with argument parsing
+- [ ] Unit tests in `src/cli.rs` for argument parsing (test_cli_parse_*)
+- [ ] Unit tests in `src/main.rs` for path resolution (test_db_path_default) and spinner suppression (test_make_spinner_quiet)
 
-*Wave 0 creates these files as part of the first plan.*
+*Wave 0 creates these files as part of Plan 02, Tasks 1 and 2.*
 
 ---
 
