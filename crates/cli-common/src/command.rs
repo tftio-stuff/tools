@@ -6,8 +6,10 @@ use clap::{CommandFactory, FromArgMatches};
 use clap_complete::Shell;
 
 use crate::{
-    AgentDispatch, DoctorChecks, ToolSpec, display_license, generate_completions,
-    parse_with_agent_surface, parse_with_agent_surface_from, run_doctor, update,
+    AgentDispatch, AgentModeContext, CompletionOutput, DoctorChecks, ToolSpec,
+    apply_agent_surface, display_license, generate_completions_from_command,
+    parse_with_agent_surface, parse_with_agent_surface_from, render_completion_from_command,
+    run_doctor, update,
 };
 
 /// Shared doctorless adapter for tools that do not expose a doctor command.
@@ -167,6 +169,32 @@ fn render_license(spec: &ToolSpec) -> String {
     display_license(spec.bin_name, spec.license)
 }
 
+fn completion_command_for_spec<T>(spec: &ToolSpec) -> clap::Command
+where
+    T: CommandFactory,
+{
+    let ctx = AgentModeContext::detect();
+    let mut command = T::command();
+    if ctx.active {
+        apply_agent_surface(&mut command, spec, &ctx);
+    }
+    command
+}
+
+fn render_standard_completion_for_command<T>(spec: &ToolSpec, shell: Shell) -> CompletionOutput
+where
+    T: CommandFactory,
+{
+    render_completion_from_command(shell, completion_command_for_spec::<T>(spec))
+}
+
+fn generate_standard_completion_for_command<T>(spec: &ToolSpec, shell: Shell)
+where
+    T: CommandFactory,
+{
+    generate_completions_from_command(shell, completion_command_for_spec::<T>(spec));
+}
+
 /// Execute a shared standard command.
 #[must_use]
 pub fn run_standard_command<T, D>(
@@ -188,7 +216,7 @@ where
             0
         }
         StandardCommand::Completions { shell } => {
-            generate_completions::<T>(*shell);
+            generate_standard_completion_for_command::<T>(spec, *shell);
             0
         }
         StandardCommand::Doctor => {
@@ -379,6 +407,24 @@ mod tests {
         Query {
             #[arg(long)]
             limit: u32,
+        },
+        Admin,
+    }
+
+    #[derive(Debug, Parser, PartialEq, Eq)]
+    #[command(name = "tool")]
+    struct CompletionTestCli {
+        #[command(subcommand)]
+        command: CompletionTestCommand,
+    }
+
+    #[derive(Debug, Subcommand, PartialEq, Eq)]
+    enum CompletionTestCommand {
+        Query {
+            #[arg(long)]
+            limit: Option<u32>,
+            #[arg(long)]
+            secret: bool,
         },
         Admin,
     }
@@ -607,5 +653,18 @@ mod tests {
         .expect("parse should succeed");
 
         assert_eq!(parsed, AgentDispatch::Cli(7));
+    }
+
+    #[test]
+    fn agent_surface_redaction_completion_metadata_path_omits_hidden_entries() {
+        let _guard = env_lock();
+        set_tokens(Some("shared-token"), Some("shared-token"));
+
+        let output =
+            render_standard_completion_for_command::<CompletionTestCli>(&agent_spec(), Shell::Bash);
+
+        assert!(output.script.contains("query"));
+        assert!(!output.script.contains("admin"));
+        assert!(!output.script.contains("--secret"));
     }
 }
