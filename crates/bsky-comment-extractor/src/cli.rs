@@ -17,12 +17,15 @@ EXAMPLES:
   bce fetch <HANDLE>
   bce fetch alice.bsky.social
   bce fetch alice.bsky.social --since '3 months ago'
-  bce query --limit 25 --offset 50
-  bce --agent-help")]
+  bce query --limit 25 --offset 50")]
 pub struct Cli {
     /// Show top-level agent reference help instead of running a subcommand.
-    #[arg(long, global = true, hide = true)]
+    #[arg(long, hide = true)]
     pub agent_help: bool,
+
+    /// Show the top-level Claude skill document instead of running a subcommand.
+    #[arg(long, hide = true)]
+    pub agent_skill: bool,
 
     /// Select the networked fetch path or the local read-only query path.
     #[command(subcommand)]
@@ -155,6 +158,16 @@ mod tests {
         let cli = Cli::try_parse_from(["bce", "--agent-help"]).unwrap();
 
         assert!(cli.agent_help);
+        assert!(!cli.agent_skill);
+        assert!(cli.command.is_none());
+    }
+
+    #[test]
+    fn test_cli_parse_top_level_agent_skill() {
+        let cli = Cli::try_parse_from(["bce", "--agent-skill"]).unwrap();
+
+        assert!(!cli.agent_help);
+        assert!(cli.agent_skill);
         assert!(cli.command.is_none());
     }
 
@@ -184,5 +197,11 @@ mod tests {
         assert!(help.contains("--limit"));
         assert!(help.contains("--offset"));
         assert!(!help.contains("--agent-help"));
+        assert!(!help.contains("--agent-skill"));
+    }
+
+    #[test]
+    fn test_subcommand_rejects_top_level_agent_help() {
+        assert!(Cli::try_parse_from(["bce", "query", "--agent-help"]).is_err());
     }
 }

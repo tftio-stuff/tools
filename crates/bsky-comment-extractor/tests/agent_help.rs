@@ -15,7 +15,7 @@ fn run_bce(args: &[&str]) -> Output {
 }
 
 #[test]
-fn top_level_agent_help_prints_exhaustive_yaml() {
+fn agent_help_top_level_prints_exhaustive_yaml() {
     let output = run_bce(&["--agent-help"]);
 
     assert!(
@@ -38,7 +38,7 @@ fn top_level_agent_help_prints_exhaustive_yaml() {
 }
 
 #[test]
-fn top_level_agent_skill_prints_skill_document() {
+fn agent_help_top_level_agent_skill_prints_skill_document() {
     let output = run_bce(&["--agent-skill"]);
 
     assert!(
@@ -58,7 +58,7 @@ fn top_level_agent_skill_prints_skill_document() {
 }
 
 #[test]
-fn subcommand_agent_help_does_not_trigger_top_level_doc_flow() {
+fn agent_help_subcommand_does_not_trigger_top_level_doc_flow() {
     let output = run_bce(&["query", "--agent-help"]);
     assert!(!output.status.success());
 
@@ -70,7 +70,7 @@ fn subcommand_agent_help_does_not_trigger_top_level_doc_flow() {
 }
 
 #[test]
-fn human_help_hides_agent_flags() {
+fn agent_help_human_help_hides_agent_flags() {
     let output = run_bce(&["--help"]);
 
     assert!(output.status.success());
