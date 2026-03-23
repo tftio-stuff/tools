@@ -15,8 +15,10 @@ use std::{
     process,
 };
 use tftio_cli_common::{
-    DoctorCheck, DoctorChecks, LicenseType, RepoInfo, StandardCommand, ToolSpec,
-    command::run_standard_command, run_with_display_error_handler, workspace_tool,
+    AgentCapability, AgentDispatch, AgentSurfaceSpec, CommandSelector, DoctorCheck,
+    DoctorChecks, LicenseType, RepoInfo, StandardCommand, ToolSpec,
+    command::run_standard_command, parse_with_agent_surface, run_with_display_error_handler,
+    workspace_tool,
 };
 use walkdir::WalkDir;
 
@@ -112,13 +114,29 @@ const TOOL_SPEC: ToolSpec = workspace_tool(
     false,
     true,
     true,
-);
+)
+.with_agent_surface(&AGENT_SURFACE);
+
+const SCAN_COMMAND: CommandSelector = CommandSelector::new(&["scan"]);
+const SCAN_VENVS_CAPABILITY: AgentCapability = AgentCapability::minimal(
+    "scan-venvs",
+    &[SCAN_COMMAND],
+    &[],
+)
+.with_output("plain text on stdout with a non-zero exit when unignored pyvenv.cfg files are found")
+.with_constraints("reads the current working tree only");
+const AGENT_SURFACE: AgentSurfaceSpec = AgentSurfaceSpec::new(&[SCAN_VENVS_CAPABILITY]);
 
 fn main() {
-    let cli = Cli::parse();
     let is_tty = tftio_cli_common::output::is_tty();
-    let exit_code = run_with_display_error_handler("unvenv", false, || run(cli, is_tty));
-    process::exit(exit_code);
+    match parse_with_agent_surface::<Cli>(&TOOL_SPEC) {
+        Ok(AgentDispatch::Cli(cli)) => {
+            let exit_code = run_with_display_error_handler("unvenv", false, || run(cli, is_tty));
+            process::exit(exit_code);
+        }
+        Ok(AgentDispatch::Printed(code)) => process::exit(code),
+        Err(error) => error.exit(),
+    }
 }
 
 fn run(cli: Cli, is_tty: bool) -> Result<i32> {
