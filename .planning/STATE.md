@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 07-02-PLAN.md
-last_updated: "2026-03-23T01:08:45.381Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 07-04-PLAN.md
+last_updated: "2026-03-23T01:29:31.752Z"
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -47,6 +47,7 @@ Plan: 4 of 4
 | Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates P01 | 4 min | 2 tasks | 2 files |
 | Phase 07 P02 | 4 min | 2 tasks | 7 files |
 | Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates P03 | 6m 40s | 2 tasks | 8 files |
+| Phase 07 P04 | 15 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -105,6 +106,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 07]: Name every subprocess regression test with agent_help so filtered cargo verification commands execute the full hidden-help and skill-output contract.
 - [Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates]: todoer and silent-critic now intercept exact top-level agent-doc requests before clap parsing to preserve required subcommand behavior.
 - [Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates]: todoer shares the workspace cli-common agent-doc model so its project-resolution, JSON-envelope, and stdin note semantics stay aligned across YAML and skill output.
+- [Phase 07]: Keep prompter and asana-cli documentation authored per binary, then validate coverage with shared command and argument helpers.
 
 ### Roadmap Evolution
 
@@ -121,6 +123,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-23T01:07:34.032Z
-Stopped at: Completed 07-02-PLAN.md
+Last session: 2026-03-23T01:29:31.749Z
+Stopped at: Completed 07-04-PLAN.md
 Resume file: None
