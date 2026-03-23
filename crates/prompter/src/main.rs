@@ -6,16 +6,41 @@ use std::env;
 
 use clap::Parser;
 use prompter::{
-    AppMode, Cli, init_scaffold, parse_args_from, run_list_stdout, run_render_stdout,
+    AppMode, Cli, agent_doc, init_scaffold, parse_args_from, run_list_stdout, run_render_stdout,
     run_tree_stdout, run_validate_stdout,
 };
-use tftio_cli_common::LicenseType;
+use tftio_cli_common::{
+    AgentDocRequest, LicenseType, detect_agent_doc_request, render_agent_help_yaml,
+    render_agent_skill,
+};
 
 mod doctor;
 
-fn parse_args() -> Result<AppMode, String> {
-    let args: Vec<String> = env::args().collect();
-    parse_args_from(args)
+enum EntryPoint {
+    AgentDoc(AgentDocRequest),
+    Mode(AppMode),
+}
+
+fn parse_args() -> Result<EntryPoint, String> {
+    let raw_args = env::args_os().collect::<Vec<_>>();
+    if let Some(request) = detect_agent_doc_request(&raw_args) {
+        return Ok(EntryPoint::AgentDoc(request));
+    }
+
+    let args = raw_args
+        .into_iter()
+        .map(|arg| arg.to_string_lossy().into_owned())
+        .collect();
+    parse_args_from(args).map(EntryPoint::Mode)
+}
+
+fn print_agent_doc(request: AgentDocRequest) {
+    let doc = agent_doc();
+    let rendered = match request {
+        AgentDocRequest::Help => render_agent_help_yaml(&doc),
+        AgentDocRequest::Skill => render_agent_skill(&doc),
+    };
+    print!("{rendered}");
 }
 
 fn main() {
@@ -28,6 +53,10 @@ fn main() {
     };
 
     match mode {
+        EntryPoint::AgentDoc(request) => {
+            print_agent_doc(request);
+        }
+        EntryPoint::Mode(mode) => match mode {
         AppMode::Help => {
             Cli::parse_from(["prompter", "--help"]);
         }
@@ -108,5 +137,6 @@ fn main() {
                 std::process::exit(1);
             }
         }
+    },
     }
 }

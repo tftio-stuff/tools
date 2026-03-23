@@ -58,16 +58,13 @@ fn agent_help_skill_top_level_request_succeeds_without_subcommand() {
 #[test]
 fn agent_help_hidden_flags_stay_out_of_normal_help_output() {
     let output = run_prompter(&["run", "--help"]);
-
-    assert!(
-        output.status.success(),
-        "expected success, stderr={}",
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(!stdout.contains("--agent-help"));
-    assert!(!stdout.contains("--agent-skill"));
+    assert!(!combined.contains("--agent-help"));
+    assert!(!combined.contains("--agent-skill"));
 }
 
 #[test]

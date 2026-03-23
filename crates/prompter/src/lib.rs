@@ -17,6 +17,11 @@ use std::env;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use tftio_cli_common::{
+    AgentArgument, AgentCommand, AgentConfigFile, AgentDoc, AgentEnvironmentVar, AgentExample,
+    AgentFailureMode, AgentOperatorMistake, AgentOutputShape, AgentPath, AgentSection, AgentTool,
+    AgentUsage,
+};
 
 /// Configuration structure holding profile definitions and their dependencies.
 ///
@@ -156,6 +161,430 @@ pub enum AppMode {
         /// Output in JSON format
         json: bool,
     },
+}
+
+/// Build the canonical agent-facing documentation for `prompter`.
+#[must_use]
+pub fn agent_doc() -> AgentDoc {
+    AgentDoc {
+        schema_version: "1".to_owned(),
+        tool: AgentTool {
+            name: "prompter".to_owned(),
+            binary: "prompter".to_owned(),
+            summary: "Compose reusable prompt snippets from TOML profiles and markdown fragments."
+                .to_owned(),
+        },
+        usage: AgentUsage {
+            invocation: "prompter <COMMAND> [OPTIONS]".to_owned(),
+            notes: vec![
+                "Use `prompter --agent-help` for canonical YAML and `prompter --agent-skill` for the markdown skill rendering.".to_owned(),
+                "The hidden agent-doc flags are top-level only; `prompter run profile --agent-help` is rejected before normal custom parsing.".to_owned(),
+                "Global `--config` and `--json` apply anywhere clap accepts them, but the raw-argv agent-doc requests bypass `parse_args_from` entirely so ordinary subcommand requirements stay intact.".to_owned(),
+            ],
+        },
+        shared_sections: vec![
+            AgentSection {
+                title: "config resolution".to_owned(),
+                content: "Without `--config`, prompter reads `$HOME/.config/prompter/config.toml` and treats `$HOME/.local/prompter/library` as the fragment root. When `--config <FILE>` is used, the sibling `library/` directory next to that config becomes the fragment root instead.".to_owned(),
+            },
+            AgentSection {
+                title: "render semantics".to_owned(),
+                content: "`run` resolves profiles recursively, includes markdown fragments in dependency order, and deduplicates repeated fragment paths across nested profiles and across multiple requested profiles. The first occurrence wins; duplicates do not render twice.".to_owned(),
+            },
+            AgentSection {
+                title: "output modes".to_owned(),
+                content: "Text mode emits the default or custom pre-prompt, a system-info line with the local date and platform, fragment contents with optional separators, then the configured or default post-prompt. JSON mode emits one pretty-printed object with `profile`, `pre_prompt`, `system_info`, and `fragments` instead of human-readable text.".to_owned(),
+            },
+            AgentSection {
+                title: "library expectations".to_owned(),
+                content: "Profiles point to other profile names or to `.md` fragment paths relative to the active library root. Missing library files, invalid TOML, unknown profile names, and dependency cycles all fail before any prompt content is printed.".to_owned(),
+            },
+        ],
+        commands: vec![
+            AgentCommand {
+                name: "version".to_owned(),
+                summary: "Print the current prompter version.".to_owned(),
+                usage: "prompter version [--json]".to_owned(),
+                arguments: vec![flag_argument(
+                    "json",
+                    "Emit `{\"version\":\"...\"}` instead of plain text.",
+                    false,
+                )],
+                output_shapes: vec![
+                    output_shape(
+                        "version-text",
+                        "text",
+                        "Single stdout line: `prompter <version>`.",
+                    ),
+                    output_shape(
+                        "version-json",
+                        "json",
+                        "Single stdout object with a `version` field.",
+                    ),
+                ],
+            },
+            AgentCommand {
+                name: "license".to_owned(),
+                summary: "Print bundled license text.".to_owned(),
+                usage: "prompter license".to_owned(),
+                arguments: vec![],
+                output_shapes: vec![output_shape(
+                    "license-text",
+                    "text",
+                    "License document written to stdout.",
+                )],
+            },
+            AgentCommand {
+                name: "init".to_owned(),
+                summary: "Create the default config file and sample library fragments if missing."
+                    .to_owned(),
+                usage: "prompter init".to_owned(),
+                arguments: vec![],
+                output_shapes: vec![output_shape(
+                    "init-text",
+                    "text",
+                    "Status lines describing the initialized config path and library root. Existing files are left in place.",
+                )],
+            },
+            AgentCommand {
+                name: "list".to_owned(),
+                summary: "List profile names or a structured JSON inventory of profiles and fragments."
+                    .to_owned(),
+                usage: "prompter list [--config <FILE>] [--json]".to_owned(),
+                arguments: vec![
+                    flag_argument(
+                        "config",
+                        "Override the config file path and implicitly switch the library root to the sibling `library/` directory.",
+                        false,
+                    ),
+                    flag_argument(
+                        "json",
+                        "Emit a JSON object with `profiles` and `fragments` arrays.",
+                        false,
+                    ),
+                ],
+                output_shapes: vec![
+                    output_shape(
+                        "list-text",
+                        "text",
+                        "One profile name per stdout line in alphabetical order.",
+                    ),
+                    output_shape(
+                        "list-json",
+                        "json",
+                        "Pretty-printed object with `profiles[{name,dependencies}]` and `fragments[]`.",
+                    ),
+                ],
+            },
+            AgentCommand {
+                name: "tree".to_owned(),
+                summary: "Show recursive profile dependencies as a text tree or JSON tree.".to_owned(),
+                usage: "prompter tree [--config <FILE>] [--json]".to_owned(),
+                arguments: vec![
+                    flag_argument(
+                        "config",
+                        "Override the config file path and therefore the active library root.",
+                        false,
+                    ),
+                    flag_argument(
+                        "json",
+                        "Emit a JSON object with nested `trees` nodes instead of the text tree.",
+                        false,
+                    ),
+                ],
+                output_shapes: vec![
+                    output_shape(
+                        "tree-text",
+                        "text",
+                        "Stdout tree showing profile and fragment nesting for every top-level profile.",
+                    ),
+                    output_shape(
+                        "tree-json",
+                        "json",
+                        "Pretty-printed object with recursive `trees[{type,name,children}]` nodes.",
+                    ),
+                ],
+            },
+            AgentCommand {
+                name: "validate".to_owned(),
+                summary: "Validate TOML structure, referenced profiles, dependency cycles, and fragment paths."
+                    .to_owned(),
+                usage: "prompter validate [--config <FILE>] [--json]".to_owned(),
+                arguments: vec![
+                    flag_argument(
+                        "config",
+                        "Override the config file path and sibling library root used for validation.",
+                        false,
+                    ),
+                    flag_argument(
+                        "json",
+                        "Emit `{ \"valid\": true }` on success and an error JSON object on failure.",
+                        false,
+                    ),
+                ],
+                output_shapes: vec![
+                    output_shape(
+                        "validate-text-success",
+                        "text",
+                        "Single stdout line: `All profiles valid`.",
+                    ),
+                    output_shape(
+                        "validate-json-success",
+                        "json",
+                        "Pretty-printed object with `valid: true`.",
+                    ),
+                    output_shape(
+                        "validate-error",
+                        "stderr text or json string",
+                        "Validation errors list missing files, unknown profiles, or dependency cycles and the process exits 1.",
+                    ),
+                ],
+            },
+            AgentCommand {
+                name: "run".to_owned(),
+                summary: "Render one or more profiles into text or JSON output using recursive profile expansion and fragment deduplication."
+                    .to_owned(),
+                usage: "prompter run [--config <FILE>] [--json] [--separator <TEXT>] [--pre-prompt <TEXT>] [--post-prompt <TEXT>] <PROFILES>...".to_owned(),
+                arguments: vec![
+                    positional_argument(
+                        "profiles",
+                        "One or more profile names to render in order. Recursive dependencies are resolved depth-first.",
+                        true,
+                    ),
+                    flag_argument(
+                        "separator",
+                        "Optional separator inserted after each rendered fragment. Escape sequences like `\\n` are unescaped before output.",
+                        false,
+                    ),
+                    flag_argument(
+                        "pre-prompt",
+                        "Override the default operator preamble that normally starts with `You are an LLM coding agent...`.",
+                        false,
+                    ),
+                    flag_argument(
+                        "post-prompt",
+                        "Override the config-specified or default trailing instruction that references `@AGENTS.md` and `@CLAUDE.md`.",
+                        false,
+                    ),
+                    flag_argument(
+                        "config",
+                        "Override the config file path and active library root.",
+                        false,
+                    ),
+                    flag_argument(
+                        "json",
+                        "Return structured JSON instead of concatenated prompt text.",
+                        false,
+                    ),
+                ],
+                output_shapes: vec![
+                    output_shape(
+                        "run-text",
+                        "text",
+                        "Pre-prompt, system info, fragment contents, optional separators, and post-prompt on stdout.",
+                    ),
+                    output_shape(
+                        "run-json",
+                        "json",
+                        "Pretty-printed object with `profile`, `pre_prompt`, `system_info`, and `fragments[{path,content}]`.",
+                    ),
+                ],
+            },
+            AgentCommand {
+                name: "completions".to_owned(),
+                summary: "Generate shell completion scripts for the requested shell.".to_owned(),
+                usage: "prompter completions <SHELL>".to_owned(),
+                arguments: vec![positional_argument(
+                    "shell",
+                    "One of clap_complete's supported shell names such as `bash`, `zsh`, or `fish`.",
+                    true,
+                )],
+                output_shapes: vec![output_shape(
+                    "completions-script",
+                    "shell script",
+                    "Shell completion script written to stdout.",
+                )],
+            },
+            AgentCommand {
+                name: "doctor".to_owned(),
+                summary: "Check that the default config and library paths exist and report version health."
+                    .to_owned(),
+                usage: "prompter doctor [--json]".to_owned(),
+                arguments: vec![flag_argument(
+                    "json",
+                    "Emit a structured health report instead of the human-readable health check.",
+                    false,
+                )],
+                output_shapes: vec![
+                    output_shape(
+                        "doctor-text",
+                        "text",
+                        "Human-readable health report about config presence, TOML validity, library existence, and version.",
+                    ),
+                    output_shape(
+                        "doctor-json",
+                        "json",
+                        "Pretty-printed object with `config_file_exists`, `config_valid_toml`, `library_directory_exists`, `version`, `errors`, and `warnings`.",
+                    ),
+                ],
+            },
+        ],
+        arguments: vec![
+            flag_argument(
+                "config",
+                "Global config override accepted before or after the subcommand. The library root becomes the sibling `library/` directory of that config file.",
+                false,
+            ),
+            flag_argument(
+                "json",
+                "Global JSON mode accepted before or after the subcommand for commands that support structured output.",
+                false,
+            ),
+        ],
+        environment_variables: vec![AgentEnvironmentVar {
+            name: "HOME".to_owned(),
+            description: "Required to resolve the default config path (`~/.config/prompter/config.toml`) and default library root (`~/.local/prompter/library`).".to_owned(),
+            required: true,
+        }],
+        config_files: vec![AgentConfigFile {
+            path: "~/.config/prompter/config.toml".to_owned(),
+            purpose: "TOML profile definitions plus an optional top-level `post_prompt` string. Each profile section contains a `depends_on = [...]` array of profile names and `.md` fragment paths.".to_owned(),
+        }],
+        default_paths: vec![
+            AgentPath {
+                name: "default-config".to_owned(),
+                path: "~/.config/prompter/config.toml".to_owned(),
+                purpose: "Default configuration file read by `list`, `tree`, `validate`, and `run`.".to_owned(),
+            },
+            AgentPath {
+                name: "default-library".to_owned(),
+                path: "~/.local/prompter/library".to_owned(),
+                purpose: "Root directory containing markdown fragments for the default config."
+                    .to_owned(),
+            },
+        ],
+        output_shapes: vec![
+            output_shape(
+                "agent-help",
+                "yaml",
+                "Canonical agent-facing reference document written by `prompter --agent-help`.",
+            ),
+            output_shape(
+                "agent-skill",
+                "markdown with yaml front matter",
+                "Claude-style skill file rendered from the same authored source as `--agent-help`.",
+            ),
+        ],
+        examples: vec![
+            AgentExample {
+                name: "initialize-defaults".to_owned(),
+                command: "prompter init".to_owned(),
+                description: "Create the default config and sample library without overwriting existing files.".to_owned(),
+            },
+            AgentExample {
+                name: "render-json".to_owned(),
+                command: "prompter run --json python.api".to_owned(),
+                description: "Return structured fragments instead of a human-readable prompt."
+                    .to_owned(),
+            },
+            AgentExample {
+                name: "render-multiple-profiles-with-separator".to_owned(),
+                command: "prompter run --separator \"\\n---\\n\" profile.a profile.b".to_owned(),
+                description: "Render multiple profiles in order while deduplicating shared fragments and inserting a custom separator.".to_owned(),
+            },
+            AgentExample {
+                name: "custom-config-root".to_owned(),
+                command: "prompter list --config ./prompts/config.toml --json".to_owned(),
+                description: "Read `./prompts/config.toml` and use `./prompts/library/` as the fragment root.".to_owned(),
+            },
+            AgentExample {
+                name: "inspect-recursive-tree".to_owned(),
+                command: "prompter tree --json".to_owned(),
+                description: "Show recursive profile-to-fragment expansion as structured JSON."
+                    .to_owned(),
+            },
+        ],
+        failure_modes: vec![
+            AgentFailureMode {
+                name: "home-not-set".to_owned(),
+                symptom: "`$HOME not set` while resolving default config or library paths.".to_owned(),
+                resolution: "Set `HOME` or use `--config <FILE>` with a readable path.".to_owned(),
+            },
+            AgentFailureMode {
+                name: "invalid-config".to_owned(),
+                symptom: "Config file cannot be read or parsed as TOML.".to_owned(),
+                resolution: "Fix the TOML syntax or point `--config` at the intended file.".to_owned(),
+            },
+            AgentFailureMode {
+                name: "unknown-profile".to_owned(),
+                symptom: "`run`, `tree`, or `validate` reports `Unknown profile: <name>`.".to_owned(),
+                resolution: "Add the missing profile section to the config or correct the requested profile name.".to_owned(),
+            },
+            AgentFailureMode {
+                name: "missing-library-file".to_owned(),
+                symptom: "`Missing file: ... (referenced by [profile])` during validation or rendering.".to_owned(),
+                resolution: "Create the missing markdown fragment under the active library root or update the profile dependency list.".to_owned(),
+            },
+            AgentFailureMode {
+                name: "dependency-cycle".to_owned(),
+                symptom: "`Cycle detected: A -> B -> A` or similar recursive-profile failure.".to_owned(),
+                resolution: "Remove the cycle so profile dependencies form a DAG.".to_owned(),
+            },
+        ],
+        operator_mistakes: vec![
+            AgentOperatorMistake {
+                name: "agent-doc-flag-placement".to_owned(),
+                symptom: "Passing `--agent-help` or `--agent-skill` after a subcommand, such as `prompter run profile --agent-help`, yields a normal clap parse error instead of agent docs.".to_owned(),
+                correction: "Place agent-doc flags immediately after `prompter` with no other arguments.".to_owned(),
+            },
+            AgentOperatorMistake {
+                name: "wrong-library-root".to_owned(),
+                symptom: "A custom `--config` path is supplied, but fragment files are still stored under `~/.local/prompter/library`, so validation reports missing library files.".to_owned(),
+                correction: "Store fragments in the sibling `library/` directory next to the overridden config file, or use the default config root.".to_owned(),
+            },
+            AgentOperatorMistake {
+                name: "duplicate-profile-expectations".to_owned(),
+                symptom: "Repeated profile names or shared recursive dependencies do not duplicate rendered fragment content because prompter deduplicates by fragment path.".to_owned(),
+                correction: "Treat duplicate profile names as a no-op for repeated fragments; change fragment paths or content if duplicate output is required.".to_owned(),
+            },
+            AgentOperatorMistake {
+                name: "json-vs-text-assumptions".to_owned(),
+                symptom: "Scripts expect the text pre-prompt/post-prompt layout while invoking `--json`, or expect JSON objects while using plain text mode.".to_owned(),
+                correction: "Choose `--json` only when the caller wants structured `profile/system_info/fragments` data; otherwise use text mode.".to_owned(),
+            },
+        ],
+        constraints: vec![
+            "The hidden agent-doc flags only work as exact top-level invocations.".to_owned(),
+            "Normal CLI behavior still requires a subcommand; the agent-doc path does not make empty ordinary invocations valid.".to_owned(),
+            "Recursive dependency resolution deduplicates fragment paths globally across the requested profile list.".to_owned(),
+        ],
+    }
+}
+
+fn flag_argument(name: &str, description: &str, required: bool) -> AgentArgument {
+    AgentArgument {
+        name: name.to_owned(),
+        positional: false,
+        description: description.to_owned(),
+        required,
+    }
+}
+
+fn positional_argument(name: &str, description: &str, required: bool) -> AgentArgument {
+    AgentArgument {
+        name: name.to_owned(),
+        positional: true,
+        description: description.to_owned(),
+        required,
+    }
+}
+
+fn output_shape(name: &str, format: &str, description: &str) -> AgentOutputShape {
+    AgentOutputShape {
+        name: name.to_owned(),
+        format: format.to_owned(),
+        description: description.to_owned(),
+    }
 }
 
 /// Parse command-line arguments and return the resolved application mode.
@@ -1367,6 +1796,7 @@ pub fn available_profiles(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tftio_cli_common::agent_docs::{assert_argument_coverage, assert_command_coverage};
 
     fn mk_tmp(prefix: &str) -> PathBuf {
         let mut p = env::temp_dir();
@@ -2055,5 +2485,47 @@ depends_on = ["missing.md", "unknown_profile"]
             assert_eq!(profiles, sorted);
         }
         // If no config, error is acceptable
+    }
+
+    #[test]
+    fn agent_help_documentation_covers_prompter_cli_tree() {
+        assert_command_coverage::<Cli>(&[
+            "version",
+            "license",
+            "init",
+            "list",
+            "tree",
+            "validate",
+            "run",
+            "completions",
+            "doctor",
+        ]);
+        assert_argument_coverage::<Cli>(&[], &["config", "json"], &[], &[]);
+        assert_argument_coverage::<Cli>(&["version"], &[], &[], &[]);
+        assert_argument_coverage::<Cli>(&["license"], &[], &[], &[]);
+        assert_argument_coverage::<Cli>(&["init"], &[], &[], &[]);
+        assert_argument_coverage::<Cli>(&["list"], &[], &[], &[]);
+        assert_argument_coverage::<Cli>(&["tree"], &[], &[], &[]);
+        assert_argument_coverage::<Cli>(&["validate"], &[], &[], &[]);
+        assert_argument_coverage::<Cli>(
+            &["run"],
+            &["separator", "pre-prompt", "post-prompt"],
+            &["profiles"],
+            &["config", "json"],
+        );
+        assert_argument_coverage::<Cli>(&["completions"], &[], &["shell"], &[]);
+        assert_argument_coverage::<Cli>(&["doctor"], &[], &[], &[]);
+    }
+
+    #[test]
+    fn agent_help_document_includes_recursive_render_and_error_guidance() {
+        let doc = agent_doc();
+        let rendered = tftio_cli_common::render_agent_skill(&doc);
+
+        assert!(rendered.contains("recursive"));
+        assert!(rendered.contains("duplicate"));
+        assert!(rendered.contains("missing library files"));
+        assert!(rendered.contains("JSON"));
+        assert!(rendered.contains("prompter run --separator"));
     }
 }
