@@ -12,32 +12,91 @@ use tftio_cli_common::{
     progress::make_spinner, workspace_tool,
 };
 
-use bsky_comment_extractor::cli::{Cli, Command as CliCommand, FetchArgs, QueryArgs};
+use bsky_comment_extractor::cli::{Cli, Command as CliCommand, FetchArgs, MetaCommand, QueryArgs};
 use bsky_comment_extractor::db::{count_posts, open_existing_db, query_posts};
 use bsky_comment_extractor::error::ExtractorError;
 use bsky_comment_extractor::models::QueryEnvelope;
 
 struct BceDoctor;
 
-fn run(cli: Cli) -> i32 {
+impl DoctorChecks for BceDoctor {
+    fn repo_info() -> tftio_cli_common::RepoInfo {
+        tftio_cli_common::app::WORKSPACE_REPO
+    }
+
+    fn current_version() -> &'static str {
+        env!("CARGO_PKG_VERSION")
+    }
+}
+
+const TOOL_SPEC: ToolSpec = workspace_tool(
+    "bce",
+    "BlueSky Comment Extractor",
+    env!("CARGO_PKG_VERSION"),
+    LicenseType::MIT,
+    false,
+    true,
+    false,
+);
+
+fn main() {
+    parse_and_exit(Cli::parse, run);
+}
+
+fn run(cli: Cli) -> Result<i32, FatalCliError> {
     if cli.agent_help {
         print_agent_help();
-        return 0;
+        return Ok(0);
+    }
+
+    let meta_command = metadata_command(cli.command.as_ref());
+    let doctor = BceDoctor;
+    if let Some(exit_code) =
+        maybe_run_standard_command::<Cli, BceDoctor, _>(&TOOL_SPEC, meta_command.as_ref(), false, Some(&doctor))
+    {
+        return Ok(exit_code);
     }
 
     let Some(command) = cli.command else {
-        return print_top_level_help();
+        return Ok(print_top_level_help());
     };
 
     match command {
-        CliCommand::Fetch(fetch) => match execute_fetch(fetch) {
-            Ok(()) => 0,
-            Err(err) => {
-                eprintln!("Error: {err:#}");
-                1
+        CliCommand::Fetch(fetch) => execute_fetch(fetch)
+            .map(|()| 0)
+            .map_err(|error| fatal_error("extract", false, format!("{error:#}"))),
+        CliCommand::Query(query) => {
+            if execute_query(query).is_err() {
+                Ok(1)
+            } else {
+                Ok(0)
             }
-        },
-        CliCommand::Query(query) => i32::from(execute_query(query).is_err()),
+        }
+        CliCommand::Meta { .. } => {
+            // Already handled by maybe_run_standard_command above.
+            Ok(0)
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct BceMetadataCommand<'a>(&'a MetaCommand);
+
+impl StandardCommandMap for BceMetadataCommand<'_> {
+    fn to_standard_command(&self, _json: bool) -> StandardCommand {
+        match self.0 {
+            MetaCommand::Version => StandardCommand::Version { json: false },
+            MetaCommand::License => StandardCommand::License,
+            MetaCommand::Completions { shell } => StandardCommand::Completions { shell: *shell },
+            MetaCommand::Doctor => StandardCommand::Doctor,
+        }
+    }
+}
+
+fn metadata_command(command: Option<&CliCommand>) -> Option<BceMetadataCommand<'_>> {
+    match command {
+        Some(CliCommand::Meta { command }) => Some(BceMetadataCommand(command)),
+        _ => None,
     }
 }
 
@@ -82,7 +141,7 @@ fn execute_fetch(fetch: FetchArgs) -> Result<()> {
         })
         .transpose()?;
 
-    let spinner = make_spinner(fetch.quiet, &fetch.handle);
+    let spinner = make_spinner(!fetch.quiet, &format!("Fetching posts for {}... 0 records", &fetch.handle));
 
     let progress_cb = |count: u64| {
         if let Some(ref pb) = spinner {
@@ -200,7 +259,7 @@ mod tests {
 
     #[test]
     fn test_make_spinner_quiet() {
-        assert!(make_spinner(true, "alice.bsky.social").is_none());
+        assert!(make_spinner(false, "Fetching posts for alice.bsky.social... 0 records").is_none());
     }
 
     #[test]
@@ -222,18 +281,18 @@ mod tests {
     #[test]
     fn metadata_commands_map_to_shared_standard_command() {
         assert_eq!(
-            BceMetadataCommand(&Command::Doctor).to_standard_command(false),
+            BceMetadataCommand(&MetaCommand::Doctor).to_standard_command(false),
             StandardCommand::Doctor
         );
         assert_eq!(
-            BceMetadataCommand(&Command::Version).to_standard_command(false),
+            BceMetadataCommand(&MetaCommand::Version).to_standard_command(false),
             StandardCommand::Version { json: false }
         );
     }
 
     #[test]
     fn run_returns_success_for_version_command() {
-        let cli = Cli::parse_from(["bce", "version"]);
+        let cli = Cli::parse_from(["bce", "meta", "version"]);
         assert_eq!(run(cli).expect("version command should succeed"), 0);
     }
 }

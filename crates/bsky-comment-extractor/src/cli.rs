@@ -36,6 +36,28 @@ pub enum Command {
     Fetch(FetchArgs),
     /// Query posts from the local database without making network requests.
     Query(QueryArgs),
+    /// Shared metadata commands.
+    Meta {
+        /// Metadata subcommand.
+        #[command(subcommand)]
+        command: MetaCommand,
+    },
+}
+
+/// Shared metadata commands for the `bce` binary.
+#[derive(Subcommand, Debug)]
+pub enum MetaCommand {
+    /// Show version information.
+    Version,
+    /// Show license information.
+    License,
+    /// Generate shell completions.
+    Completions {
+        /// Shell to generate completions for.
+        shell: clap_complete::Shell,
+    },
+    /// Run health checks.
+    Doctor,
 }
 
 /// Arguments for the networked extractor path.
@@ -105,6 +127,7 @@ mod tests {
                 assert!(args.quiet);
             }
             Some(Command::Query(_)) => panic!("expected Fetch subcommand, got Query"),
+            Some(Command::Meta { .. }) => panic!("expected Fetch subcommand, got Meta"),
             None => panic!("expected Fetch subcommand, got no subcommand"),
         }
     }
@@ -121,6 +144,7 @@ mod tests {
                 assert_eq!(args.offset, 0);
             }
             Some(Command::Fetch(_)) => panic!("expected Query subcommand, got Fetch"),
+            Some(Command::Meta { .. }) => panic!("expected Query subcommand, got Meta"),
             None => panic!("expected Query subcommand, got no subcommand"),
         }
     }
@@ -146,6 +170,7 @@ mod tests {
                 assert_eq!(args.offset, 75);
             }
             Some(Command::Fetch(_)) => panic!("expected Query subcommand, got Fetch"),
+            Some(Command::Meta { .. }) => panic!("expected Query subcommand, got Meta"),
             None => panic!("expected Query subcommand, got no subcommand"),
         }
     }
@@ -184,5 +209,17 @@ mod tests {
         assert!(help.contains("--limit"));
         assert!(help.contains("--offset"));
         assert!(!help.contains("--agent-help"));
+    }
+
+    #[test]
+    fn test_cli_parse_meta_version() {
+        let cli = Cli::try_parse_from(["bce", "meta", "version"]).unwrap();
+
+        match cli.command {
+            Some(Command::Meta {
+                command: MetaCommand::Version,
+            }) => {}
+            other => panic!("expected Meta Version, got {other:?}"),
+        }
     }
 }
