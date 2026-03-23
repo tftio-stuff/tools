@@ -1,17 +1,34 @@
 use clap::Parser;
 use serde_json::json;
+use tftio_cli_common::{
+    AgentDocRequest, detect_agent_doc_request, render_agent_help_yaml, render_agent_skill,
+};
 
 use silent_critic::cli::{
-    Cli, Command, ContractCommand, CriterionCommand, ProjectCommand, SessionCommand,
+    Cli, Command, ContractCommand, CriterionCommand, ProjectCommand, SessionCommand, agent_doc,
 };
 use silent_critic::commands::{contract, criterion, decide, log, project, session};
 use silent_critic::config::load_config;
 use silent_critic::output::{err_response, ok_response};
 
 fn main() {
+    if let Some(request) = detect_agent_doc_request(std::env::args_os()) {
+        print_agent_doc(request);
+        return;
+    }
+
     let cli = Cli::parse();
     let code = run(cli);
     std::process::exit(code);
+}
+
+fn print_agent_doc(request: AgentDocRequest) {
+    let doc = agent_doc();
+    let rendered = match request {
+        AgentDocRequest::Help => render_agent_help_yaml(&doc),
+        AgentDocRequest::Skill => render_agent_skill(&doc),
+    };
+    print!("{rendered}");
 }
 
 fn run(cli: Cli) -> i32 {

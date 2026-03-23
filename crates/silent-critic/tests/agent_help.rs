@@ -41,7 +41,7 @@ fn agent_help_skill_top_level_request_succeeds_without_subcommand() {
     assert!(stdout.contains("# silent-critic"));
     assert!(stdout.contains("session compose-from"));
     assert!(stdout.contains("contract show"));
-    assert!(stdout.contains("operator mistakes"));
+    assert!(stdout.contains("Operator mistakes"));
 }
 
 #[test]
