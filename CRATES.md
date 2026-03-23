@@ -180,7 +180,7 @@ todoer list              # List all tasks
 
 ## Version Management
 
-The workspace uses a shared repo-wide release version via release-please. Release PRs are created on push to `main`, and component tags for a release wave share the same version number (for example `prompter-v2.2.0` and `todoer-v2.2.0`).
+The workspace uses a shared repo-wide release version via release-please. Release PRs are created on push to `main`, and one repo tag (for example `v2.2.0`) drives the full workspace release wave.
 
 ## License Information
 

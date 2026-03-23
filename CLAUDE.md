@@ -129,7 +129,7 @@ crates/NAMESPACE/
 
 - Workspace crates share one repo-wide version via release-please
 - Release PRs created on push to `main`
-- Tags format: `{crate}-v{version}`; all tags created in one release wave share the same version (e.g., `prompter-v2.2.0`, `todoer-v2.2.0`)
+- Tags format: `v{version}`; one repo tag drives the full workspace release wave
 - Use `versioneer` for version number changes
 
 ### Toolchain

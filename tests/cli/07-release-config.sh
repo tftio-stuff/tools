@@ -37,6 +37,8 @@ if len(manifest_versions) != 1:
 config = json.loads((root / "release-please-config.json").read_text())
 if config.get("separate-pull-requests") is not False:
     raise SystemExit("release-please still uses separate pull requests")
+if config.get("include-component-in-tag") is not False:
+    raise SystemExit("release-please still uses component-prefixed tags")
 
 plugins = config.get("plugins", [])
 plugin_types = []
@@ -69,3 +71,34 @@ if sorted(linked.get("components", [])) != expected_components:
 
 print("PASS: release config and binary naming are workspace-consistent")
 PY
+
+release_workflow=$repo_root/.github/workflows/release.yml
+
+if ! grep -Fq '      - "v*"' "$release_workflow"; then
+    echo "release workflow is not triggered by repo-wide v* tags" >&2
+    exit 1
+fi
+if ! grep -Fq 'publish_crate tftio-cli-common' "$release_workflow"; then
+    echo "release workflow does not publish the shared library crate" >&2
+    exit 1
+fi
+if ! grep -Fq 'bin: ${{ matrix.binary_name }}' "$release_workflow"; then
+    echo "release workflow is not building all binaries from a matrix" >&2
+    exit 1
+fi
+for crate in \
+    tftio-prompter \
+    tftio-unvenv \
+    tftio-asana-cli \
+    tftio-todoer \
+    tftio-silent-critic \
+    tftio-gator \
+    tftio-bsky-comment-extractor
+do
+    if ! grep -Fq "publish_crate $crate" "$release_workflow"; then
+        echo "release workflow does not publish $crate" >&2
+        exit 1
+    fi
+done
+
+echo "PASS: release workflow expects a single repo tag and workspace publish"
