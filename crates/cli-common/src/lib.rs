@@ -52,6 +52,7 @@ pub use license::LicenseType;
 pub use types::{DoctorCheck, RepoInfo};
 
 // Public modules
+pub mod agent_docs;
 pub mod app;
 pub mod command;
 pub mod completions;
@@ -66,6 +67,12 @@ pub mod types;
 pub mod update;
 
 // Re-export commonly used items
+pub use agent_docs::{
+    AgentArgument, AgentCommand, AgentConfigFile, AgentDoc, AgentDocRequest, AgentEnvironmentVar,
+    AgentExample, AgentFailureMode, AgentOperatorMistake, AgentOutputShape, AgentPath,
+    AgentSection, AgentTool, AgentUsage, detect_agent_doc_request, render_agent_help_yaml,
+    render_agent_skill,
+};
 pub use app::{ToolSpec, workspace_tool};
 pub use command::{
     NoDoctor, StandardCommand, StandardCommandMap, map_standard_command,

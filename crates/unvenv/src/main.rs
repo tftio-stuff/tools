@@ -15,8 +15,11 @@ use std::{
     process,
 };
 use tftio_cli_common::{
-    DoctorCheck, DoctorChecks, LicenseType, RepoInfo, StandardCommand, ToolSpec,
-    command::run_standard_command, run_with_display_error_handler, workspace_tool,
+    AgentArgument, AgentCommand, AgentConfigFile, AgentDoc, AgentDocRequest, AgentExample,
+    AgentFailureMode, AgentOperatorMistake, AgentOutputShape, AgentPath, AgentSection, AgentTool,
+    AgentUsage, DoctorCheck, DoctorChecks, LicenseType, RepoInfo, StandardCommand, ToolSpec,
+    command::run_standard_command, detect_agent_doc_request, render_agent_help_yaml,
+    render_agent_skill, run_with_display_error_handler, workspace_tool,
 };
 use walkdir::WalkDir;
 
@@ -38,6 +41,14 @@ struct VenvInfo {
 #[command(about = "Python virtual environment detector CLI")]
 #[command(version = VERSION)]
 struct Cli {
+    /// Show the top-level canonical YAML agent reference.
+    #[arg(long, hide = true)]
+    agent_help: bool,
+
+    /// Show the top-level Claude skill document.
+    #[arg(long, hide = true)]
+    agent_skill: bool,
+
     #[command(subcommand)]
     command: Option<Commands>,
 }
@@ -115,6 +126,11 @@ const TOOL_SPEC: ToolSpec = workspace_tool(
 );
 
 fn main() {
+    if let Some(request) = detect_agent_doc_request(std::env::args_os()) {
+        print_agent_doc(request);
+        process::exit(0);
+    }
+
     let cli = Cli::parse();
     let is_tty = tftio_cli_common::output::is_tty();
     let exit_code = run_with_display_error_handler("unvenv", false, || run(cli, is_tty));
@@ -122,6 +138,16 @@ fn main() {
 }
 
 fn run(cli: Cli, is_tty: bool) -> Result<i32> {
+    if cli.agent_help {
+        print_agent_doc(AgentDocRequest::Help);
+        return Ok(0);
+    }
+
+    if cli.agent_skill {
+        print_agent_doc(AgentDocRequest::Skill);
+        return Ok(0);
+    }
+
     let tool = UnvenvTool;
 
     match cli.command {
@@ -163,6 +189,231 @@ fn run(cli: Cli, is_tty: bool) -> Result<i32> {
             Some(&tool),
         )),
     }
+}
+
+fn print_agent_doc(request: AgentDocRequest) {
+    let doc = build_agent_doc();
+    let rendered = match request {
+        AgentDocRequest::Help => render_agent_help_yaml(&doc),
+        AgentDocRequest::Skill => render_agent_skill(&doc),
+    };
+    print!("{rendered}");
+}
+
+fn build_agent_doc() -> AgentDoc {
+    AgentDoc {
+        schema_version: text("1.0"),
+        tool: AgentTool {
+            name: text("unvenv"),
+            binary: text("unvenv"),
+            summary: text(
+                "Scan a repository for Python virtual environments that are not ignored by Git.",
+            ),
+        },
+        usage: AgentUsage {
+            invocation: text("unvenv [--agent-help|--agent-skill] [COMMAND]"),
+            notes: vec![
+                text("Running `unvenv` with no subcommand is equivalent to `unvenv scan`."),
+                text("`unvenv --agent-help` and `unvenv --agent-skill` are top-level only; `unvenv scan --agent-help` is invalid."),
+                text("Exit code 2 means policy violation: at least one unignored `pyvenv.cfg` file was detected."),
+            ],
+        },
+        shared_sections: vec![AgentSection {
+            title: text("Top-level agent-doc contract"),
+            content: text(
+                "Agent-doc invocations print to stdout, exit 0, and are hidden from normal human help output.",
+            ),
+        }],
+        commands: vec![
+            AgentCommand {
+                name: text("scan"),
+                summary: text(
+                    "Walk the current repository tree, ignore `.git`, respect Git ignore rules when possible, and report unignored virtual environments.",
+                ),
+                usage: text("unvenv scan"),
+                arguments: vec![],
+                output_shapes: vec![
+                    AgentOutputShape {
+                        name: text("scan_success"),
+                        format: text("exit 0"),
+                        description: text(
+                            "No unignored virtual environments were found in the scanned tree.",
+                        ),
+                    },
+                    AgentOutputShape {
+                        name: text("scan_violation"),
+                        format: text("stdout report + exit code 2"),
+                        description: text(
+                            "Lists each discovered `pyvenv.cfg`, metadata parsed from it, suggested `.gitignore` entries, and cleanup guidance.",
+                        ),
+                    },
+                ],
+            },
+            AgentCommand {
+                name: text("doctor"),
+                summary: text("Run shared CLI health checks plus repository discovery checks."),
+                usage: text("unvenv doctor"),
+                arguments: vec![],
+                output_shapes: vec![AgentOutputShape {
+                    name: text("doctor_report"),
+                    format: text("stdout text"),
+                    description: text("Shared doctor output showing repository and installation health."),
+                }],
+            },
+            AgentCommand {
+                name: text("completions"),
+                summary: text("Generate shell completion scripts."),
+                usage: text("unvenv completions <SHELL>"),
+                arguments: vec![positional_arg(
+                    "shell",
+                    "Shell name accepted by clap_complete, such as `bash`, `zsh`, or `fish`.",
+                    true,
+                )],
+                output_shapes: vec![AgentOutputShape {
+                    name: text("completion_script"),
+                    format: text("stdout text"),
+                    description: text("Shell completion script suitable for redirecting into a file."),
+                }],
+            },
+            AgentCommand {
+                name: text("update"),
+                summary: text("Install a newer release of `unvenv` using the shared updater."),
+                usage: text("unvenv update [--version <SEMVER>] [--force] [--install-dir <PATH>]"),
+                arguments: vec![
+                    flag_arg("--version", "Install a specific release instead of the latest version.", false),
+                    flag_arg("--force", "Reinstall even when already at the target version.", false),
+                    flag_arg("--install-dir", "Override the destination directory for the installed binary.", false),
+                ],
+                output_shapes: vec![AgentOutputShape {
+                    name: text("update_report"),
+                    format: text("stdout text"),
+                    description: text("Shared updater progress and final installation status."),
+                }],
+            },
+        ],
+        arguments: vec![
+            flag_arg("--agent-help", "Print this canonical YAML reference document.", false),
+            flag_arg("--agent-skill", "Print the same content as a Claude skill document.", false),
+        ],
+        environment_variables: vec![],
+        config_files: vec![
+            AgentConfigFile {
+                path: text(".gitignore"),
+                purpose: text("Git ignore rules determine whether a detected virtual environment is reported."),
+            },
+            AgentConfigFile {
+                path: text("~/.config/unvenv"),
+                purpose: text("No dedicated config file exists today; runtime behavior is driven by the current working tree and CLI flags."),
+            },
+        ],
+        default_paths: vec![
+            AgentPath {
+                name: text("scan root"),
+                path: text("current working directory"),
+                purpose: text("The starting directory for repository discovery and filesystem walking."),
+            },
+            AgentPath {
+                name: text("virtualenv marker"),
+                path: text("**/pyvenv.cfg"),
+                purpose: text("Every detected environment is identified by this file."),
+            },
+        ],
+        output_shapes: vec![
+            AgentOutputShape {
+                name: text("scan_violation"),
+                format: text("stdout report + exit code 2"),
+                description: text("Human-readable report listing each unignored environment and recommended cleanup."),
+            },
+            AgentOutputShape {
+                name: text("scan_success"),
+                format: text("exit 0"),
+                description: text("Silent success when no policy violations are found."),
+            },
+        ],
+        examples: vec![
+            AgentExample {
+                name: text("default scan"),
+                command: text("unvenv"),
+                description: text("Scan the current directory tree for unignored Python virtual environments."),
+            },
+            AgentExample {
+                name: text("explicit scan"),
+                command: text("unvenv scan"),
+                description: text("Equivalent to the default invocation but explicit in scripts."),
+            },
+            AgentExample {
+                name: text("generate zsh completions"),
+                command: text("unvenv completions zsh"),
+                description: text("Emit a zsh completion script to stdout."),
+            },
+            AgentExample {
+                name: text("pin an update"),
+                command: text("unvenv update --version 1.8.0 --install-dir ~/.local/bin"),
+                description: text("Install a specific version into a custom directory."),
+            },
+        ],
+        failure_modes: vec![
+            AgentFailureMode {
+                name: text("exit code 2"),
+                symptom: text("At least one unignored `pyvenv.cfg` file was detected."),
+                resolution: text("Add the environment directory to `.gitignore`, remove committed copies from the index, and rerun the scan."),
+            },
+            AgentFailureMode {
+                name: text("repository discovery fallback"),
+                symptom: text("No Git repository is found for the current directory."),
+                resolution: text("`unvenv` still scans the filesystem, but it cannot consult Git ignore rules, so every `pyvenv.cfg` file is treated as unignored."),
+            },
+            AgentFailureMode {
+                name: text("filesystem read error"),
+                symptom: text("Directory walking or file reads fail and the process exits with an error."),
+                resolution: text("Inspect stderr, confirm the working tree is readable, and retry."),
+            },
+        ],
+        operator_mistakes: vec![
+            AgentOperatorMistake {
+                name: text("Running `unvenv scan --agent-help`"),
+                symptom: text("The hidden agent-doc flags are rejected when placed after a subcommand."),
+                correction: text("Use `unvenv --agent-help` or `unvenv --agent-skill` at the top level."),
+            },
+            AgentOperatorMistake {
+                name: text("Ignoring only `pyvenv.cfg`"),
+                symptom: text("The marker file is ignored but the rest of the environment directory is still tracked."),
+                correction: text("Ignore the entire environment directory such as `venv/`, not just the config file."),
+            },
+            AgentOperatorMistake {
+                name: text("Assuming exit code 0 means a repository exists"),
+                symptom: text("A non-repository directory can still return success if no `pyvenv.cfg` files are found."),
+                correction: text("Treat repository discovery and policy cleanliness as separate facts; use `unvenv doctor` when you need repository diagnostics."),
+            },
+        ],
+        constraints: vec![
+            text("The scanner skips `.git` directories and does not follow symlinks."),
+            text("Only `pyvenv.cfg` markers are used for detection."),
+            text("Agent-doc flags intentionally bypass normal clap dispatch only for the exact top-level invocations."),
+        ],
+    }
+}
+
+fn positional_arg(name: &str, description: &str, required: bool) -> AgentArgument {
+    AgentArgument {
+        name: text(name),
+        positional: true,
+        description: text(description),
+        required,
+    }
+}
+
+fn flag_arg(name: &str, description: &str, required: bool) -> AgentArgument {
+    AgentArgument {
+        name: text(name),
+        positional: false,
+        description: text(description),
+        required,
+    }
+}
+
+fn text(value: &str) -> String {
+    value.to_owned()
 }
 
 fn scan_for_venvs(is_tty: bool) -> Result<i32> {

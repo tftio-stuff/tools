@@ -2,11 +2,13 @@ use clap::Parser;
 use serde_json::json;
 use std::io::Read;
 use tftio_cli_common::{
-    LicenseType, StandardCommand, ToolSpec, command::run_standard_command_no_doctor,
-    error::print_error, render_response, render_response_with, workspace_tool,
+    AgentDocRequest, LicenseType, StandardCommand, ToolSpec,
+    command::run_standard_command_no_doctor, detect_agent_doc_request, error::print_error,
+    render_agent_help_yaml, render_agent_skill, render_response, render_response_with,
+    workspace_tool,
 };
 
-use todoer::cli::{Cli, Command, MetaCommand, TaskCommand, TaskUpdateCommand};
+use todoer::cli::{Cli, Command, MetaCommand, TaskCommand, TaskUpdateCommand, agent_doc};
 use todoer::commands::{
     init::run_init,
     list::run_list,
@@ -34,9 +36,23 @@ const TOOL_SPEC: ToolSpec = workspace_tool(
 );
 
 fn main() {
+    if let Some(request) = detect_agent_doc_request(std::env::args_os()) {
+        print_agent_doc(request);
+        return;
+    }
+
     let cli = Cli::parse();
     let code = run(cli);
     std::process::exit(code);
+}
+
+fn print_agent_doc(request: AgentDocRequest) {
+    let doc = agent_doc();
+    let rendered = match request {
+        AgentDocRequest::Help => render_agent_help_yaml(&doc),
+        AgentDocRequest::Skill => render_agent_skill(&doc),
+    };
+    print!("{rendered}");
 }
 
 fn run(cli: Cli) -> i32 {

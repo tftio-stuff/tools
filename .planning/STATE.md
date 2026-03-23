@@ -1,17 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: reconciled
-milestone_name: bce-query-mode + cli-common-maximal-sharing reconciliation
-status: reconciled
-stopped_at: Merged main (bce-query-mode) and feature/add-agent-help-to-all-tools (cli-common-maximal-sharing)
-last_updated: "2026-03-22T23:59:00.000Z"
-last_activity: "2026-03-22"
+milestone: v1.0
+milestone_name: milestone
+status: Milestone complete
+stopped_at: Completed 07-04-PLAN.md
+last_updated: "2026-03-23T01:36:33.148Z"
 progress:
   total_phases: 3
-  completed_phases: 3
-  total_plans: 15
-  completed_plans: 15
-  percent: 100
+  completed_phases: 1
+  total_plans: 4
+  completed_plans: 4
 ---
 
 # Project State
@@ -21,39 +19,39 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Complete, reliable extraction of a single BlueSky user's entire post and interaction history into a queryable local store.
-**Current focus:** Both symbolic milestones `bce-query-mode` and `cli-common-maximal-sharing` have been completed and reconciled.
+**Current focus:** Phase 07 — add-shared-agent-help-and-agent-skill-support-across-cli-crates
 
 ## Current Position
 
-Milestone: Reconciled merge of bce-query-mode (Phase 5, 3 plans) and cli-common-maximal-sharing (Phases 01-03, 12 plans)
-Status: All phases complete, features integrated
-Total plans completed: 15 (3 from bce-query-mode + 12 from cli-common-maximal-sharing)
+Phase: 07
+Plan: Not started
 
-## Completed Milestones
+## Performance Metrics
 
-### bce-query-mode (Completed 2026-03-22)
-- Phase 5: Query Subcommand (3/3 plans)
-- Features: `bce query` with JSONL pagination, QueryEnvelope, QueryPost models
+**Velocity (v1.1):**
 
-### cli-common-maximal-sharing (Completed 2026-03-22)
-- Phase 01: CLI Common Unification (4/4 plans)
-- Phase 02: Maximize cli-common sharing (4/4 plans)
-- Phase 03: Extract remaining CLI glue (4/4 plans)
-- Features: Shared metadata commands, StandardCommandMap pattern, unified workspace CLI UX
+- Total plans completed: 2
+- Average duration: ~4.5min
+- Total execution time: ~9min
 
-## Integration Status
+**By Phase:**
 
-The two parallel workstreams have been successfully merged:
-- `bce` now supports both query functionality (from main) and cli-common infrastructure (from feature branch)
-- CLI structure: `bce fetch|query|version|license|completions|doctor`
-- All workspace tools now share consistent metadata command UX via tftio-cli-common
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| 03-extraction-engine | 2 | 9min | 4.5min |
+| Phase 04-cli-surface P01 | 4 | 2 tasks | 4 files |
+| Phase 04 P02 | 3.5min | 3 tasks | 6 files |
+| Phase 05-query-subcommand P02 | 2m | 2 tasks | 2 files |
+| Phase 05-query-subcommand P01 | 0 min | 2 tasks | 3 files |
+| Phase 05-query-subcommand P03 | 3m 23s | 3 tasks | 4 files |
+| Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates P01 | 4 min | 2 tasks | 2 files |
+| Phase 07 P02 | 4 min | 2 tasks | 7 files |
+| Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates P03 | 6m 40s | 2 tasks | 8 files |
+| Phase 07 P04 | 15 min | 3 tasks | 9 files |
 
-## Next Steps
+## Accumulated Context
 
-No active milestone. Recommended:
-- Start new symbolic milestone with GSD workflow if architectural work needed
-- Continue product features (activity-type filtering) when ready
-- Release versioning managed by release-please
+### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
 
@@ -102,6 +100,17 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 05-query-subcommand]: Query execution stays synchronous and never reads BSKY_APP_PASSWORD or starts tokio.
 - [Phase 05-query-subcommand]: Query failures emit structured stderr JSON with db_not_found for missing databases and query_failed for other runtime errors.
 - [Phase 05-query-subcommand]: The global --agent-help flag remains parseable but hidden from subcommand help so bce query --help exposes only query options.
+- [Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates]: Render both agent-help YAML and agent-skill markdown from one shared AgentDoc model. — A single authored source keeps Phase 7 output formats aligned and avoids schema drift.
+- [Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates]: Detect agent-doc requests from raw argv and accept only exact top-level invocations. — Short-circuiting before clap preserves required subcommands and positional parsing while rejecting subcommand placement.
+- [Phase 07]: Preserve clap-required commands and positionals by handling successful agent-doc requests from raw argv before parser dispatch.
+- [Phase 07]: Name every subprocess regression test with agent_help so filtered cargo verification commands execute the full hidden-help and skill-output contract.
+- [Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates]: todoer and silent-critic now intercept exact top-level agent-doc requests before clap parsing to preserve required subcommand behavior.
+- [Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates]: todoer shares the workspace cli-common agent-doc model so its project-resolution, JSON-envelope, and stdin note semantics stay aligned across YAML and skill output.
+- [Phase 07]: Keep prompter and asana-cli documentation authored per binary, then validate coverage with shared command and argument helpers.
+
+### Roadmap Evolution
+
+- Phase 7 added: Add shared --agent-help and --agent-skill support across CLI crates
 
 ### Pending Todos
 
@@ -114,6 +123,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-22T22:16:28.147Z
-Stopped at: Completed 05-query-subcommand-03-PLAN.md
+Last session: 2026-03-23T01:29:31.749Z
+Stopped at: Completed 07-04-PLAN.md
 Resume file: None

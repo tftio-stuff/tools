@@ -21,6 +21,14 @@ EXAMPLES:
   bce version
   bce completions bash")]
 pub struct Cli {
+    /// Show top-level agent reference help instead of running a subcommand.
+    #[arg(long, hide = true)]
+    pub agent_help: bool,
+
+    /// Show the top-level Claude skill document instead of running a subcommand.
+    #[arg(long, hide = true)]
+    pub agent_skill: bool,
+
     /// Select the networked fetch path, local query path, or metadata commands.
     #[command(subcommand)]
     pub command: Option<Command>,
@@ -160,6 +168,24 @@ mod tests {
     }
 
     #[test]
+    fn test_cli_parse_top_level_agent_help() {
+        let cli = Cli::try_parse_from(["bce", "--agent-help"]).unwrap();
+
+        assert!(cli.agent_help);
+        assert!(!cli.agent_skill);
+        assert!(cli.command.is_none());
+    }
+
+    #[test]
+    fn test_cli_parse_top_level_agent_skill() {
+        let cli = Cli::try_parse_from(["bce", "--agent-skill"]).unwrap();
+
+        assert!(!cli.agent_help);
+        assert!(cli.agent_skill);
+        assert!(cli.command.is_none());
+    }
+
+    #[test]
     fn test_cli_parse_flat_invocation_fails() {
         assert!(Cli::try_parse_from(["bce", "alice.bsky.social"]).is_err());
     }
@@ -178,6 +204,11 @@ mod tests {
             }
             _ => panic!("expected completions command"),
         }
+    }
+
+    #[test]
+    fn test_subcommand_rejects_top_level_agent_help() {
+        assert!(Cli::try_parse_from(["bce", "query", "--agent-help"]).is_err());
     }
 
     #[test]
