@@ -71,3 +71,18 @@ Plans:
 | 4. CLI Surface | v1.1 | 2/2 | Complete | 2026-03-22 |
 | 5. Query Subcommand | bce-query-mode | 1/3 | In Progress | - |
 | 6. Agent Help | bce-query-mode | 0/? | Not started | - |
+
+### Phase 7: Workspace agent mode in cli-common: token-gated restricted capability surface, inspectable agent help, and shared --agent-skill support across tools
+
+**Goal:** Workspace CLIs that depend on `cli-common` expose a shared token-gated agent mode with inspectable `--agent-help` / `--agent-skill` output and no hidden-surface leakage
+**Requirements**: D-01, D-02, D-03, D-04, D-05, D-06, D-07, D-08, D-09, D-10, D-11, D-12, D-13, D-14
+**Depends on:** Phase 6
+**Plans:** 6 plans
+
+Plans:
+- [x] 07-01-PLAN.md — define shared cli-common agent-mode contracts, env vars, and capability policy types
+- [ ] 07-02-PLAN.md — implement shared filtered parse/help/completion pipeline plus agent renderers
+- [ ] 07-03-PLAN.md — migrate `bce` and `gator` to the shared restricted agent surface
+- [ ] 07-04-PLAN.md — migrate `todoer` and `unvenv` to the shared restricted agent surface
+- [ ] 07-05-PLAN.md — migrate `asana-cli` and `silent-critic` to the shared restricted agent surface
+- [ ] 07-06-PLAN.md — adapt `prompter` and restore workspace-wide agent-mode consistency checks

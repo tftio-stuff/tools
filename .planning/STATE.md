@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Phase 7 context gathered
-last_updated: "2026-03-23T02:35:25.829Z"
+status: Ready to execute
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-03-23T13:47:39.011Z"
 progress:
   total_phases: 3
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 6
+  completed_plans: 1
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Complete, reliable extraction of a single BlueSky user's entire post and interaction history into a queryable local store.
-**Current focus:** Phase 05 — query-subcommand
+**Current focus:** Phase 07 — workspace-agent-mode-in-cli-common-token-gated-restricted-capability-surface-inspectable-agent-help-and-shared-agent-skill-support-across-tools
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
+Phase: 07 (workspace-agent-mode-in-cli-common-token-gated-restricted-capability-surface-inspectable-agent-help-and-shared-agent-skill-support-across-tools) — EXECUTING
+Plan: 2 of 6
 
 ## Completed Milestones
 
@@ -47,11 +47,11 @@ Plan: Not started
 
 ## Next Steps
 
-No active milestone. Recommended:
+Continue Phase 07 execution:
 
-- Start new symbolic milestone with GSD workflow if architectural work needed
-- Continue product features (activity-type filtering) when ready
-- Release versioning managed by release-please
+- Execute 07-02 to wire the shared filtered parse/help/completion pipeline onto `cli-common`
+- Roll the shared restricted agent surface through the remaining workspace tools in 07-03 through 07-06
+- Keep phase summaries current so Phase 07 rollout decisions remain inspectable
 
 Decisions are logged in PROJECT.md Key Decisions table.
 
@@ -101,6 +101,18 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 05-query-subcommand]: Query failures emit structured stderr JSON with db_not_found for missing databases and query_failed for other runtime errors.
 - [Phase 05-query-subcommand]: The global --agent-help flag remains parseable but hidden from subcommand help so bce query --help exposes only query options.
 
+## Decisions
+
+- [Phase 07-01]: Agent mode fails closed unless `TFTIO_AGENT_TOKEN` exactly matches `TFTIO_AGENT_TOKEN_EXPECTED`.
+- [Phase 07-01]: Workspace tools declare static `AgentSurfaceSpec` metadata on `ToolSpec` instead of tool-local policy callbacks.
+- [Phase 07-01]: `apply_agent_surface` prunes the `clap` command tree and preserves only declared capability paths plus shared inspection flags.
+
+## Performance Metrics
+
+| Phase | Plan | Duration | Tasks | Files | Completed |
+|-------|------|----------|-------|-------|-----------|
+| 07 | 01 | 13m | 2 | 3 | 2026-03-23 |
+
 ## Accumulated Context
 
 ### Roadmap Evolution
@@ -121,6 +133,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-23T02:35:25.826Z
-Stopped at: Phase 7 context gathered
-Resume file: .planning/phases/07-workspace-agent-mode-in-cli-common-token-gated-restricted-capability-surface-inspectable-agent-help-and-shared-agent-skill-support-across-tools/07-CONTEXT.md
+Last session: 2026-03-23T13:47:39.008Z
+Stopped at: Completed 07-01-PLAN.md
+Resume file: None
