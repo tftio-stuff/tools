@@ -63,7 +63,8 @@ fn agent_surface_hides_meta_subcommands() {
 
     let stderr = stderr(&output);
     assert!(
-        stderr.contains("unrecognized subcommand 'meta'"),
+        stderr.contains("unrecognized subcommand 'meta'")
+            || stderr.contains("invalid value 'meta' for '[AGENT]'"),
         "stderr: {stderr}"
     );
 }

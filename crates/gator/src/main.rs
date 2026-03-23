@@ -1,12 +1,28 @@
 //! Gator CLI entrypoint.
 
-use clap::Parser;
 use gator::cli::{Cli, Command, MetaCommand};
 use tftio_cli_common::{
-    FatalCliError, LicenseType, StandardCommand, StandardCommandMap, ToolSpec,
-    command::maybe_run_standard_command_no_doctor, error::fatal_error, parse_and_exit,
-    workspace_tool,
+    AgentCapability, AgentDispatch, AgentSurfaceSpec, CommandSelector, FatalCliError,
+    FlagSelector, LicenseType, StandardCommand, StandardCommandMap, ToolSpec,
+    command::maybe_run_standard_command_no_doctor, error::fatal_error, parse_with_agent_surface,
+    run_with_fatal_handler, workspace_tool,
 };
+
+const RUN_AGENT_COMMAND: CommandSelector = CommandSelector::new(&[]);
+const WORKDIR_FLAG: FlagSelector = FlagSelector::new(&[], "workdir");
+const POLICY_FLAG: FlagSelector = FlagSelector::new(&[], "policy");
+const NO_PROMPT_FLAG: FlagSelector = FlagSelector::new(&[], "no-prompt");
+const DRY_RUN_FLAG: FlagSelector = FlagSelector::new(&[], "dry-run");
+const JSON_FLAG: FlagSelector = FlagSelector::new(&[], "json");
+
+const RUN_AGENT_CAPABILITY: AgentCapability = AgentCapability::new(
+    "run-agent",
+    "Launch an agent inside the gator sandbox",
+    &[RUN_AGENT_COMMAND],
+    &[WORKDIR_FLAG, POLICY_FLAG, NO_PROMPT_FLAG, DRY_RUN_FLAG, JSON_FLAG],
+);
+
+const AGENT_SURFACE: AgentSurfaceSpec = AgentSurfaceSpec::new(&[RUN_AGENT_CAPABILITY]);
 
 const TOOL_SPEC: ToolSpec = workspace_tool(
     "gator",
@@ -16,10 +32,15 @@ const TOOL_SPEC: ToolSpec = workspace_tool(
     true,
     false,
     false,
-);
+)
+.with_agent_surface(&AGENT_SURFACE);
 
 fn main() {
-    parse_and_exit(Cli::parse, |cli| run(&cli));
+    match parse_with_agent_surface::<Cli>(&TOOL_SPEC) {
+        Ok(AgentDispatch::Cli(cli)) => std::process::exit(run_with_fatal_handler(|| run(&cli))),
+        Ok(AgentDispatch::Printed(code)) => std::process::exit(code),
+        Err(error) => error.exit(),
+    }
 }
 
 fn run(cli: &Cli) -> Result<i32, FatalCliError> {
@@ -58,6 +79,7 @@ fn metadata_command(command: Option<&Command>) -> Option<GatorMetaCommand<'_>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::Parser;
 
     #[test]
     fn metadata_command_extracts_meta_subcommand() {
@@ -76,5 +98,22 @@ mod tests {
 
         assert_eq!(error.command(), "error");
         assert_eq!(error.message(), "--session is incompatible with: --workdir");
+    }
+
+    #[test]
+    fn tool_spec_declares_root_run_agent_surface() {
+        let capability = TOOL_SPEC
+            .agent_surface
+            .expect("agent surface should exist")
+            .capabilities
+            .first()
+            .expect("run-agent capability should exist");
+
+        assert_eq!(capability.name, "run-agent");
+        assert_eq!(capability.commands, &[RUN_AGENT_COMMAND]);
+        assert_eq!(
+            capability.flags,
+            &[WORKDIR_FLAG, POLICY_FLAG, NO_PROMPT_FLAG, DRY_RUN_FLAG, JSON_FLAG]
+        );
     }
 }
