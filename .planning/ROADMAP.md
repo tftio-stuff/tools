@@ -82,5 +82,5 @@ Plans:
 Plans:
 - [x] 07-01-PLAN.md — create the shared `cli-common` agent-doc model, renderers, and validation helpers
 - [x] 07-02-PLAN.md — wire `bce`, `unvenv`, and `gator` to the shared top-level agent-doc flow
-- [ ] 07-03-PLAN.md — wire `todoer` and `silent-critic` to the shared top-level agent-doc flow
+- [x] 07-03-PLAN.md — wire `todoer` and `silent-critic` to the shared top-level agent-doc flow
 - [ ] 07-04-PLAN.md — wire `prompter` and `asana-cli`, then run the workspace verification sweep

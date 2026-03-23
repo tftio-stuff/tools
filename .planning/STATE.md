@@ -4,12 +4,12 @@ milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
 stopped_at: Completed 07-02-PLAN.md
-last_updated: "2026-03-23T01:07:34.035Z"
+last_updated: "2026-03-23T01:08:45.381Z"
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 ## Current Position
 
 Phase: 07 (add-shared-agent-help-and-agent-skill-support-across-cli-crates) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 
 ## Performance Metrics
 
@@ -46,6 +46,7 @@ Plan: 3 of 4
 | Phase 05-query-subcommand P03 | 3m 23s | 3 tasks | 4 files |
 | Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates P01 | 4 min | 2 tasks | 2 files |
 | Phase 07 P02 | 4 min | 2 tasks | 7 files |
+| Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates P03 | 6m 40s | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -102,6 +103,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates]: Detect agent-doc requests from raw argv and accept only exact top-level invocations. — Short-circuiting before clap preserves required subcommands and positional parsing while rejecting subcommand placement.
 - [Phase 07]: Preserve clap-required commands and positionals by handling successful agent-doc requests from raw argv before parser dispatch.
 - [Phase 07]: Name every subprocess regression test with agent_help so filtered cargo verification commands execute the full hidden-help and skill-output contract.
+- [Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates]: todoer and silent-critic now intercept exact top-level agent-doc requests before clap parsing to preserve required subcommand behavior.
+- [Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates]: todoer shares the workspace cli-common agent-doc model so its project-resolution, JSON-envelope, and stdin note semantics stay aligned across YAML and skill output.
 
 ### Roadmap Evolution
 
