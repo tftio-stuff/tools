@@ -2,6 +2,7 @@
 
 use std::ffi::OsStr;
 use std::fmt::Write;
+use std::collections::BTreeSet;
 
 use clap::CommandFactory;
 
@@ -377,6 +378,13 @@ pub fn assert_command_coverage<T>(_documented_paths: &[&str])
 where
     T: CommandFactory,
 {
+    let command = T::command();
+    let actual_paths = collect_command_paths(&command);
+    let documented_paths = _documented_paths
+        .iter()
+        .map(|path| (*path).to_owned())
+        .collect::<BTreeSet<_>>();
+    assert_set_match("command paths", &actual_paths, &documented_paths);
 }
 
 /// Assert that authored argument documentation covers one clap command context.
@@ -388,6 +396,41 @@ pub fn assert_argument_coverage<T>(
 ) where
     T: CommandFactory,
 {
+    let command = T::command();
+    let target = command_for_path(&command, _command_path).unwrap_or_else(|| {
+        panic!(
+            "documented command path not found in clap tree: {}",
+            _command_path.join(" ")
+        )
+    });
+
+    let ignored_long_flags = _ignored_long_flags
+        .iter()
+        .map(|flag| (*flag).to_owned())
+        .collect::<BTreeSet<_>>();
+    let documented_long_flags = _documented_long_flags
+        .iter()
+        .map(|flag| (*flag).to_owned())
+        .collect::<BTreeSet<_>>();
+    let documented_positionals = _documented_positionals
+        .iter()
+        .map(|name| (*name).to_owned())
+        .collect::<BTreeSet<_>>();
+
+    let actual_long_flags = target
+        .get_arguments()
+        .filter_map(|argument| argument.get_long().map(str::to_owned))
+        .filter(|name| !is_builtin_clap_long_flag(name))
+        .filter(|name| !ignored_long_flags.contains(name))
+        .collect::<BTreeSet<_>>();
+    let actual_positionals = target
+        .get_arguments()
+        .filter(|argument| argument.is_positional())
+        .map(|argument| argument.get_id().to_string())
+        .collect::<BTreeSet<_>>();
+
+    assert_set_match("long flags", &actual_long_flags, &documented_long_flags);
+    assert_set_match("positional arguments", &actual_positionals, &documented_positionals);
 }
 
 fn yaml_string(value: &str) -> String {
@@ -592,6 +635,54 @@ fn markdown_argument(argument: &AgentArgument) -> String {
 
 fn sentence_without_trailing_period(value: &str) -> &str {
     value.strip_suffix('.').unwrap_or(value)
+}
+
+fn collect_command_paths(command: &clap::Command) -> BTreeSet<String> {
+    let mut paths = BTreeSet::new();
+    collect_command_paths_into(command, None, &mut paths);
+    paths
+}
+
+fn collect_command_paths_into(
+    command: &clap::Command,
+    prefix: Option<&str>,
+    paths: &mut BTreeSet<String>,
+) {
+    for subcommand in command.get_subcommands() {
+        let path = match prefix {
+            Some(prefix) => format!("{prefix} {}", subcommand.get_name()),
+            None => subcommand.get_name().to_owned(),
+        };
+        let inserted = paths.insert(path.clone());
+        debug_assert!(inserted, "subcommand paths must be unique");
+        collect_command_paths_into(subcommand, Some(path.as_str()), paths);
+    }
+}
+
+fn command_for_path<'a>(command: &'a clap::Command, path: &[&str]) -> Option<&'a clap::Command> {
+    let mut current = command;
+    for segment in path {
+        current = current
+            .get_subcommands()
+            .find(|subcommand| subcommand.get_name() == *segment)?;
+    }
+    Some(current)
+}
+
+fn is_builtin_clap_long_flag(name: &str) -> bool {
+    matches!(name, "help" | "version")
+}
+
+fn assert_set_match(label: &str, actual: &BTreeSet<String>, documented: &BTreeSet<String>) {
+    if actual == documented {
+        return;
+    }
+
+    let missing = actual.difference(documented).cloned().collect::<Vec<_>>();
+    let unexpected = documented.difference(actual).cloned().collect::<Vec<_>>();
+    panic!(
+        "{label} coverage mismatch. missing_from_docs={missing:?} unexpected_in_docs={unexpected:?}"
+    );
 }
 
 #[cfg(test)]
