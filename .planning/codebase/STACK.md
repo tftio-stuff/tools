@@ -1,140 +1,97 @@
 # Technology Stack
 
-**Analysis Date:** 2026-03-17
+**Analysis Date:** 2026-03-23
 
 ## Languages
 
 **Primary:**
-- Rust (edition 2024, MSRV 1.94.0) - All 7 production crates
-- Bash/Shell - `scripts/new-crate.sh` scaffolding, CI workflow steps
+- Rust 2024 edition - entire workspace defined in `/Users/jfb/Projects/tools/main/Cargo.toml` and implemented under `/Users/jfb/Projects/tools/main/crates/`.
 
 **Secondary:**
-- TOML - Configuration files and prompter profile composition
-- SBPL (Sandbox Policy Language) - macOS sandbox policy rules generated in `crates/gator/src/sandbox.rs`
+- TOML - workspace and crate manifests in `/Users/jfb/Projects/tools/main/Cargo.toml`, crate-level `Cargo.toml` files under `/Users/jfb/Projects/tools/main/crates/*/Cargo.toml`, policy/config parsing in `/Users/jfb/Projects/tools/main/crates/gator/src/config.rs`, `/Users/jfb/Projects/tools/main/crates/asana-cli/src/config.rs`, `/Users/jfb/Projects/tools/main/crates/todoer/src/config.rs`, and `/Users/jfb/Projects/tools/main/crates/silent-critic/src/config.rs`.
+- YAML - CI/CD automation in `/Users/jfb/Projects/tools/main/.github/workflows/ci.yml`, `/Users/jfb/Projects/tools/main/.github/workflows/release-please.yml`, and `/Users/jfb/Projects/tools/main/.github/workflows/release.yml`.
+- Markdown - operator and product docs in `/Users/jfb/Projects/tools/main/README.md`, `/Users/jfb/Projects/tools/main/CLAUDE.md`, `/Users/jfb/Projects/tools/main/CRATES.md`, and `/Users/jfb/Projects/tools/main/docs/`.
+- JSON - release-please metadata in `/Users/jfb/Projects/tools/main/release-please-config.json` and `/Users/jfb/Projects/tools/main/.release-please-manifest.json`, plus schema output in `/Users/jfb/Projects/tools/main/crates/todoer/schema/todoer-output.schema.json`.
 
 ## Runtime
 
 **Environment:**
-- Native compiled binary (no runtime VM or interpreter)
-- Target platforms: Linux x86_64, Linux aarch64, macOS aarch64
-- MSRV: 1.94.0 (declared in `Cargo.toml` `[workspace.package]` `rust-version` field)
+- Rust toolchain with MSRV 1.94.0 from `[workspace.package]` in `/Users/jfb/Projects/tools/main/Cargo.toml`.
+- Nightly Rust is required for formatting via `cargo +nightly fmt` in `/Users/jfb/Projects/tools/main/justfile` and `/Users/jfb/Projects/tools/main/.github/workflows/ci.yml`.
 
 **Package Manager:**
-- Cargo (workspace resolver = "3")
-- Lockfile: `Cargo.lock` committed (binary crates require reproducible builds)
+- Cargo workspace with resolver `"3"` in `/Users/jfb/Projects/tools/main/Cargo.toml`.
+- Lockfile: present at `/Users/jfb/Projects/tools/main/Cargo.lock`.
 
 ## Frameworks
 
-**CLI Parsing:**
-- `clap` 4 (derive feature) - Argument parsing across all binary crates
-- `clap_complete` 4 - Shell completion generation (`cli-common`, `prompter`, `unvenv`)
-
-**Async Runtime:**
-- `tokio` 1 (rt-multi-thread, macros; `asana-cli` adds fs, signal, time) - Used only in `asana-cli`
-- `async-stream` 0.3 - Async stream macros (`asana-cli`)
-- `futures-core` 0.3, `futures-util` 0.3 - Futures combinators (`asana-cli`)
-- `tokio-util` 0.7 (codec) - Codec framing (`asana-cli`)
-
-**HTTP:**
-- `reqwest` 0.13 (json, query, rustls; `asana-cli` adds multipart, stream) - TLS via rustls, no system OpenSSL
-
-**Serialization:**
-- `serde` 1 (derive) - Core serialization framework used by all data-model crates
-- `serde_json` 1 - JSON support
-- `serde_with` 3 - Extended derive helpers (`asana-cli`)
-- `toml` 1 - Config file parsing (`asana-cli`, `prompter`, `todoer`, `silent-critic`, `gator`)
-
-**Database:**
-- `rusqlite` 0.38 (bundled feature) - Embedded SQLite, no system library required
-  - `crates/todoer/src/db.rs`
-  - `crates/silent-critic/src/db.rs`
-
-**Observability:**
-- `tracing` 0.1 - Structured instrumentation (`asana-cli`)
-- `tracing-subscriber` 0.3 (env-filter) - Tracing output (`asana-cli`); level via `RUST_LOG`
+**Core:**
+- `clap` 4 - command-line parsing across the workspace via `/Users/jfb/Projects/tools/main/Cargo.toml` and crate entrypoints such as `/Users/jfb/Projects/tools/main/crates/unvenv/src/main.rs`, `/Users/jfb/Projects/tools/main/crates/prompter/src/lib.rs`, and `/Users/jfb/Projects/tools/main/crates/gator/src/main.rs`.
+- `serde` + `serde_json` + `toml` - serialization, JSON output, and config/profile parsing in `/Users/jfb/Projects/tools/main/crates/asana-cli/src/config.rs`, `/Users/jfb/Projects/tools/main/crates/todoer/src/main.rs`, `/Users/jfb/Projects/tools/main/crates/prompter/src/lib.rs`, and `/Users/jfb/Projects/tools/main/crates/silent-critic/src/main.rs`.
+- `reqwest` + `tokio` - async HTTP clients in `/Users/jfb/Projects/tools/main/crates/asana-cli/src/api/client.rs` and `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/src/client.rs`.
+- `rusqlite` with bundled SQLite - local persistence in `/Users/jfb/Projects/tools/main/crates/todoer/src/db.rs`, `/Users/jfb/Projects/tools/main/crates/silent-critic/src/db.rs`, and `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/src/db.rs`.
+- `git2` with `vendored-libgit2` - repository discovery and git-aware behavior in `/Users/jfb/Projects/tools/main/crates/unvenv/src/main.rs`, `/Users/jfb/Projects/tools/main/crates/gator/src/config.rs`, and `/Users/jfb/Projects/tools/main/crates/silent-critic/src/project.rs`.
 
 **Testing:**
-- Standard Rust `#[test]` with `#[cfg(test)]` modules in source files
-- `mockito` 1 - HTTP mock server (`asana-cli` dev-dependency)
-- `serial_test` 3 - Serialized test execution to isolate env-var mutations (`asana-cli` dev-dependency)
-- `tempfile` 3 - Temporary directories in tests (dev-dependency in most crates)
+- Built-in `cargo test` workspace test runner in `/Users/jfb/Projects/tools/main/justfile` and `/Users/jfb/Projects/tools/main/.github/workflows/ci.yml`.
+- `mockito` and `serial_test` for API/integration-style tests in `/Users/jfb/Projects/tools/main/crates/asana-cli/Cargo.toml` and `/Users/jfb/Projects/tools/main/crates/asana-cli/tests/`.
+- `tempfile` for filesystem-isolated tests across crates, declared in manifests such as `/Users/jfb/Projects/tools/main/crates/todoer/Cargo.toml` and `/Users/jfb/Projects/tools/main/crates/gator/Cargo.toml`.
 
 **Build/Dev:**
-- `just` - Task runner (`justfile` at workspace root)
-- `cargo-audit` - Dependency vulnerability scanning
-- `cargo-deny` (`deny.toml`) - License and source compliance
-- `cargo fmt` (nightly toolchain required) - Formatting (`rustfmt.toml`)
-- `cargo clippy` - Lint with workspace-wide deny policies
+- `just` task runner in `/Users/jfb/Projects/tools/main/justfile`.
+- `clippy` linting and `rustfmt` formatting in `/Users/jfb/Projects/tools/main/Cargo.toml`, `/Users/jfb/Projects/tools/main/rustfmt.toml`, and `/Users/jfb/Projects/tools/main/.github/workflows/ci.yml`.
+- `cargo-deny` and `cargo-audit` dependency/security checks configured in `/Users/jfb/Projects/tools/main/deny.toml`, `/Users/jfb/Projects/tools/main/justfile`, and `/Users/jfb/Projects/tools/main/.github/workflows/ci.yml`.
+- Release Please automation in `/Users/jfb/Projects/tools/main/release-please-config.json` and `/Users/jfb/Projects/tools/main/.github/workflows/release-please.yml`.
 
 ## Key Dependencies
 
 **Critical:**
-- `clap` 4 - CLI interface for all binary crates; removal requires full argument-parsing rewrite
-- `rusqlite` 0.38 (bundled) - Persistence for `todoer` and `silent-critic`; bundled = no system SQLite needed
-- `reqwest` 0.13 - All Asana API HTTP communication; rustls = no system OpenSSL
-- `git2` 0.20 (vendored-libgit2) - Repository operations in `unvenv`, `silent-critic`, `gator`; vendored = no system libgit2
-- `serde` + `serde_json` + `toml` - Config and data interchange throughout workspace
+- `tftio-cli-common` - shared CLI completions, doctor checks, license output, and update flow used by crates such as `/Users/jfb/Projects/tools/main/crates/unvenv/src/main.rs` and `/Users/jfb/Projects/tools/main/crates/gator/Cargo.toml`.
+- `tftio-prompter` - reusable prompt composition library consumed directly by `/Users/jfb/Projects/tools/main/crates/gator/Cargo.toml` and implemented in `/Users/jfb/Projects/tools/main/crates/prompter/src/lib.rs`.
+- `tracing` and `tracing-subscriber` - observability stack for `/Users/jfb/Projects/tools/main/crates/asana-cli/src/lib.rs` and network-heavy Asana flows in `/Users/jfb/Projects/tools/main/crates/asana-cli/src/api/client.rs`.
+- `directories` and `dirs` - XDG/home-directory path resolution in `/Users/jfb/Projects/tools/main/crates/asana-cli/src/config.rs`, `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/src/main.rs`, `/Users/jfb/Projects/tools/main/crates/todoer/src/config.rs`, and `/Users/jfb/Projects/tools/main/crates/silent-critic/src/config.rs`.
 
 **Infrastructure:**
-- `anyhow` 1 - Error propagation with context in binary crates
-- `thiserror` 2 - Typed error definitions in library crates (`asana-cli`, `gator`)
-- `secrecy` 0.10 - Secret wrapping to prevent accidental logging of API tokens (`asana-cli`)
-- `directories` 6 - XDG-compliant app data/config/cache paths (`asana-cli`, `silent-critic`)
-- `dirs` 6 - Home directory resolution (`prompter`, `todoer`, `gator`)
-- `sha2` 0.10 - SHA-256 project identity hashing (`silent-critic`, `asana-cli`)
-- `uuid` 1 (v4) - UUID generation for entity IDs (`todoer`, `silent-critic`)
-- `chrono` 0.4 - Date/time operations (default-features false, per-crate feature selection)
-- `walkdir` 2 - Recursive directory traversal (`unvenv`, `silent-critic`)
-- `colored` 3 - Terminal color output
-- `is-terminal` 0.4 - TTY detection for output formatting
-- `dialoguer` 0.12 (editor, fuzzy-select; default-features false) - Interactive prompts (`asana-cli`, `silent-critic`)
-- `indicatif` 0.18 - Progress bars (`prompter`)
-- `tabled` 0.20 - Terminal table rendering (`asana-cli`)
-- `csv` 1 - CSV output (`asana-cli`)
-- `regex` 1 - Pattern matching (`asana-cli`)
-- `base64` 0.22 - Base64 encoding (`asana-cli`)
-- `rpassword` 7 - Secure password input (`asana-cli`)
-- `dateparser` 0.2 - Natural language date parsing (`asana-cli`)
-- `tempfile` 3 - Temporary files (`gator` sandbox policy assembly, tests)
+- `secrecy` - token wrapping in `/Users/jfb/Projects/tools/main/crates/asana-cli/src/config.rs`.
+- `indicatif` - progress UX in `/Users/jfb/Projects/tools/main/crates/prompter/src/lib.rs` and `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/src/main.rs`.
+- `dialoguer` - interactive terminal flows in `/Users/jfb/Projects/tools/main/crates/asana-cli/Cargo.toml`.
+- `sha2` - hashing for cache keys and project/session IDs in `/Users/jfb/Projects/tools/main/crates/asana-cli/src/api/client.rs` and `/Users/jfb/Projects/tools/main/crates/silent-critic/Cargo.toml`.
+
+## Workspace and Crate Layout
+
+- Workspace members are declared centrally in `/Users/jfb/Projects/tools/main/Cargo.toml`: `cli-common`, `prompter`, `unvenv`, `asana-cli`, `todoer`, `silent-critic`, `gator`, and `bsky-comment-extractor`.
+- Dependency versions are centralized in `[workspace.dependencies]` in `/Users/jfb/Projects/tools/main/Cargo.toml`; crate manifests such as `/Users/jfb/Projects/tools/main/crates/gator/Cargo.toml` and `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/Cargo.toml` opt into them with `workspace = true`.
+- Workspace lints live in `[workspace.lints]` in `/Users/jfb/Projects/tools/main/Cargo.toml`; local exceptions are declared in `/Users/jfb/Projects/tools/main/crates/todoer/Cargo.toml` and `/Users/jfb/Projects/tools/main/crates/silent-critic/Cargo.toml`.
+
+## Notable Crate-Specific Technology Choices
+
+- `/Users/jfb/Projects/tools/main/crates/asana-cli/Cargo.toml` extends workspace `reqwest` with `multipart` and `stream`, and extends `tokio` with `fs`, `signal`, and `time` for API uploads, caching, and CLI runtime behavior.
+- `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/src/client.rs` implements AT Protocol pagination, JWT refresh, and rate-limit backoff against BlueSky endpoints while `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/src/db.rs` stores extracted posts in SQLite.
+- `/Users/jfb/Projects/tools/main/crates/gator/src/sandbox.rs` generates macOS `sandbox-exec` SBPL policy text, making `gator` platform-specific despite otherwise portable Rust code.
+- `/Users/jfb/Projects/tools/main/crates/todoer/src/db.rs` keeps a compact SQLite schema for projects, tasks, and notes, while `/Users/jfb/Projects/tools/main/crates/todoer/src/main.rs` emits structured JSON responses for agent consumption.
+- `/Users/jfb/Projects/tools/main/crates/silent-critic/src/db.rs` defines a larger SQLite schema for projects, criteria, sessions, contracts, evidence, decisions, and audit events.
+- `/Users/jfb/Projects/tools/main/crates/prompter/src/lib.rs` uses a TOML profile graph plus a markdown library directory rather than embedding prompt content in code.
 
 ## Configuration
 
-**Environment Variables:**
-- `asana-cli`: `ASANA_PAT`, `ASANA_BASE_URL`, `ASANA_WORKSPACE`, `ASANA_ASSIGNEE`, `ASANA_PROJECT`, `ASANA_CLI_CONFIG_HOME`, `ASANA_CLI_DATA_HOME`
-- `silent-critic`: `SILENT_CRITIC_TOKEN` (worker session auth)
-- All crates: `RUST_LOG` (tracing level), `XDG_CONFIG_HOME`, `XDG_DATA_HOME`
+**Environment:**
+- Asana config and data roots are resolved in `/Users/jfb/Projects/tools/main/crates/asana-cli/src/config.rs` using `ASANA_CLI_CONFIG_HOME` and `ASANA_CLI_DATA_HOME`.
+- BlueSky extraction depends on `BSKY_APP_PASSWORD` in `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/src/lib.rs` and `/Users/jfb/Projects/tools/main/crates/bsky-comment-extractor/src/main.rs`.
+- Todoer and Silent Critic honor XDG-style paths in `/Users/jfb/Projects/tools/main/crates/todoer/src/config.rs` and `/Users/jfb/Projects/tools/main/crates/silent-critic/src/config.rs`.
 
-**Config Files:**
-- `asana-cli`: `~/.config/asana-cli/asana-cli.toml` (permissions enforced to 0o600 on Unix)
-- `silent-critic`: `~/.config/silent-critic/config.toml`
-- `todoer`: `.todoer.toml` (project-local)
-- `gator`: reads prompter profile TOML files
-
-**Build Files:**
-- `Cargo.toml` - Workspace root; all dependency versions centralized under `[workspace.dependencies]`
-- `Cargo.lock` - Committed for reproducibility
-- `rustfmt.toml` - edition 2024, max_width 100, 4-space indent, `use_field_init_shorthand`, `use_try_shorthand`
-- `deny.toml` - License allowlist (MIT, Apache-2.0, BSD-*, MPL-2.0, CC0-1.0, etc.); wildcards banned; crates.io only
-- `justfile` - Task runner recipes
-- `release-please-config.json` - Automated release PR configuration
-- `prek.toml` - Pre-commit tool configuration
+**Build:**
+- Root build/tooling config files are `/Users/jfb/Projects/tools/main/justfile`, `/Users/jfb/Projects/tools/main/rustfmt.toml`, `/Users/jfb/Projects/tools/main/deny.toml`, `/Users/jfb/Projects/tools/main/release-please-config.json`, and `/Users/jfb/Projects/tools/main/.github/workflows/*.yml`.
 
 ## Platform Requirements
 
 **Development:**
-- Rust stable toolchain (MSRV 1.94.0+)
-- Rust nightly toolchain (required only for `cargo fmt`)
-- C compiler (for vendored libgit2 build)
-- `just` task runner
-- `cargo-audit`, `cargo-deny` for quality gate commands
-- macOS preferred for full `gator` SBPL sandbox testing
+- Rust 1.94.0+, Cargo, and nightly rustfmt are required by `/Users/jfb/Projects/tools/main/README.md` and `/Users/jfb/Projects/tools/main/justfile`.
+- `curl` and shell execution are assumed by the shared updater in `/Users/jfb/Projects/tools/main/crates/cli-common/src/update.rs`.
 
 **Production:**
-- No system OpenSSL, SQLite, or libgit2 required (all vendored or bundled)
-- `gator` requires macOS (uses `sandbox-exec` which is macOS-only)
-- All other crates are Linux/Unix compatible
-- Release binaries published to GitHub Releases and crates.io
+- Distribution targets are Linux `x86_64-unknown-linux-gnu`, Linux `aarch64-unknown-linux-gnu`, and macOS `aarch64-apple-darwin` in `/Users/jfb/Projects/tools/main/.github/workflows/release.yml`.
+- Library-only publishing is supported for `/Users/jfb/Projects/tools/main/crates/cli-common`, while binary crates publish prebuilt archives and crates.io releases via `/Users/jfb/Projects/tools/main/.github/workflows/release.yml`.
 
 ---
 
-*Stack analysis: 2026-03-17*
+*Stack analysis: 2026-03-23*
