@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/tftio-stuff/tools/compare/cli-common-v0.5.0...cli-common-v0.6.0) (2026-03-23)
+
+
+### Features
+
+* add shared --agent-help and --agent-skill support across all CLI crates ([#26](https://github.com/tftio-stuff/tools/issues/26)) ([1b41005](https://github.com/tftio-stuff/tools/commit/1b41005c4a60db93c3afd6985f38dc63772c1e22))
+
 ## [0.5.0](https://github.com/tftio-stuff/tools/compare/cli-common-v0.4.1...cli-common-v0.5.0) (2026-03-12)
 
 
