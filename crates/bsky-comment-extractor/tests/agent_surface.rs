@@ -26,7 +26,7 @@ fn stderr(output: &Output) -> String {
 }
 
 #[test]
-fn agent_help_shows_only_query_posts_capability() {
+fn agent_surface_help_shows_only_query_posts_capability() {
     let output = agent_command()
         .arg("--agent-help")
         .output()
@@ -40,7 +40,7 @@ fn agent_help_shows_only_query_posts_capability() {
 }
 
 #[test]
-fn agent_skill_query_posts_renders_single_capability_contract() {
+fn agent_surface_skill_query_posts_renders_single_capability_contract() {
     let output = agent_command()
         .args(["--agent-skill", "query-posts"])
         .output()
@@ -55,7 +55,7 @@ fn agent_skill_query_posts_renders_single_capability_contract() {
 }
 
 #[test]
-fn hidden_fetch_is_rejected_in_agent_mode() {
+fn agent_surface_hidden_fetch_is_rejected_in_agent_mode() {
     let output = agent_command()
         .args(["fetch", "alice.bsky.social"])
         .output()

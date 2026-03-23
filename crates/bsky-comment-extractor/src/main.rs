@@ -4,12 +4,11 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
-use clap::{CommandFactory, Parser};
+use clap::CommandFactory;
 use directories::ProjectDirs;
 use tftio_cli_common::{
-    DoctorChecks, FatalCliError, LicenseType, StandardCommand, StandardCommandMap, ToolSpec,
-    command::maybe_run_standard_command, error::fatal_error, parse_and_exit,
-    progress::make_spinner, workspace_tool,
+    AgentCapability, AgentDispatch, AgentSurfaceSpec, CommandSelector, FlagSelector, LicenseType,
+    parse_with_agent_surface, progress::make_spinner, workspace_tool,
 };
 
 use bsky_comment_extractor::cli::{Cli, Command as CliCommand, FetchArgs, QueryArgs};
@@ -17,14 +16,46 @@ use bsky_comment_extractor::db::{count_posts, open_existing_db, query_posts};
 use bsky_comment_extractor::error::ExtractorError;
 use bsky_comment_extractor::models::QueryEnvelope;
 
-struct BceDoctor;
+const QUERY_COMMAND: CommandSelector = CommandSelector::new(&["query"]);
+const QUERY_DB_FLAG: FlagSelector = FlagSelector::new(&["query"], "db");
+const QUERY_LIMIT_FLAG: FlagSelector = FlagSelector::new(&["query"], "limit");
+const QUERY_OFFSET_FLAG: FlagSelector = FlagSelector::new(&["query"], "offset");
+
+const QUERY_POSTS_CAPABILITY: AgentCapability = AgentCapability::new(
+    "query-posts",
+    "Read paginated post records from the local SQLite store",
+    &[QUERY_COMMAND],
+    &[QUERY_DB_FLAG, QUERY_LIMIT_FLAG, QUERY_OFFSET_FLAG],
+)
+.with_examples(&[
+    "bce query --limit 25",
+    "bce query --db /tmp/bsky.db --offset 50",
+])
+.with_output("stdout emits one JSON envelope line followed by JSON post lines")
+.with_constraints("local SQLite only; no network; missing DB returns structured stderr JSON");
+
+const AGENT_SURFACE: AgentSurfaceSpec = AgentSurfaceSpec::new(&[QUERY_POSTS_CAPABILITY]);
+
+const TOOL_SPEC: tftio_cli_common::ToolSpec = workspace_tool(
+    "bce",
+    "BCE",
+    env!("CARGO_PKG_VERSION"),
+    LicenseType::MIT,
+    false,
+    false,
+    false,
+)
+.with_agent_surface(&AGENT_SURFACE);
+
+fn main() {
+    match parse_with_agent_surface::<Cli>(&TOOL_SPEC) {
+        Ok(AgentDispatch::Cli(cli)) => std::process::exit(run(cli)),
+        Ok(AgentDispatch::Printed(code)) => std::process::exit(code),
+        Err(error) => error.exit(),
+    }
+}
 
 fn run(cli: Cli) -> i32 {
-    if cli.agent_help {
-        print_agent_help();
-        return 0;
-    }
-
     let Some(command) = cli.command else {
         return print_top_level_help();
     };
@@ -39,12 +70,6 @@ fn run(cli: Cli) -> i32 {
         },
         CliCommand::Query(query) => i32::from(execute_query(query).is_err()),
     }
-}
-
-fn print_agent_help() {
-    println!(
-        "# bce agent help\nstatus: pending_phase_06\ncommands:\n  - fetch\n  - query\nmessage: Full agent reference lands in Phase 6."
-    );
 }
 
 fn print_top_level_help() -> i32 {
@@ -197,6 +222,7 @@ fn default_db_path() -> Result<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::Parser;
 
     #[test]
     fn test_make_spinner_quiet() {
@@ -220,20 +246,25 @@ mod tests {
     }
 
     #[test]
-    fn metadata_commands_map_to_shared_standard_command() {
-        assert_eq!(
-            BceMetadataCommand(&Command::Doctor).to_standard_command(false),
-            StandardCommand::Doctor
-        );
-        assert_eq!(
-            BceMetadataCommand(&Command::Version).to_standard_command(false),
-            StandardCommand::Version { json: false }
-        );
+    fn run_returns_success_for_query_command() {
+        let cli = Cli::parse_from(["bce", "query"]);
+        assert_eq!(run(cli), 1);
     }
 
     #[test]
-    fn run_returns_success_for_version_command() {
-        let cli = Cli::parse_from(["bce", "version"]);
-        assert_eq!(run(cli).expect("version command should succeed"), 0);
+    fn tool_spec_declares_only_query_posts_agent_capability() {
+        let capability = TOOL_SPEC
+            .agent_surface
+            .expect("agent surface should be configured")
+            .capabilities
+            .first()
+            .expect("query-posts capability should exist");
+
+        assert_eq!(capability.name, "query-posts");
+        assert_eq!(capability.commands, &[QUERY_COMMAND]);
+        assert_eq!(
+            capability.flags,
+            &[QUERY_DB_FLAG, QUERY_LIMIT_FLAG, QUERY_OFFSET_FLAG]
+        );
     }
 }

@@ -20,10 +20,6 @@ EXAMPLES:
   bce query --limit 25 --offset 50
   bce --agent-help")]
 pub struct Cli {
-    /// Show top-level agent reference help instead of running a subcommand.
-    #[arg(long, global = true, hide = true)]
-    pub agent_help: bool,
-
     /// Select the networked fetch path or the local read-only query path.
     #[command(subcommand)]
     pub command: Option<Command>,
@@ -96,7 +92,6 @@ mod tests {
         ])
         .unwrap();
 
-        assert!(!cli.agent_help);
         match cli.command {
             Some(Command::Fetch(args)) => {
                 assert_eq!(args.handle, "alice.bsky.social");
@@ -113,7 +108,6 @@ mod tests {
     fn test_cli_parse_query_defaults() {
         let cli = Cli::try_parse_from(["bce", "query"]).unwrap();
 
-        assert!(!cli.agent_help);
         match cli.command {
             Some(Command::Query(args)) => {
                 assert!(args.db.is_none());
@@ -151,14 +145,6 @@ mod tests {
     }
 
     #[test]
-    fn test_cli_parse_top_level_agent_help() {
-        let cli = Cli::try_parse_from(["bce", "--agent-help"]).unwrap();
-
-        assert!(cli.agent_help);
-        assert!(cli.command.is_none());
-    }
-
-    #[test]
     fn test_cli_parse_flat_invocation_fails() {
         assert!(Cli::try_parse_from(["bce", "alice.bsky.social"]).is_err());
     }
@@ -169,7 +155,7 @@ mod tests {
     }
 
     #[test]
-    fn test_query_help_hides_agent_help_flag() {
+    fn test_query_help_shows_query_flags() {
         let mut command = Cli::command();
         let query = command
             .find_subcommand_mut("query")
@@ -183,6 +169,5 @@ mod tests {
         assert!(help.contains("--db"));
         assert!(help.contains("--limit"));
         assert!(help.contains("--offset"));
-        assert!(!help.contains("--agent-help"));
     }
 }
