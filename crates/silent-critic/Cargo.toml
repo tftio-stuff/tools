@@ -50,6 +50,7 @@ tftio-cli-common.workspace = true
 anyhow.workspace = true
 chrono = { workspace = true, features = ["serde", "clock"] }
 clap.workspace = true
+clap_complete.workspace = true
 colored.workspace = true
 directories.workspace = true
 git2.workspace = true

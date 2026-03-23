@@ -121,6 +121,12 @@ fn doctor_runs_with_isolated_home() {
 }
 
 #[test]
+fn completions_command_succeeds() {
+    let output = run_command(&["completions", "bash"]);
+    assert!(output.status.success());
+}
+
+#[test]
 fn config_set_token_and_get_reports_stored_status() {
     let config_home = TempDir::new().expect("config home");
     let data_home = TempDir::new().expect("data home");

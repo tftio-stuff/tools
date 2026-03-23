@@ -13,6 +13,12 @@ pub fn is_tty() -> bool {
     io::stdout().is_terminal()
 }
 
+/// Check if stderr is a TTY (terminal).
+#[must_use]
+pub fn stderr_is_tty() -> bool {
+    io::stderr().is_terminal()
+}
+
 /// Format a success message with green checkmark.
 ///
 /// Returns colored output if stdout is a TTY, plain text otherwise.
@@ -82,6 +88,11 @@ mod tests {
         // Just verify it returns a boolean without panicking
         let _result = is_tty();
         // Function executed successfully if we get here
+    }
+
+    #[test]
+    fn test_stderr_is_tty_returns_bool() {
+        let _result = stderr_is_tty();
     }
 
     #[test]

@@ -1,6 +1,6 @@
 //! CLI argument definitions.
 
-use clap::{Parser, ValueEnum};
+use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
 /// Known agent targets.
@@ -23,9 +23,13 @@ pub enum Agent {
 #[command(name = "gator", version, about)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct Cli {
+    /// Optional metadata subcommand
+    #[command(subcommand)]
+    pub command: Option<Command>,
+
     /// Agent to run
     #[arg(value_enum)]
-    pub agent: Agent,
+    pub agent: Option<Agent>,
 
     /// Prompter profiles to compose (validated against `prompter list`)
     #[arg(trailing_var_arg = false)]
@@ -84,12 +88,41 @@ pub struct Cli {
     pub agent_args: Vec<String>,
 }
 
+/// Top-level gator command selection.
+#[derive(Subcommand, Debug)]
+pub enum Command {
+    /// Shared metadata commands
+    Meta {
+        /// Shared metadata command to execute
+        #[command(subcommand)]
+        command: MetaCommand,
+    },
+}
+
+/// Shared metadata commands exposed by gator.
+#[derive(Subcommand, Debug)]
+pub enum MetaCommand {
+    /// Show version information
+    Version,
+    /// Show license information
+    License,
+    /// Generate shell completions
+    Completions {
+        /// Shell to generate completions for
+        shell: clap_complete::Shell,
+    },
+}
+
 impl Cli {
     /// Validate mutual exclusivity of session mode vs non-session flags.
     ///
     /// # Errors
     /// Returns an error if `--session` is combined with incompatible flags.
     pub fn validate(&self) -> Result<(), String> {
+        if self.command.is_none() && self.agent.is_none() {
+            return Err("agent is required".to_string());
+        }
+
         if self.session.is_some() {
             let mut conflicts = Vec::new();
             if self.workdir.is_some() {
@@ -139,7 +172,7 @@ mod tests {
     #[test]
     fn parse_minimal() {
         let cli = Cli::parse_from(["gator", "claude"]);
-        assert!(matches!(cli.agent, Agent::Claude));
+        assert!(matches!(cli.agent, Some(Agent::Claude)));
         assert!(cli.profiles.is_empty());
         assert!(cli.agent_args.is_empty());
     }
@@ -159,7 +192,7 @@ mod tests {
             "--add-dirs=/tmp/extra",
             "--add-dirs-ro=/tmp/readonly",
         ]);
-        assert!(matches!(cli.agent, Agent::Codex));
+        assert!(matches!(cli.agent, Some(Agent::Codex)));
         assert_eq!(cli.workdir, Some(PathBuf::from("/tmp/project")));
         assert_eq!(cli.add_dirs, vec![PathBuf::from("/tmp/extra")]);
         assert_eq!(cli.add_dirs_ro, vec![PathBuf::from("/tmp/readonly")]);
@@ -167,14 +200,7 @@ mod tests {
 
     #[test]
     fn parse_agent_args_after_separator() {
-        let cli = Cli::parse_from([
-            "gator",
-            "claude",
-            "rust.full",
-            "--",
-            "--model",
-            "opus",
-        ]);
+        let cli = Cli::parse_from(["gator", "claude", "rust.full", "--", "--model", "opus"]);
         assert_eq!(cli.profiles, vec!["rust.full"]);
         assert_eq!(cli.agent_args, vec!["--model", "opus"]);
     }
@@ -263,6 +289,19 @@ mod tests {
     fn parse_no_yolo_default_false() {
         let cli = Cli::parse_from(["gator", "claude"]);
         assert!(!cli.no_yolo);
+    }
+
+    #[test]
+    fn parse_meta_version_with_global_json() {
+        let cli = Cli::parse_from(["gator", "--json", "meta", "version"]);
+        assert!(cli.json);
+        match cli.command {
+            Some(Command::Meta { command }) => {
+                assert!(matches!(command, MetaCommand::Version));
+            }
+            _ => panic!("expected meta command"),
+        }
+        assert!(cli.agent.is_none());
     }
 
     #[test]

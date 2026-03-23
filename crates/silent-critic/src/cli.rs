@@ -2,7 +2,10 @@ use crate::models::{DecisionType, EvaluatorType, ExportFormat};
 use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
-#[command(name = "silent-critic", about = "Supervision framework for agentic software development")]
+#[command(
+    name = "silent-critic",
+    about = "Supervision framework for agentic software development"
+)]
 pub struct Cli {
     /// Output JSON instead of plain text
     #[arg(long, global = true)]
@@ -14,6 +17,11 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
+    /// Shared metadata commands
+    Meta {
+        #[command(subcommand)]
+        command: MetaCommand,
+    },
     /// Project management
     Project {
         #[command(subcommand)]
@@ -100,7 +108,6 @@ pub enum CriterionCommand {
         /// JSON schema for parameters
         #[arg(long)]
         parameter_schema: Option<String>,
-
     },
     /// List criteria
     List {
@@ -212,4 +219,33 @@ pub enum ContractCommand {
         #[arg(long, default_value = "operator")]
         role: String,
     },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum MetaCommand {
+    /// Show version information
+    Version,
+    /// Show license information
+    License,
+    /// Generate shell completions
+    Completions {
+        /// Shell to generate completions for
+        shell: clap_complete::Shell,
+    },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[test]
+    fn parse_meta_version_with_global_json() {
+        let cli = Cli::parse_from(["silent-critic", "--json", "meta", "version"]);
+        assert!(cli.json);
+        match cli.command {
+            Command::Meta { command } => assert!(matches!(command, MetaCommand::Version)),
+            _ => panic!("expected meta command"),
+        }
+    }
 }

@@ -234,6 +234,17 @@ fn test_version_flag() {
 }
 
 #[test]
+fn test_version_json_flag() {
+    let out = Command::new(bin_path())
+        .args(["--json", "version"])
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(stdout.contains("\"version\""));
+}
+
+#[test]
 fn test_completions_bash() {
     let out = Command::new(bin_path())
         .args(["completions", "bash"])
@@ -273,6 +284,16 @@ fn test_doctor_command() {
     // Doctor may succeed or fail depending on local setup
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(stdout.contains("health check"));
+}
+
+#[test]
+fn test_doctor_command_json() {
+    let out = Command::new(bin_path())
+        .args(["--json", "doctor"])
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(stdout.contains("\"config_file_exists\""));
 }
 
 #[test]

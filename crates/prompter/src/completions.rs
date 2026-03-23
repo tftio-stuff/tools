@@ -4,9 +4,9 @@
 //! `prompter run` subcommand (and the top-level shorthand) offer dynamic
 //! profile completions sourced from the active configuration.
 
-use clap::CommandFactory;
 use clap_complete::Shell;
 use std::io::{self, Write};
+use tftio_cli_common::render_completion;
 
 use crate::Cli;
 
@@ -15,13 +15,8 @@ use crate::Cli;
 /// # Panics
 /// Panics if the generated completion script is not valid UTF-8 or if writing to `stdout` fails.
 pub fn generate(shell: Shell) {
-    let mut cmd = Cli::command();
-    let bin_name = cmd.get_name().to_string();
-
-    let instructions = render_instructions(shell, &bin_name);
-    let mut buffer = Vec::new();
-    clap_complete::generate(shell, &mut cmd, bin_name, &mut buffer);
-    let mut script = String::from_utf8(buffer).expect("clap_complete output must be valid UTF-8");
+    let output = render_completion::<Cli>(shell);
+    let mut script = output.script;
 
     match shell {
         Shell::Bash => augment_bash(&mut script),
@@ -32,34 +27,11 @@ pub fn generate(shell: Shell) {
 
     let mut stdout = io::stdout();
     stdout
-        .write_all(instructions.as_bytes())
+        .write_all(output.instructions.as_bytes())
         .expect("failed to write completion instructions");
     stdout
         .write_all(script.as_bytes())
         .expect("failed to write completion script");
-}
-
-fn render_instructions(shell: Shell, bin_name: &str) -> String {
-    match shell {
-        Shell::Bash => format!(
-            "# Shell completion for {bin_name}\n#\n# To enable completions, add this to your shell config:\n#\n#   source <({bin_name} completions bash)\n\n"
-        ),
-        Shell::Zsh => format!(
-            "# Shell completion for {bin_name}\n#\n# To enable completions, add this to your shell config:\n#\n#   {bin_name} completions zsh > ~/.zsh/completions/_{bin_name}\n#   Ensure fpath includes ~/.zsh/completions\n\n"
-        ),
-        Shell::Fish => format!(
-            "# Shell completion for {bin_name}\n#\n# To enable completions, add this to your shell config:\n#\n#   {bin_name} completions fish | source\n\n"
-        ),
-        Shell::PowerShell => format!(
-            "# Shell completion for {bin_name}\n#\n# To enable completions, add this to your shell config:\n#\n#   {bin_name} completions powershell | Out-String | Invoke-Expression\n\n"
-        ),
-        Shell::Elvish => format!(
-            "# Shell completion for {bin_name}\n#\n# To enable completions, add this to your shell config:\n#\n#   {bin_name} completions elvish | eval\n\n"
-        ),
-        other => format!(
-            "# Shell completion for {bin_name}\n#\n# To enable completions, add this to your shell config:\n#\n#   {bin_name} completions {other}\n\n"
-        ),
-    }
 }
 
 fn augment_bash(script: &mut String) {
@@ -257,6 +229,7 @@ complete -c prompter -n "__fish_prompter_using_subcommand run" -f -a "(__fish_pr
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::CommandFactory;
 
     fn raw_script(shell: Shell) -> String {
         let mut cmd = Cli::command();

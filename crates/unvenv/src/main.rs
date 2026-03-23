@@ -14,7 +14,10 @@ use std::{
     path::{Path, PathBuf},
     process,
 };
-use tftio_cli_common::{DoctorCheck, DoctorChecks, LicenseType, RepoInfo};
+use tftio_cli_common::{
+    DoctorCheck, DoctorChecks, LicenseType, RepoInfo, StandardCommand, ToolSpec,
+    command::run_standard_command, run_with_display_error_handler, workspace_tool,
+};
 use walkdir::WalkDir;
 
 /// Application version from Cargo.toml
@@ -101,58 +104,63 @@ impl DoctorChecks for UnvenvTool {
     }
 }
 
+const TOOL_SPEC: ToolSpec = workspace_tool(
+    "unvenv",
+    "unvenv",
+    VERSION,
+    LicenseType::MIT,
+    false,
+    true,
+    true,
+);
+
 fn main() {
-    let exit_code = match run() {
-        Ok(code) => code,
-        Err(e) => {
-            eprintln!("{} {}", "Error:".red().bold(), e);
-            1
-        }
-    };
+    let cli = Cli::parse();
+    let is_tty = tftio_cli_common::output::is_tty();
+    let exit_code = run_with_display_error_handler("unvenv", false, || run(cli, is_tty));
     process::exit(exit_code);
 }
 
-fn run() -> Result<i32> {
-    let cli = Cli::parse();
-
-    // Check if stdout is a TTY for decoration
-    let is_tty = tftio_cli_common::output::is_tty();
+fn run(cli: Cli, is_tty: bool) -> Result<i32> {
+    let tool = UnvenvTool;
 
     match cli.command {
-        Some(Commands::Version) => {
-            if is_tty {
-                println!("{} {}", "unvenv".green().bold(), VERSION);
-            } else {
-                println!("unvenv {VERSION}");
-            }
-            Ok(0)
-        }
-        Some(Commands::License) => {
-            println!(
-                "{}",
-                tftio_cli_common::license::display_license("unvenv", LicenseType::MIT)
-            );
-            Ok(0)
-        }
+        Some(Commands::Version) => Ok(run_standard_command::<Cli, UnvenvTool>(
+            &TOOL_SPEC,
+            &StandardCommand::Version { json: false },
+            Some(&tool),
+        )),
+        Some(Commands::License) => Ok(run_standard_command::<Cli, UnvenvTool>(
+            &TOOL_SPEC,
+            &StandardCommand::License,
+            Some(&tool),
+        )),
         Some(Commands::Scan) | None => {
             // Default behavior: scan for venv files
             scan_for_venvs(is_tty)
         }
-        Some(Commands::Completions { shell }) => {
-            tftio_cli_common::completions::generate_completions::<Cli>(shell);
-            Ok(0)
-        }
-        Some(Commands::Doctor) => Ok(tftio_cli_common::doctor::run_doctor(&UnvenvTool)),
+        Some(Commands::Completions { shell }) => Ok(run_standard_command::<Cli, UnvenvTool>(
+            &TOOL_SPEC,
+            &StandardCommand::Completions { shell },
+            Some(&tool),
+        )),
+        Some(Commands::Doctor) => Ok(run_standard_command::<Cli, UnvenvTool>(
+            &TOOL_SPEC,
+            &StandardCommand::Doctor,
+            Some(&tool),
+        )),
         Some(Commands::Update {
             version,
             force,
             install_dir,
-        }) => Ok(tftio_cli_common::update::run_update(
-            &UnvenvTool::repo_info(),
-            UnvenvTool::current_version(),
-            version.as_deref(),
-            force,
-            install_dir.as_deref(),
+        }) => Ok(run_standard_command::<Cli, UnvenvTool>(
+            &TOOL_SPEC,
+            &StandardCommand::Update {
+                version,
+                force,
+                install_dir,
+            },
+            Some(&tool),
         )),
     }
 }
