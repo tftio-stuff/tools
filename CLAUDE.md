@@ -68,6 +68,22 @@ See [`CRATES.md`](/Users/jfb/Projects/tools/feature/gator/CRATES.md) for the ful
 - `asana-cli` overrides `tokio` with extra features: `fs`, `signal`, `time`
 - `todoer` overrides `lints.rust.missing_docs = "allow"` (local lints)
 
+### CLI Base UX Boundary
+
+The invariant for this workspace is: **base CLI UX belongs in `cli-common`**.
+
+- Put shared metadata commands, `ToolSpec` presets, metadata-command mapping helpers, doctorless adapters, completion rendering, JSON envelopes, response-branching helpers, doctor report rendering/builders, fatal runner handling, error rendering, and progress helpers in `cli-common`.
+- If a CLI helper appears in two tools, move it to `cli-common`.
+- If a CLI helper appears in one tool but is general enough for another tool, prefer moving it to `cli-common` now rather than waiting for later duplication.
+- Keep crate-local CLI code limited to domain-specific commands, domain-specific output, data collection needed before rendering, and behavior that cannot be expressed through the shared contract.
+- Current intentional exceptions:
+  - `gator` keeps only the local wrapper that bridges its library-owned clap enum into `StandardCommandMap`.
+  - `bce` keeps only its extraction runtime, extraction summary text, and minimal `DoctorChecks` provider.
+  - `todoer` keeps only task/project resolution plus task-specific text formatting.
+  - `prompter` keeps only its shell-specific dynamic completion augmentation and doctor state collection.
+  - `unvenv` and `asana-cli` keep only their domain-specific primary command behavior and summaries.
+- When changing a binary crate, update `just cli-metadata-consistency` and `just cli-consistency` so the shared UX remains enforced across the workspace.
+
 ### Lint Configuration
 
 **Workspace-level lints** (`[workspace.lints]`):

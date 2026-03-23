@@ -59,9 +59,7 @@ pub fn detect_worktrees(workdir: &Path) -> WorktreeInfo {
     // Also check the main worktree (not listed by repo.worktrees())
     if let Some(main_workdir) = repo.workdir() {
         if let Ok(main_canonical) = main_workdir.canonicalize() {
-            if main_canonical != workdir_canonical
-                && !info.siblings.contains(&main_canonical)
-            {
+            if main_canonical != workdir_canonical && !info.siblings.contains(&main_canonical) {
                 info.siblings.push(main_canonical);
             }
         }

@@ -51,12 +51,7 @@ pub fn discover_repo_context(
     }
 
     // Documentation files
-    let doc_files = [
-        "AGENTS.md",
-        "CLAUDE.md",
-        "README.md",
-        ".github/CODEOWNERS",
-    ];
+    let doc_files = ["AGENTS.md", "CLAUDE.md", "README.md", ".github/CODEOWNERS"];
 
     for filename in &doc_files {
         let path = worktree.join(filename);
@@ -132,7 +127,9 @@ pub fn discover_repo_context(
                     session_id: session_id.to_string(),
                     source_type: DiscoverySourceType::GitLog,
                     source_path: ".git".to_string(),
-                    content_hash: hash_content(&serde_json::to_string(&commits).unwrap_or_default()),
+                    content_hash: hash_content(
+                        &serde_json::to_string(&commits).unwrap_or_default(),
+                    ),
                     summary: serde_json::json!({
                         "type": "git_log",
                         "commit_count": commits.len(),
@@ -267,9 +264,8 @@ pub fn format_discovery_summary(contexts: &[DiscoveryContext]) -> String {
                     for commit in commits.iter().take(5) {
                         out.push_str(&format!(
                             "  - {} {}\n",
-                            &commit["sha"].as_str().unwrap_or("?")[..8.min(
-                                commit["sha"].as_str().unwrap_or("?").len()
-                            )],
+                            &commit["sha"].as_str().unwrap_or("?")
+                                [..8.min(commit["sha"].as_str().unwrap_or("?").len())],
                             commit["message"].as_str().unwrap_or("?"),
                         ));
                     }

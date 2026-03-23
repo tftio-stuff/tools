@@ -148,22 +148,17 @@ mod tests {
     #[test]
     fn build_command_codex_with_prompt() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
-        let (cmd, temps) = build_command(
-            &Agent::Codex,
-            tmp.path(),
-            Some("codex prompt"),
-            &[],
-            false,
-        )
-        .unwrap();
+        let (cmd, temps) =
+            build_command(&Agent::Codex, tmp.path(), Some("codex prompt"), &[], false).unwrap();
         assert_eq!(temps.len(), 1);
         let args: Vec<_> = cmd
             .get_args()
             .map(|a| a.to_string_lossy().to_string())
             .collect();
-        assert!(args
-            .iter()
-            .any(|a| a.starts_with("experimental_instructions_file=")));
+        assert!(
+            args.iter()
+                .any(|a| a.starts_with("experimental_instructions_file="))
+        );
     }
 
     #[test]
@@ -186,54 +181,52 @@ mod tests {
     fn build_command_claude_yolo() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
         let (cmd, _) = build_command(&Agent::Claude, tmp.path(), None, &[], true).unwrap();
-        let args: Vec<_> = cmd
+        assert!(cmd
             .get_args()
             .map(|a| a.to_string_lossy().to_string())
-            .collect();
-        assert!(args.contains(&"--dangerously-skip-permissions".to_owned()));
+            .any(|arg| arg == "--dangerously-skip-permissions"));
     }
 
     #[test]
     fn build_command_codex_yolo() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
         let (cmd, _) = build_command(&Agent::Codex, tmp.path(), None, &[], true).unwrap();
-        let args: Vec<_> = cmd
+        assert!(cmd
             .get_args()
             .map(|a| a.to_string_lossy().to_string())
-            .collect();
-        assert!(args.contains(&"--full-auto".to_owned()));
+            .any(|arg| arg == "--full-auto"));
     }
 
     #[test]
     fn build_command_gemini_yolo_no_arg() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
         let (cmd, _) = build_command(&Agent::Gemini, tmp.path(), None, &[], true).unwrap();
-        let args: Vec<_> = cmd
+        // Gemini has no YOLO flag -- only sandbox-exec plumbing + "gemini"
+        assert!(!cmd
             .get_args()
             .map(|a| a.to_string_lossy().to_string())
-            .collect();
-        // Gemini has no YOLO flag -- only sandbox-exec plumbing + "gemini"
-        assert!(!args.contains(&"--dangerously-skip-permissions".to_owned()));
-        assert!(!args.contains(&"--full-auto".to_owned()));
+            .any(|arg| arg == "--dangerously-skip-permissions"));
+        assert!(!cmd
+            .get_args()
+            .map(|a| a.to_string_lossy().to_string())
+            .any(|arg| arg == "--full-auto"));
     }
 
     #[test]
     fn build_command_no_yolo_skips_injection() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
         let (cmd, _) = build_command(&Agent::Claude, tmp.path(), None, &[], false).unwrap();
-        let args: Vec<_> = cmd
+        assert!(!cmd
             .get_args()
             .map(|a| a.to_string_lossy().to_string())
-            .collect();
-        assert!(!args.contains(&"--dangerously-skip-permissions".to_owned()));
+            .any(|arg| arg == "--dangerously-skip-permissions"));
     }
 
     #[test]
     fn build_command_yolo_before_agent_args() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
         let agent_args = vec!["--model".to_owned(), "opus".to_owned()];
-        let (cmd, _) =
-            build_command(&Agent::Claude, tmp.path(), None, &agent_args, true).unwrap();
+        let (cmd, _) = build_command(&Agent::Claude, tmp.path(), None, &agent_args, true).unwrap();
         let args: Vec<_> = cmd
             .get_args()
             .map(|a| a.to_string_lossy().to_string())
@@ -246,6 +239,9 @@ mod tests {
             .iter()
             .position(|a| a == "--model")
             .expect("--model not found");
-        assert!(yolo_pos < model_pos, "YOLO flag must appear before agent args");
+        assert!(
+            yolo_pos < model_pos,
+            "YOLO flag must appear before agent args"
+        );
     }
 }

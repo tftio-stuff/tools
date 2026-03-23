@@ -15,7 +15,8 @@ pub fn run_create(
     let namespace = namespace.ok_or_else(|| anyhow::anyhow!("--namespace required"))?;
     let name = name.ok_or_else(|| anyhow::anyhow!("--name required"))?;
     let claim = claim.ok_or_else(|| anyhow::anyhow!("--claim required"))?;
-    let evaluator_type = evaluator_type.ok_or_else(|| anyhow::anyhow!("--evaluator-type required"))?;
+    let evaluator_type =
+        evaluator_type.ok_or_else(|| anyhow::anyhow!("--evaluator-type required"))?;
     let check_spec = check_spec.unwrap_or("");
 
     let criterion = Criterion {
@@ -34,16 +35,12 @@ pub fn run_create(
     Ok(criterion)
 }
 
-pub fn run_list(
-    conn: &rusqlite::Connection,
-    namespace: Option<&str>,
-) -> Result<Vec<Criterion>> {
+pub fn run_list(conn: &rusqlite::Connection, namespace: Option<&str>) -> Result<Vec<Criterion>> {
     db::list_criteria(conn, namespace)
 }
 
 pub fn run_show(conn: &rusqlite::Connection, id: &str) -> Result<Criterion> {
-    db::get_criterion(conn, id)?
-        .ok_or_else(|| anyhow::anyhow!("criterion not found: {id}"))
+    db::get_criterion(conn, id)?.ok_or_else(|| anyhow::anyhow!("criterion not found: {id}"))
 }
 
 pub fn run_update(
@@ -55,8 +52,8 @@ pub fn run_update(
     evaluator_type: Option<&EvaluatorType>,
     check_spec: Option<&str>,
 ) -> Result<Criterion> {
-    let mut criterion = db::get_criterion(conn, id)?
-        .ok_or_else(|| anyhow::anyhow!("criterion not found: {id}"))?;
+    let mut criterion =
+        db::get_criterion(conn, id)?.ok_or_else(|| anyhow::anyhow!("criterion not found: {id}"))?;
 
     if let Some(v) = namespace {
         criterion.namespace = v.to_string();
@@ -79,8 +76,8 @@ pub fn run_update(
 }
 
 pub fn run_deprecate(conn: &rusqlite::Connection, id: &str) -> Result<()> {
-    let criterion = db::get_criterion(conn, id)?
-        .ok_or_else(|| anyhow::anyhow!("criterion not found: {id}"))?;
+    let criterion =
+        db::get_criterion(conn, id)?.ok_or_else(|| anyhow::anyhow!("criterion not found: {id}"))?;
     if criterion.deprecated_at.is_some() {
         bail!("criterion already deprecated: {id}");
     }
@@ -89,8 +86,8 @@ pub fn run_deprecate(conn: &rusqlite::Connection, id: &str) -> Result<()> {
 }
 
 pub fn run_export(conn: &rusqlite::Connection, id: &str) -> Result<String> {
-    let criterion = db::get_criterion(conn, id)?
-        .ok_or_else(|| anyhow::anyhow!("criterion not found: {id}"))?;
+    let criterion =
+        db::get_criterion(conn, id)?.ok_or_else(|| anyhow::anyhow!("criterion not found: {id}"))?;
     let toml_repr = CriterionToml::from(&criterion);
     Ok(toml::to_string_pretty(&toml_repr)?)
 }

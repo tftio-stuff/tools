@@ -176,7 +176,14 @@ pub enum AppMode {
 /// - Required arguments are missing
 /// - Conflicting options are specified
 pub fn parse_args_from(args: Vec<String>) -> Result<AppMode, String> {
-    let cli = Cli::try_parse_from(args).map_err(|e| e.to_string())?;
+    let cli = match Cli::try_parse_from(args) {
+        Ok(cli) => cli,
+        Err(err) => match err.kind() {
+            clap::error::ErrorKind::DisplayHelp => return Ok(AppMode::Help),
+            clap::error::ErrorKind::DisplayVersion => return Ok(AppMode::Version { json: false }),
+            _ => return Err(err.to_string()),
+        },
+    };
 
     match cli.command {
         Commands::Version => Ok(AppMode::Version { json: cli.json }),
@@ -1353,9 +1360,7 @@ pub fn render_to_vec(
 ///
 /// # Errors
 /// Returns an error if config resolution or parsing fails.
-pub fn available_profiles(
-    config_override: Option<&Path>,
-) -> Result<Vec<String>, String> {
+pub fn available_profiles(config_override: Option<&Path>) -> Result<Vec<String>, String> {
     let cfg_path = resolve_config_path(config_override)?;
     let cfg_text = read_config_with_path(&cfg_path)?;
     let cfg = parse_config_toml(&cfg_text)?;
