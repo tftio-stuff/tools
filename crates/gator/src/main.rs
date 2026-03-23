@@ -2,8 +2,8 @@
 
 use gator::cli::{Cli, Command, MetaCommand};
 use tftio_cli_common::{
-    AgentCapability, AgentDispatch, AgentSurfaceSpec, CommandSelector, FatalCliError,
-    FlagSelector, LicenseType, StandardCommand, StandardCommandMap, ToolSpec,
+    AgentCapability, AgentDispatch, AgentSurfaceSpec, CommandSelector, FatalCliError, FlagSelector,
+    LicenseType, StandardCommand, StandardCommandMap, ToolSpec,
     command::maybe_run_standard_command_no_doctor, error::fatal_error, parse_with_agent_surface,
     run_with_fatal_handler, workspace_tool,
 };
@@ -19,7 +19,13 @@ const RUN_AGENT_CAPABILITY: AgentCapability = AgentCapability::new(
     "run-agent",
     "Launch an agent inside the gator sandbox",
     &[RUN_AGENT_COMMAND],
-    &[WORKDIR_FLAG, POLICY_FLAG, NO_PROMPT_FLAG, DRY_RUN_FLAG, JSON_FLAG],
+    &[
+        WORKDIR_FLAG,
+        POLICY_FLAG,
+        NO_PROMPT_FLAG,
+        DRY_RUN_FLAG,
+        JSON_FLAG,
+    ],
 );
 
 const AGENT_SURFACE: AgentSurfaceSpec = AgentSurfaceSpec::new(&[RUN_AGENT_CAPABILITY]);
@@ -113,7 +119,13 @@ mod tests {
         assert_eq!(capability.commands, &[RUN_AGENT_COMMAND]);
         assert_eq!(
             capability.flags,
-            &[WORKDIR_FLAG, POLICY_FLAG, NO_PROMPT_FLAG, DRY_RUN_FLAG, JSON_FLAG]
+            &[
+                WORKDIR_FLAG,
+                POLICY_FLAG,
+                NO_PROMPT_FLAG,
+                DRY_RUN_FLAG,
+                JSON_FLAG
+            ]
         );
     }
 }

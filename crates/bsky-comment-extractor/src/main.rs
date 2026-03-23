@@ -187,7 +187,10 @@ fn execute_query(query: QueryArgs) -> Result<()> {
 fn handle_query_error(err: ExtractorError, db_path: &Path) -> Result<()> {
     match &err {
         ExtractorError::Io(io_err) if io_err.kind() == std::io::ErrorKind::NotFound => {
-            write_json_error("db_not_found", &format!("database not found: {}", db_path.display()));
+            write_json_error(
+                "db_not_found",
+                &format!("database not found: {}", db_path.display()),
+            );
         }
         _ => write_json_error("query_failed", &err.to_string()),
     }
@@ -265,7 +268,9 @@ mod tests {
             "bce",
             "query",
             "--db",
-            missing_db.to_str().expect("temp path should be valid UTF-8"),
+            missing_db
+                .to_str()
+                .expect("temp path should be valid UTF-8"),
         ]);
         assert_eq!(run(cli), 1);
     }

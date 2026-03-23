@@ -6,9 +6,9 @@ use clap::{CommandFactory, FromArgMatches};
 use clap_complete::Shell;
 
 use crate::{
-    AgentDispatch, AgentModeContext, DoctorChecks, ToolSpec, apply_agent_surface,
-    display_license, generate_completions_from_command, parse_with_agent_surface,
-    parse_with_agent_surface_from, run_doctor, update,
+    AgentDispatch, AgentModeContext, DoctorChecks, ToolSpec, apply_agent_surface, display_license,
+    generate_completions_from_command, parse_with_agent_surface, parse_with_agent_surface_from,
+    run_doctor, update,
 };
 #[cfg(test)]
 use crate::{CompletionOutput, render_completion_from_command};
@@ -110,9 +110,7 @@ where
 /// # Errors
 ///
 /// Returns a `clap` error when parsing fails.
-pub fn parse_command_with_agent_surface<T>(
-    spec: &ToolSpec,
-) -> Result<AgentDispatch<T>, clap::Error>
+pub fn parse_command_with_agent_surface<T>(spec: &ToolSpec) -> Result<AgentDispatch<T>, clap::Error>
 where
     T: CommandFactory + FromArgMatches,
 {

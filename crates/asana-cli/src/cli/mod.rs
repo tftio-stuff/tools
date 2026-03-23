@@ -25,9 +25,9 @@ use std::path::PathBuf;
 use tag::TagCommand;
 use task::TaskCommand;
 use tftio_cli_common::{
-    AgentCapability, AgentDispatch, AgentSurfaceSpec, CommandSelector, DoctorCheck,
-    DoctorChecks, FlagSelector, LicenseType, RepoInfo, StandardCommand, ToolSpec,
-    parse_with_agent_surface, command::run_standard_command, workspace_tool,
+    AgentCapability, AgentDispatch, AgentSurfaceSpec, CommandSelector, DoctorCheck, DoctorChecks,
+    FlagSelector, LicenseType, RepoInfo, StandardCommand, ToolSpec, command::run_standard_command,
+    parse_with_agent_surface, workspace_tool,
 };
 use tokio::runtime::Builder as RuntimeBuilder;
 use tracing::{debug, info};
@@ -57,8 +57,7 @@ const TASK_WORKSPACE_FLAG: FlagSelector = FlagSelector::new(&["task"], "workspac
 const PROJECT_WORKSPACE_FLAG: FlagSelector = FlagSelector::new(&["project"], "workspace");
 const SECTION_PROJECT_FLAG: FlagSelector = FlagSelector::new(&["section"], "project");
 const TAG_WORKSPACE_FLAG: FlagSelector = FlagSelector::new(&["tag"], "workspace");
-const CUSTOM_FIELD_WORKSPACE_FLAG: FlagSelector =
-    FlagSelector::new(&["custom-field"], "workspace");
+const CUSTOM_FIELD_WORKSPACE_FLAG: FlagSelector = FlagSelector::new(&["custom-field"], "workspace");
 const WORKSPACE_GID_FLAG: FlagSelector = FlagSelector::new(&["workspace"], "gid");
 const USER_WORKSPACE_FLAG: FlagSelector = FlagSelector::new(&["user"], "workspace");
 
@@ -86,7 +85,9 @@ const MANAGE_TASKS_CAPABILITY: AgentCapability = AgentCapability::new(
     "asana-cli task show <TASK_GID>",
 ])
 .with_output("prints task tables, summaries, or JSON payloads produced by task commands")
-.with_constraints("task commands require a stored personal access token and valid task identifiers");
+.with_constraints(
+    "task commands require a stored personal access token and valid task identifiers",
+);
 
 const MANAGE_PROJECTS_CAPABILITY: AgentCapability = AgentCapability::new(
     "manage-projects",
@@ -159,10 +160,7 @@ const MANAGE_USERS_CAPABILITY: AgentCapability = AgentCapability::new(
     &[USER_COMMAND],
     &[USER_WORKSPACE_FLAG],
 )
-.with_examples(&[
-    "asana-cli user me",
-    "asana-cli user list --workspace <GID>",
-])
+.with_examples(&["asana-cli user me", "asana-cli user list --workspace <GID>"])
 .with_output("prints user records, user lists, and membership-related summaries")
 .with_constraints("user commands require API-authenticated access to the target workspace");
 

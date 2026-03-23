@@ -49,7 +49,10 @@ fn agent_surface_skill_query_posts_renders_single_capability_contract() {
     assert!(output.status.success(), "stderr: {}", stderr(&output));
 
     let stdout = stdout(&output);
-    assert!(stdout.contains("capability:\n- query-posts"), "stdout: {stdout}");
+    assert!(
+        stdout.contains("capability:\n- query-posts"),
+        "stdout: {stdout}"
+    );
     assert!(stdout.contains("commands:\n- query"), "stdout: {stdout}");
     assert!(!stdout.contains("fetch"), "stdout: {stdout}");
 }

@@ -48,7 +48,10 @@ fn agent_surface_skill_renders_run_agent_contract() {
     assert!(output.status.success(), "stderr: {}", stderr(&output));
 
     let stdout = stdout(&output);
-    assert!(stdout.contains("capability:\n- run-agent"), "stdout: {stdout}");
+    assert!(
+        stdout.contains("capability:\n- run-agent"),
+        "stdout: {stdout}"
+    );
     assert!(!stdout.contains("meta"), "stdout: {stdout}");
 }
 
@@ -77,7 +80,11 @@ fn agent_surface_rejects_hidden_privileged_flags() {
         .expect("run gator with hidden session flag");
 
     assert!(!session.status.success(), "stdout: {}", stdout(&session));
-    assert!(stderr(&session).contains("--session"), "stderr: {}", stderr(&session));
+    assert!(
+        stderr(&session).contains("--session"),
+        "stderr: {}",
+        stderr(&session)
+    );
 
     let help = agent_command()
         .arg("--help")

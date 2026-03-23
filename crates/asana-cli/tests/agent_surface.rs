@@ -101,8 +101,14 @@ fn agent_surface_skill_manage_tasks_is_capability_scoped() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("manage-tasks"));
     assert!(stdout.contains("- task"));
-    assert!(!stdout.contains("manage-projects"), "unexpected extra capability: {stdout}");
-    assert!(!stdout.contains("- project"), "unexpected extra command path: {stdout}");
+    assert!(
+        !stdout.contains("manage-projects"),
+        "unexpected extra capability: {stdout}"
+    );
+    assert!(
+        !stdout.contains("- project"),
+        "unexpected extra command path: {stdout}"
+    );
 }
 
 #[test]

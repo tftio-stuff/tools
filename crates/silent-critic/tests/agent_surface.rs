@@ -98,8 +98,14 @@ fn agent_surface_skill_session_manifest_is_capability_scoped() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("session-manifest"));
     assert!(stdout.contains("- session manifest"));
-    assert!(!stdout.contains("session-status"), "unexpected extra capability: {stdout}");
-    assert!(!stdout.contains("- session status"), "unexpected extra command path: {stdout}");
+    assert!(
+        !stdout.contains("session-status"),
+        "unexpected extra capability: {stdout}"
+    );
+    assert!(
+        !stdout.contains("- session status"),
+        "unexpected extra command path: {stdout}"
+    );
 }
 
 #[test]

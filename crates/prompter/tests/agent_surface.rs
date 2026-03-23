@@ -83,8 +83,7 @@ fn agent_surface_hides_privileged_commands() {
 
         let stderr = stderr(&output);
         assert!(
-            stderr.contains("unrecognized subcommand")
-                || stderr.contains("invalid value"),
+            stderr.contains("unrecognized subcommand") || stderr.contains("invalid value"),
             "stderr: {stderr}"
         );
     }

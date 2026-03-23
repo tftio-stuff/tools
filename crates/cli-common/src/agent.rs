@@ -2,10 +2,7 @@
 
 use std::{collections::BTreeSet, ffi::OsString};
 
-use clap::{
-    Arg, ArgAction, Command, CommandFactory, FromArgMatches,
-    error::ErrorKind,
-};
+use clap::{Arg, ArgAction, Command, CommandFactory, FromArgMatches, error::ErrorKind};
 
 use crate::ToolSpec;
 
@@ -207,7 +204,8 @@ pub fn visible_capabilities<'a>(
     ctx: &AgentModeContext,
 ) -> &'a [AgentCapability] {
     if ctx.active {
-        spec.agent_surface.map_or(&[], |surface| surface.capabilities)
+        spec.agent_surface
+            .map_or(&[], |surface| surface.capabilities)
     } else {
         &[]
     }
@@ -221,12 +219,7 @@ pub fn apply_agent_surface(command: &mut Command, spec: &ToolSpec, ctx: &AgentMo
 
     ensure_agent_inspection_args(command);
 
-    let filtered = filter_command(
-        command,
-        spec.version,
-        visible_capabilities(spec, ctx),
-        &[],
-    );
+    let filtered = filter_command(command, spec.version, visible_capabilities(spec, ctx), &[]);
     *command = filtered;
 }
 
@@ -236,18 +229,21 @@ fn filter_command(
     capabilities: &[AgentCapability],
     current_path: &[&str],
 ) -> Command {
-    let keep_full_subtree = is_within_explicit_command_subtree(
-        capabilities,
-        current_path,
-        command.has_subcommands(),
-    );
+    let keep_full_subtree =
+        is_within_explicit_command_subtree(capabilities, current_path, command.has_subcommands());
     let allowed_flags = allowed_flags(capabilities, current_path);
     let mut filtered = clone_command_metadata(command, version, current_path.is_empty());
 
     for arg in command
         .get_arguments()
         .filter(|arg| {
-            should_keep_arg(arg, capabilities, current_path, &allowed_flags, keep_full_subtree)
+            should_keep_arg(
+                arg,
+                capabilities,
+                current_path,
+                &allowed_flags,
+                keep_full_subtree,
+            )
         })
         .cloned()
     {
@@ -544,13 +540,7 @@ pub fn render_agent_help(spec: &ToolSpec, ctx: &AgentModeContext) -> String {
     } else {
         capabilities
             .iter()
-            .map(|capability| {
-                format!(
-                    "- {}: {}",
-                    capability.name,
-                    capability_summary(capability)
-                )
-            })
+            .map(|capability| format!("- {}: {}", capability.name, capability_summary(capability)))
             .collect::<Vec<_>>()
             .join("\n")
     };
@@ -612,14 +602,15 @@ fn capability_summary(capability: &AgentCapability) -> String {
 fn capability_output(capability: &AgentCapability) -> String {
     capability.output.map_or_else(
         || {
-            if let Some(primary_command) = capability.commands.first() {
-                format!(
-                    "output follows the existing CLI contract for {}",
-                    primary_command.path.join(" ")
-                )
-            } else {
-                String::from("output follows the existing CLI contract")
-            }
+            capability.commands.first().map_or_else(
+                || String::from("output follows the existing CLI contract"),
+                |primary_command| {
+                    format!(
+                        "output follows the existing CLI contract for {}",
+                        primary_command.path.join(" ")
+                    )
+                },
+            )
         },
         String::from,
     )
@@ -854,9 +845,21 @@ mod tests {
         apply_agent_surface(&mut command, &spec(), &AgentModeContext { active: true });
 
         let query = command.find_subcommand("query").expect("query present");
-        assert!(query.get_arguments().any(|arg| arg.get_long() == Some("limit")));
-        assert!(query.get_arguments().any(|arg| arg.get_long() == Some("offset")));
-        assert!(!query.get_arguments().any(|arg| arg.get_long() == Some("secret")));
+        assert!(
+            query
+                .get_arguments()
+                .any(|arg| arg.get_long() == Some("limit"))
+        );
+        assert!(
+            query
+                .get_arguments()
+                .any(|arg| arg.get_long() == Some("offset"))
+        );
+        assert!(
+            !query
+                .get_arguments()
+                .any(|arg| arg.get_long() == Some("secret"))
+        );
     }
 
     #[test]
@@ -894,7 +897,11 @@ mod tests {
     fn sample_command() -> Command {
         Command::new("tool")
             .arg(Arg::new("agent-help").long("agent-help"))
-            .arg(Arg::new("agent-skill").long("agent-skill").value_name("NAME"))
+            .arg(
+                Arg::new("agent-skill")
+                    .long("agent-skill")
+                    .value_name("NAME"),
+            )
             .subcommand(
                 Command::new("query")
                     .arg(Arg::new("limit").long("limit"))
@@ -954,12 +961,10 @@ mod tests {
         assert!(hidden_command_typo_error.contains("unrecognized subcommand"));
         assert!(!hidden_command_typo_error.contains("Did you mean"));
 
-        let hidden_flag_error = parse_with_agent_surface_from::<AgentTestCli, _>(
-            &spec,
-            ["tool", "query", "--secre"],
-        )
-        .expect_err("hidden flag typo should be rejected")
-        .to_string();
+        let hidden_flag_error =
+            parse_with_agent_surface_from::<AgentTestCli, _>(&spec, ["tool", "query", "--secre"])
+                .expect_err("hidden flag typo should be rejected")
+                .to_string();
         assert!(hidden_flag_error.contains("unexpected argument"));
         assert!(!hidden_flag_error.contains("--secret"));
         assert!(!hidden_flag_error.contains("Did you mean"));
@@ -979,9 +984,10 @@ mod tests {
         assert!(!long_help.contains("admin"));
         assert!(!long_help.contains("--secret"));
 
-        let help_subcommand = parse_with_agent_surface_from::<AgentTestCli, _>(&spec, ["tool", "help"])
-            .expect_err("help subcommand should short-circuit through clap")
-            .to_string();
+        let help_subcommand =
+            parse_with_agent_surface_from::<AgentTestCli, _>(&spec, ["tool", "help"])
+                .expect_err("help subcommand should short-circuit through clap")
+                .to_string();
         assert!(help_subcommand.contains("query"));
         assert!(help_subcommand.contains("status"));
         assert!(!help_subcommand.contains("admin"));
@@ -994,11 +1000,9 @@ mod tests {
         set_tokens(None, None);
         let spec = spec();
 
-        let admin = parse_with_agent_surface_from::<AgentTestCli, _>(
-            &spec,
-            ["tool", "admin", "--danger"],
-        )
-        .expect("human mode should keep the full command tree");
+        let admin =
+            parse_with_agent_surface_from::<AgentTestCli, _>(&spec, ["tool", "admin", "--danger"])
+                .expect("human mode should keep the full command tree");
         assert_eq!(
             admin,
             AgentDispatch::Cli(AgentTestCli {
@@ -1006,11 +1010,9 @@ mod tests {
             })
         );
 
-        let query = parse_with_agent_surface_from::<AgentTestCli, _>(
-            &spec,
-            ["tool", "query", "--secret"],
-        )
-        .expect("human mode should keep hidden flags available");
+        let query =
+            parse_with_agent_surface_from::<AgentTestCli, _>(&spec, ["tool", "query", "--secret"])
+                .expect("human mode should keep hidden flags available");
         assert_eq!(
             query,
             AgentDispatch::Cli(AgentTestCli {
@@ -1029,8 +1031,9 @@ mod tests {
         set_tokens(Some("shared-token"), Some("shared-token"));
         let spec = spec();
 
-        let help = parse_with_agent_surface_from::<AgentTestCli, _>(&spec, ["tool", "--agent-help"])
-            .expect("agent help should print and exit");
+        let help =
+            parse_with_agent_surface_from::<AgentTestCli, _>(&spec, ["tool", "--agent-help"])
+                .expect("agent help should print and exit");
         assert_eq!(help, AgentDispatch::Printed(0));
 
         let skill = parse_with_agent_surface_from::<AgentTestCli, _>(
@@ -1066,14 +1069,13 @@ mod tests {
 
     #[test]
     fn agent_help_render_skill_output_is_single_capability_only() {
-        let rendered = render_agent_skill(&spec(), &AgentModeContext { active: true }, "query-posts")
-            .expect("capability should render");
+        let rendered =
+            render_agent_skill(&spec(), &AgentModeContext { active: true }, "query-posts")
+                .expect("capability should render");
 
         let section_positions = [
             rendered.find("tool:\n").expect("tool section"),
-            rendered
-                .find("capability:\n")
-                .expect("capability section"),
+            rendered.find("capability:\n").expect("capability section"),
             rendered.find("summary:\n").expect("summary section"),
             rendered.find("commands:\n").expect("commands section"),
             rendered.find("flags:\n").expect("flags section"),
