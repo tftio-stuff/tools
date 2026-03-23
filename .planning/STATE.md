@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-03-23T13:47:39.011Z"
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-03-23T13:59:20.800Z"
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 6
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 ## Current Position
 
 Phase: 07 (workspace-agent-mode-in-cli-common-token-gated-restricted-capability-surface-inspectable-agent-help-and-shared-agent-skill-support-across-tools) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 
 ## Completed Milestones
 
@@ -106,12 +106,16 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 07-01]: Agent mode fails closed unless `TFTIO_AGENT_TOKEN` exactly matches `TFTIO_AGENT_TOKEN_EXPECTED`.
 - [Phase 07-01]: Workspace tools declare static `AgentSurfaceSpec` metadata on `ToolSpec` instead of tool-local policy callbacks.
 - [Phase 07-01]: `apply_agent_surface` prunes the `clap` command tree and preserves only declared capability paths plus shared inspection flags.
+- [Phase 07]: Agent parsing now reconstructs typed CLI values from ArgMatches after validating argv against the filtered command tree.
+- [Phase 07]: Agent help and skill text derive from shared capability metadata with centralized fallback prose instead of tool-local strings.
+- [Phase 07]: Shared completion dispatch now builds the clap command, applies agent pruning when active, and renders completions from that exact command.
 
 ## Performance Metrics
 
 | Phase | Plan | Duration | Tasks | Files | Completed |
 |-------|------|----------|-------|-------|-----------|
 | 07 | 01 | 13m | 2 | 3 | 2026-03-23 |
+| Phase 07 P02 | 3m | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -133,6 +137,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-23T13:47:39.008Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-03-23T13:59:20.798Z
+Stopped at: Completed 07-02-PLAN.md
 Resume file: None
