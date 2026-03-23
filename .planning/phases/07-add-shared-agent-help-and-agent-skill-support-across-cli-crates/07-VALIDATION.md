@@ -1,8 +1,8 @@
 ---
 phase: 7
 slug: add-shared-agent-help-and-agent-skill-support-across-cli-crates
-status: draft
-nyquist_compliant: false
+status: planned
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-03-22
 ---
@@ -19,7 +19,7 @@ created: 2026-03-22
 |----------|-------|
 | **Framework** | cargo test |
 | **Config file** | `Cargo.toml`, `justfile` |
-| **Quick run command** | `cargo test -p tftio-cli-common --lib` |
+| **Quick run command** | `cargo test -p tftio-cli-common agent_docs --lib` |
 | **Full suite command** | `cargo test --workspace --verbose` |
 | **Estimated runtime** | not specified |
 
@@ -38,9 +38,15 @@ created: 2026-03-22
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 07-01-01 | 01 | 1 | phase-contract | unit | `cargo test -p tftio-cli-common --lib` | ❌ W0 | ⬜ pending |
-| 07-02-01 | 02 | 1 | crate-wiring | integration | `cargo test --workspace --verbose` | ❌ W0 | ⬜ pending |
-| 07-03-01 | 03 | 2 | rollout-verification | integration | `cargo test --workspace --verbose` | ❌ W0 | ⬜ pending |
+| 07-01-01 | 01 | 1 | ADOC-01, ADOC-03, ADOC-04 | unit | `cargo test -p tftio-cli-common agent_docs --lib` | `crates/cli-common/src/lib.rs` exists; `crates/cli-common/src/agent_docs.rs` = ❌ W0 | ⬜ pending |
+| 07-01-02 | 01 | 1 | ADOC-01, ADOC-03, ADOC-04 | unit | `cargo test -p tftio-cli-common agent_docs --lib` | `crates/cli-common/src/agent_docs.rs` = ❌ W0 | ⬜ pending |
+| 07-02-01 | 02 | 2 | ADOC-02, ADOC-03, ADOC-04, ADOC-05 | integration | `cargo test -p tftio-bsky-comment-extractor agent_help && cargo test -p tftio-unvenv agent_help` | `crates/bsky-comment-extractor/tests/agent_help.rs` = ❌ W0; `crates/unvenv/tests/agent_help.rs` = ❌ W0 | ⬜ pending |
+| 07-02-02 | 02 | 2 | ADOC-02, ADOC-03, ADOC-04, ADOC-05 | integration | `cargo test -p tftio-gator agent_help` | `crates/gator/tests/agent_help.rs` = ❌ W0 | ⬜ pending |
+| 07-03-01 | 03 | 2 | ADOC-02, ADOC-03, ADOC-04, ADOC-05 | integration | `cargo test -p tftio-todoer agent_help` | `crates/todoer/tests/agent_help.rs` = ❌ W0 | ⬜ pending |
+| 07-03-02 | 03 | 2 | ADOC-02, ADOC-03, ADOC-04, ADOC-05 | integration | `cargo test -p tftio-silent-critic agent_help` | `crates/silent-critic/tests/agent_help.rs` = ❌ W0 | ⬜ pending |
+| 07-04-01 | 04 | 3 | ADOC-02, ADOC-03, ADOC-04, ADOC-05 | integration | `cargo test -p tftio-prompter agent_help` | `crates/prompter/tests/agent_help.rs` = ❌ W0 | ⬜ pending |
+| 07-04-02 | 04 | 3 | ADOC-02, ADOC-03, ADOC-04, ADOC-05 | integration | `cargo test -p tftio-asana-cli agent_help` | `crates/asana-cli/tests/agent_help.rs` = ❌ W0 | ⬜ pending |
+| 07-04-03 | 04 | 3 | ADOC-05 | integration | `cargo test --workspace agent_help && cargo test --workspace --verbose` | All seven `tests/agent_help.rs` files = ❌ W0 until rollout plans land | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -64,11 +70,11 @@ created: 2026-03-22
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency requirement intentionally left unspecified
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All 9 planned tasks have matching automated verification entries or explicit Wave 0 dependencies
+- [x] Sampling continuity: every task has an automated command, so there are no 3-task gaps
+- [x] Wave 0 coverage lists the missing shared module and all seven crate-level `agent_help` test files
+- [x] No watch-mode flags appear in any plan verification command
+- [x] Feedback latency requirement remains intentionally unspecified
+- [x] `nyquist_compliant: true` is set in frontmatter
 
-**Approval:** pending
+**Approval:** ready for execution

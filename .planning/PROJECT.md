@@ -20,10 +20,11 @@ Complete, reliable extraction of a single BlueSky user's entire post history int
 - [x] CLI interface following workspace conventions (clap, cli-common, indicatif) -- v1.1
 - [x] Query mode reads stored posts from local SQLite and outputs envelope-first JSONL pagination -- validated in Phase 5: Query Subcommand
 - [x] Offset/limit pagination supports page traversal through stored results -- validated in Phase 5: Query Subcommand
+- [x] Shared top-level `--agent-help` YAML and `--agent-skill` Claude skill output across all seven workspace binaries -- validated in Phase 7: Add shared `--agent-help` and `--agent-skill` support across CLI crates
 
 ### Active
 
-- [ ] `--agent-help` flag: output LLM-agent-consumable reference documentation (skills-style)
+- [ ] Phase 6 milestone cleanup in the active `.planning` tree (Phase 7 completed the cross-workspace rollout while the bce-specific roadmap still shows Phase 6 pending)
 
 ### Future
 
@@ -77,7 +78,7 @@ Complete, reliable extraction of a single BlueSky user's entire post history int
 
 ## Current State
 
-**Phase 5 complete on 2026-03-22.** The `bce` binary now supports authenticated fetch plus read-only `query` output with envelope-first JSONL pagination from the local SQLite store. Remaining milestone work is Phase 6 agent-help documentation.
+**Phase 7 complete on 2026-03-23.** All seven workspace binaries now expose shared top-level `--agent-help` and `--agent-skill` output through `cli-common`, and `bce` still supports authenticated fetch plus read-only `query` output with envelope-first JSONL pagination from the local SQLite store. The active `.planning` roadmap still lists the earlier bce-specific Phase 6 placeholder.
 
 ---
-*Last updated: 2026-03-22 after Phase 5 query-subcommand completion*
+*Last updated: 2026-03-23 after Phase 7 shared agent-doc rollout completion*
