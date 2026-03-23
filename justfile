@@ -55,10 +55,11 @@ cli-consistency:
     out="$(cargo run -q -p tftio-gator -- claude --session abc --no-yolo --json 2>/dev/null || true)"; printf '%s' "$out" | grep '"ok"' >/dev/null; printf '%s' "$out" | grep '"command"' >/dev/null
     out="$(cargo run -q -p tftio-todoer -- list --all --json 2>/dev/null || true)"; printf '%s' "$out" | grep '"ok"' >/dev/null; printf '%s' "$out" | grep '"command"' >/dev/null
     out="$(cargo run -q -p tftio-silent-critic -- --json project init --name consistency-check 2>/dev/null || true)"; printf '%s' "$out" | grep '"ok"' >/dev/null; printf '%s' "$out" | grep '"command"' >/dev/null
+    sh ./tests/cli/06-agent-mode.sh
 
 # Shell-based smoke test for shared metadata-command UX
 cli-metadata-consistency:
-    /Users/jfb/Projects/tools/feature-add-agent-help-to-all-tools/scripts/test-cli-metadata-consistency.sh
+    ./scripts/test-cli-metadata-consistency.sh
 
 # Security audit
 audit:

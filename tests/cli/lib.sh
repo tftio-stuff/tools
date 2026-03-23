@@ -7,6 +7,14 @@ run() {
     cargo run -q -p "$package" -- "$@"
 }
 
+run_agent() {
+    package=$1
+    shift
+    TFTIO_AGENT_TOKEN=phase7-test-token \
+    TFTIO_AGENT_TOKEN_EXPECTED=phase7-test-token \
+        cargo run -q -p "$package" -- "$@"
+}
+
 run_with_home() {
     home=$1
     package=$2

@@ -6,8 +6,8 @@ script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 . "${script_dir}/lib.sh"
 
 printf '== bce primary invocation still parses ==\n'
-output=$(run tftio-bsky-comment-extractor alice.bsky.social 2>&1 || true)
-assert_contains "$output" 'BSKY_APP_PASSWORD not set' 'bce handle invocation should reach runtime validation, not clap usage failure'
+output=$(run tftio-bsky-comment-extractor fetch alice.bsky.social 2>&1 || true)
+assert_contains "$output" 'BSKY_APP_PASSWORD not set' 'bce fetch invocation should reach runtime validation, not clap usage failure'
 assert_not_contains "$output" 'Usage:' 'bce handle invocation should preserve extraction syntax'
 
 printf '== unvenv base commands still visible ==\n'
@@ -22,9 +22,8 @@ assert_contains "$output" 'task          Task operations' 'asana-cli should pres
 assert_contains "$output" 'project       Project operations' 'asana-cli should preserve project commands'
 assert_contains "$output" 'doctor' 'asana-cli should expose doctor through the shared base UX'
 
-printf '== bce shared metadata commands available ==\n'
+printf '== bce command tree available ==\n'
 output=$(run tftio-bsky-comment-extractor --help 2>&1)
-assert_contains "$output" 'version' 'bce should expose version'
-assert_contains "$output" 'license' 'bce should expose license'
-assert_contains "$output" 'completions' 'bce should expose completions'
-assert_contains "$output" 'doctor' 'bce should expose doctor'
+assert_contains "$output" 'fetch' 'bce should expose fetch'
+assert_contains "$output" 'query' 'bce should expose query'
+assert_contains "$output" '--version' 'bce should expose --version'
