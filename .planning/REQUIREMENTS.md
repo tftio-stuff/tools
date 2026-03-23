@@ -17,6 +17,14 @@
 - [ ] **AGENT-01**: `--agent-help` outputs structured LLM-agent reference doc (capabilities, flags, output format, pagination examples, error codes)
 - [x] **AGENT-02**: Query output wrapped in JSON envelope with pagination metadata (total, offset, limit, has_more)
 
+### Shared Agent Documentation
+
+- [x] **ADOC-01**: `cli-common` defines the canonical YAML agent-doc schema and shared renderer used by every binary for `--agent-help`
+- [ ] **ADOC-02**: Each Phase 7 binary authors exhaustive tool-specific agent docs covering commands, arguments, examples, outputs, env/config/defaults, failure modes, and likely operator mistakes, sharing only truly common inherited sections
+- [x] **ADOC-03**: `--agent-skill` renders the same underlying agent-doc content as a ready-to-save Claude-style skill file with YAML front matter and markdown body
+- [x] **ADOC-04**: `--agent-help` and `--agent-skill` are hidden top-level-only flags that print to stdout on success, exit `0`, and stay out of normal help output
+- [ ] **ADOC-05**: All seven workspace binaries (`prompter`, `unvenv`, `asana-cli`, `todoer`, `silent-critic`, `gator`, and `bce`) expose the shared agent-doc behavior through `cli-common` plus per-crate wiring
+
 ## Future Requirements
 
 ### Additional Activity Types
@@ -47,10 +55,15 @@
 | QUERY-04 | Phase 5 | Complete |
 | AGENT-02 | Phase 5 | Complete |
 | AGENT-01 | Phase 6 | Pending |
+| ADOC-01 | Phase 7 | Complete |
+| ADOC-02 | Phase 7 | Pending |
+| ADOC-03 | Phase 7 | Complete |
+| ADOC-04 | Phase 7 | Complete |
+| ADOC-05 | Phase 7 | Pending |
 
 **Coverage:**
-- bce-query-mode requirements: 6 total
-- Mapped to phases: 6
+- bce-query-mode requirements: 11 total
+- Mapped to phases: 11
 - Unmapped: 0
 
 ---

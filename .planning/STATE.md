@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Phase 7 context gathered
-last_updated: "2026-03-22T23:41:06.050Z"
+status: Ready to execute
+stopped_at: Completed 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates-01-PLAN.md
+last_updated: "2026-03-23T00:59:27.479Z"
 progress:
   total_phases: 3
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 4
+  completed_plans: 1
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Complete, reliable extraction of a single BlueSky user's entire post and interaction history into a queryable local store.
-**Current focus:** Phase 05 — query-subcommand
+**Current focus:** Phase 07 — add-shared-agent-help-and-agent-skill-support-across-cli-crates
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
+Phase: 07 (add-shared-agent-help-and-agent-skill-support-across-cli-crates) — EXECUTING
+Plan: 2 of 4
 
 ## Performance Metrics
 
@@ -44,6 +44,7 @@ Plan: Not started
 | Phase 05-query-subcommand P02 | 2m | 2 tasks | 2 files |
 | Phase 05-query-subcommand P01 | 0 min | 2 tasks | 3 files |
 | Phase 05-query-subcommand P03 | 3m 23s | 3 tasks | 4 files |
+| Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates P01 | 4 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -96,6 +97,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 05-query-subcommand]: Query execution stays synchronous and never reads BSKY_APP_PASSWORD or starts tokio.
 - [Phase 05-query-subcommand]: Query failures emit structured stderr JSON with db_not_found for missing databases and query_failed for other runtime errors.
 - [Phase 05-query-subcommand]: The global --agent-help flag remains parseable but hidden from subcommand help so bce query --help exposes only query options.
+- [Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates]: Render both agent-help YAML and agent-skill markdown from one shared AgentDoc model. — A single authored source keeps Phase 7 output formats aligned and avoids schema drift.
+- [Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates]: Detect agent-doc requests from raw argv and accept only exact top-level invocations. — Short-circuiting before clap preserves required subcommands and positional parsing while rejecting subcommand placement.
 
 ### Roadmap Evolution
 
@@ -112,6 +115,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-22T23:41:06.047Z
-Stopped at: Phase 7 context gathered
-Resume file: .planning/phases/07-add-shared-agent-help-and-agent-skill-support-across-cli-crates/07-CONTEXT.md
+Last session: 2026-03-23T00:59:18.965Z
+Stopped at: Completed 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates-01-PLAN.md
+Resume file: None
