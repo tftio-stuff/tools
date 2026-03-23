@@ -35,7 +35,8 @@ pub struct Config {
 /// This structure defines the main CLI interface using clap's derive API.
 #[derive(Parser, Debug)]
 #[command(name = "prompter")]
-#[command(about = "A CLI tool for composing reusable prompt snippets")]
+#[command(about = "Compose reusable prompt snippets from profile definitions")]
+#[command(long_about = None)]
 #[command(version)]
 pub struct Cli {
     /// Subcommand to execute
