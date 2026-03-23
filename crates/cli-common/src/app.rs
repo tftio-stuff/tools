@@ -1,6 +1,6 @@
 //! Shared CLI application metadata.
 
-use crate::{LicenseType, RepoInfo};
+use crate::{AgentSurfaceSpec, LicenseType, RepoInfo};
 
 /// Default repository metadata for binaries that ship from the shared tools workspace.
 pub const WORKSPACE_REPO: RepoInfo = RepoInfo::new("tftio-stuff", "tools");
@@ -24,6 +24,8 @@ pub struct ToolSpec {
     pub supports_doctor: bool,
     /// Whether the tool exposes update support.
     pub supports_update: bool,
+    /// Declarative agent-mode surface for the tool.
+    pub agent_surface: Option<&'static AgentSurfaceSpec>,
 }
 
 impl ToolSpec {
@@ -48,6 +50,7 @@ impl ToolSpec {
             supports_json,
             supports_doctor,
             supports_update,
+            agent_surface: None,
         }
     }
 
@@ -72,6 +75,15 @@ impl ToolSpec {
             supports_doctor,
             supports_update,
         )
+    }
+
+    /// Attach an agent surface to the tool specification.
+    #[must_use]
+    pub const fn with_agent_surface(self, agent_surface: &'static AgentSurfaceSpec) -> Self {
+        Self {
+            agent_surface: Some(agent_surface),
+            ..self
+        }
     }
 }
 
@@ -123,6 +135,7 @@ mod tests {
         assert!(spec.supports_json);
         assert!(!spec.supports_doctor);
         assert!(spec.supports_update);
+        assert!(spec.agent_surface.is_none());
     }
 
     #[test]

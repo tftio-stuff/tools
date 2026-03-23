@@ -11,10 +11,6 @@ assert_contains "$output" '"config_file_exists":' 'prompter doctor --json should
 assert_contains "$output" '"library_directory_exists":' 'prompter doctor --json should emit library_directory_exists'
 assert_contains "$output" '"warnings":' 'prompter doctor --json should emit warnings'
 
-printf '== bce plain-text doctor output ==\n'
-output=$(run tftio-bsky-comment-extractor doctor 2>&1)
-assert_contains "$output" 'tools health check' 'bce doctor should use the shared doctor renderer'
-
 printf '== unvenv and asana doctor output ==\n'
 output=$(run tftio-unvenv doctor 2>&1)
 assert_contains "$output" 'health check' 'unvenv doctor should render a shared health-check header'

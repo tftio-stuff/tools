@@ -4,18 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Workspace Overview
 
-Cargo workspace monorepo (`tools/`) containing 6 Rust CLI tools:
+Cargo workspace monorepo (`tools/`) containing 7 Rust CLI tools and 1 shared library:
 
 | Crate | Package | Version | Description |
 |-------|---------|---------|-------------|
-| `cli-common` | `tftio-cli-common` | 0.5.0 | Shared library (not installable) |
-| `prompter` | `tftio-prompter` | 2.1.0 | Compose prompt snippets from TOML profiles |
-| `unvenv` | `tftio-unvenv` | 1.8.0 | Detect Python venvs ignored by Git |
-| `asana-cli` | `tftio-asana-cli` | 1.2.0 | Asana API interface |
-| `todoer` | `tftio-todoer` | 1.1.0 | Global todo manager for LLM agents |
-| `silent-critic` | `tftio-silent-critic` | 0.1.0 | Supervision framework for agentic development |
+| `cli-common` | `tftio-cli-common` | 2.2.0 | Shared library (not installable) |
+| `prompter` | `tftio-prompter` | 2.2.0 | Compose prompt snippets from TOML profiles |
+| `unvenv` | `tftio-unvenv` | 2.2.0 | Detect Python venvs ignored by Git |
+| `asana-cli` | `tftio-asana-cli` | 2.2.0 | Asana API interface |
+| `todoer` | `tftio-todoer` | 2.2.0 | Global todo manager for LLM agents |
+| `silent-critic` | `tftio-silent-critic` | 2.2.0 | Supervision framework for agentic development |
+| `gator` | `tftio-gator` | 2.2.0 | Agent sandbox harness |
+| `bsky-comment-extractor` | `tftio-bsky-comment-extractor` | 2.2.0 | BlueSky comment extraction CLI |
 
-See [`CRATES.md`](/Users/jfb/Projects/tools/feature/gator/CRATES.md) for expanded crate documentation.
+See [`CRATES.md`](/Users/jfb/Projects/tools/feature-agent-mode/CRATES.md) for expanded crate documentation.
 
 ## Quick Commands
 
@@ -55,10 +57,12 @@ tools/
     ├── unvenv/         # binary (git venv detection)
     ├── asana-cli/      # binary + lib (Asana API with async, multipart, tracing)
     ├── todoer/         # binary + lib (SQLite-backed todo manager)
-    └── silent-critic/  # binary + lib (supervision framework for agentic dev)
+    ├── silent-critic/  # binary + lib (supervision framework for agentic dev)
+    ├── gator/          # binary + lib (agent sandbox harness)
+    └── bsky-comment-extractor/  # binary + lib (BlueSky extraction)
 ```
 
-See [`CRATES.md`](/Users/jfb/Projects/tools/feature/gator/CRATES.md) for the full crate structure.
+See [`CRATES.md`](/Users/jfb/Projects/tools/feature-agent-mode/CRATES.md) for the full crate structure.
 
 ### Dependency Pattern
 
@@ -123,9 +127,9 @@ crates/NAMESPACE/
 
 ### Versioning
 
-- Each crate independently versioned via release-please
+- Workspace crates share one repo-wide version via release-please
 - Release PRs created on push to `main`
-- Tags format: `{crate}-v{version}` (e.g., `prompter-v2.0.1`, `todoer-v1.1.0`)
+- Tags format: `v{version}`; one repo tag drives the full workspace release wave
 - Use `versioneer` for version number changes
 
 ### Toolchain
@@ -217,7 +221,7 @@ silent-critic log <contract-id> [--format json|markdown]
 
 The Silent Critic is a supervision framework for software development in a world where software is becoming effectively free to produce and human attention is the scarce resource.
 
-See [`docs/the-silent-critic.md`](/Users/jfb/Projects/tools/feature/gator/docs/the-silent-critic.md) for the framework overview.
+See [`docs/the-silent-critic.md`](/Users/jfb/Projects/tools/feature-agent-mode/docs/the-silent-critic.md) for the framework overview.
 
 ### Core Concepts
 
@@ -240,16 +244,16 @@ See [`docs/the-silent-critic.md`](/Users/jfb/Projects/tools/feature/gator/docs/t
 
 For the full system specification and formal appendix, see:
 
-- [`docs/the-silent-critic-system-spec.md`](/Users/jfb/Projects/tools/feature/gator/docs/the-silent-critic-system-spec.md)
-- [`docs/the-silent-critic-formal-appendix.md`](/Users/jfb/Projects/tools/feature/gator/docs/the_silent_critic_formal_appendix.md)
-- [`docs/the-silent-critic-tooling-design.md`](/Users/jfb/Projects/tools/feature/gator/docs/the_silent_critic_tooling_design.md)
+- [`docs/the-silent-critic-system-spec.md`](/Users/jfb/Projects/tools/feature-agent-mode/docs/the-silent-critic-system-spec.md)
+- [`docs/the-silent-critic-formal-appendix.md`](/Users/jfb/Projects/tools/feature-agent-mode/docs/the_silent_critic_formal_appendix.md)
+- [`docs/the-silent-critic-tooling-design.md`](/Users/jfb/Projects/tools/feature-agent-mode/docs/the_silent_critic_tooling_design.md)
 
 ### Polemic and Argument Documents
 
 For the detailed critique of existing review practices:
 
-- [`docs/the-silent-critic-polemic-revised.md`](/Users/jfb/Projects/tools/feature/gator/docs/the_silent_critic_polemic_revised.md)
-- [`docs/the-silent-critic-argument-memo.md`](/Users/jfb/Projects/tools/feature/gator/docs/the-silent-critic-argument-memo.md)
+- [`docs/the-silent-critic-polemic-revised.md`](/Users/jfb/Projects/tools/feature-agent-mode/docs/the_silent_critic_polemic_revised.md)
+- [`docs/the-silent-critic-argument-memo.md`](/Users/jfb/Projects/tools/feature-agent-mode/docs/the-silent-critic-argument-memo.md)
 
 ## Security & Compliance
 
@@ -270,4 +274,4 @@ For the detailed critique of existing review practices:
 ## Related Documentation
 
 - [README.md](/Users/jfb/Projects/tools/feature/gator/README.md) - Project introduction
-- [CRATES.md](/Users/jfb/Projects/tools/feature/gator/CRATES.md) - Crate documentation reference
+- [CRATES.md](/Users/jfb/Projects/tools/feature-agent-mode/CRATES.md) - Crate documentation reference

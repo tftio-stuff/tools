@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - "*-v*"
+      - "v*"
 
 permissions:
   contents: write
@@ -12,99 +12,74 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  determine-crate:
-    name: Determine Crate
-    runs-on: ubuntu-latest
-    outputs:
-      crate_name: ${{ steps.parse.outputs.crate_name }}
-      crate_dir: ${{ steps.parse.outputs.crate_dir }}
-      version: ${{ steps.parse.outputs.version }}
-      binary_name: ${{ steps.parse.outputs.binary_name }}
-      is_library_only: ${{ steps.parse.outputs.is_library_only }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Parse tag
-        id: parse
-        run: |
-          TAG="${GITHUB_REF#refs/tags/}"
-          # Tag format: component-vX.Y.Z
-          COMPONENT="${TAG%-v*}"
-          VERSION="${TAG#*-v}"
-
-          case "$COMPONENT" in
-            cli-common)
-              CRATE_NAME="tftio-cli-common"
-              CRATE_DIR="crates/cli-common"
-              BINARY_NAME=""
-              IS_LIBRARY_ONLY="true"
-              ;;
-            prompter)
-              CRATE_NAME="tftio-prompter"
-              CRATE_DIR="crates/prompter"
-              BINARY_NAME="prompter"
-              IS_LIBRARY_ONLY="false"
-              ;;
-            unvenv)
-              CRATE_NAME="tftio-unvenv"
-              CRATE_DIR="crates/unvenv"
-              BINARY_NAME="unvenv"
-              IS_LIBRARY_ONLY="false"
-              ;;
-            asana-cli)
-              CRATE_NAME="tftio-asana-cli"
-              CRATE_DIR="crates/asana-cli"
-              BINARY_NAME="asana-cli"
-              IS_LIBRARY_ONLY="false"
-              ;;
-            todoer)
-              CRATE_NAME="tftio-todoer"
-              CRATE_DIR="crates/todoer"
-              BINARY_NAME="todoer"
-              IS_LIBRARY_ONLY="false"
-              ;;
-            gator)
-              CRATE_NAME="tftio-gator"
-              CRATE_DIR="crates/gator"
-              BINARY_NAME="gator"
-              IS_LIBRARY_ONLY="false"
-              ;;
-            silent-critic)
-              CRATE_NAME="tftio-silent-critic"
-              CRATE_DIR="crates/silent-critic"
-              BINARY_NAME="silent-critic"
-              IS_LIBRARY_ONLY="false"
-              ;;
-            bsky-comment-extractor)
-              CRATE_NAME="tftio-bsky-comment-extractor"
-              CRATE_DIR="crates/bsky-comment-extractor"
-              BINARY_NAME="bce"
-              IS_LIBRARY_ONLY="false"
-              ;;
-            *)
-              echo "Unknown component: $COMPONENT"
-              exit 1
-              ;;
-          esac
-
-          echo "crate_name=$CRATE_NAME" >> "$GITHUB_OUTPUT"
-          echo "crate_dir=$CRATE_DIR" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "binary_name=$BINARY_NAME" >> "$GITHUB_OUTPUT"
-          echo "is_library_only=$IS_LIBRARY_ONLY" >> "$GITHUB_OUTPUT"
-
   build:
-    name: Build (${{ matrix.target }})
-    needs: determine-crate
-    if: needs.determine-crate.outputs.is_library_only == 'false'
+    name: Build ${{ matrix.binary_name }} (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
-          - target: x86_64-unknown-linux-gnu
+          - binary_name: prompter
+            target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-          - target: aarch64-unknown-linux-gnu
+          - binary_name: prompter
+            target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
-          - target: aarch64-apple-darwin
+          - binary_name: prompter
+            target: aarch64-apple-darwin
+            os: macos-latest
+          - binary_name: unvenv
+            target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - binary_name: unvenv
+            target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          - binary_name: unvenv
+            target: aarch64-apple-darwin
+            os: macos-latest
+          - binary_name: asana-cli
+            target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - binary_name: asana-cli
+            target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          - binary_name: asana-cli
+            target: aarch64-apple-darwin
+            os: macos-latest
+          - binary_name: todoer
+            target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - binary_name: todoer
+            target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          - binary_name: todoer
+            target: aarch64-apple-darwin
+            os: macos-latest
+          - binary_name: gator
+            target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - binary_name: gator
+            target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          - binary_name: gator
+            target: aarch64-apple-darwin
+            os: macos-latest
+          - binary_name: silent-critic
+            target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - binary_name: silent-critic
+            target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          - binary_name: silent-critic
+            target: aarch64-apple-darwin
+            os: macos-latest
+          - binary_name: bce
+            target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - binary_name: bce
+            target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          - binary_name: bce
+            target: aarch64-apple-darwin
             os: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -114,20 +89,43 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
-          bin: ${{ needs.determine-crate.outputs.binary_name }}
+          bin: ${{ matrix.binary_name }}
           target: ${{ matrix.target }}
           tar: unix
           checksum: sha256
           token: ${{ secrets.GITHUB_TOKEN }}
 
   publish:
-    name: Publish to crates.io
-    needs: [determine-crate, build]
-    if: always() && needs.determine-crate.result == 'success' && (needs.build.result == 'success' || needs.build.result == 'skipped')
+    name: Publish workspace crates to crates.io
+    needs: build
+    if: needs.build.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo publish -p ${{ needs.determine-crate.outputs.crate_name }} --no-verify
+      - name: Publish crates in dependency order
+        run: |
+          publish_crate() {
+            crate="$1"
+            for attempt in 1 2 3 4 5; do
+              if cargo publish -p "$crate" --no-verify; then
+                return 0
+              fi
+              if [ "$attempt" -eq 5 ]; then
+                echo "failed to publish $crate after $attempt attempts" >&2
+                return 1
+              fi
+              sleep 15
+            done
+          }
+
+          publish_crate tftio-cli-common
+          publish_crate tftio-prompter
+          publish_crate tftio-unvenv
+          publish_crate tftio-asana-cli
+          publish_crate tftio-todoer
+          publish_crate tftio-silent-critic
+          publish_crate tftio-gator
+          publish_crate tftio-bsky-comment-extractor
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

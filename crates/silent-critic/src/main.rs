@@ -1,15 +1,13 @@
-use clap::Parser;
 use serde_json::json;
 use tftio_cli_common::{
-    AgentDocRequest, LicenseType, StandardCommand, ToolSpec,
-    command::run_standard_command_no_doctor, detect_agent_doc_request, error::print_error,
-    render_agent_help_yaml, render_agent_skill, render_response, render_response_parts,
+    AgentCapability, AgentDispatch, AgentSurfaceSpec, CommandSelector, FlagSelector,
+    LicenseType, StandardCommand, ToolSpec, command::run_standard_command_no_doctor,
+    error::print_error, parse_with_agent_surface, render_response, render_response_parts,
     workspace_tool,
 };
 
 use silent_critic::cli::{
     Cli, Command, ContractCommand, CriterionCommand, MetaCommand, ProjectCommand, SessionCommand,
-    agent_doc,
 };
 use silent_critic::commands::{contract, criterion, decide, log, project, session};
 use silent_critic::config::load_config;
@@ -22,26 +20,54 @@ const TOOL_SPEC: ToolSpec = workspace_tool(
     true,
     false,
     false,
-);
+)
+.with_agent_surface(&AGENT_SURFACE);
+
+const SESSION_STATUS_COMMAND: CommandSelector = CommandSelector::new(&["session", "status"]);
+const SESSION_MANIFEST_COMMAND: CommandSelector = CommandSelector::new(&["session", "manifest"]);
+const SESSION_SUBMIT_COMMAND: CommandSelector = CommandSelector::new(&["session", "submit"]);
+const SESSION_SUBMIT_CRITERION_FLAG: FlagSelector =
+    FlagSelector::new(&["session", "submit"], "criterion");
+
+const SESSION_STATUS_CAPABILITY: AgentCapability = AgentCapability::new(
+    "session-status",
+    "Inspect the currently active worker session",
+    &[SESSION_STATUS_COMMAND],
+    &[],
+)
+.with_examples(&["silent-critic session status"]);
+
+const SESSION_MANIFEST_CAPABILITY: AgentCapability = AgentCapability::new(
+    "session-manifest",
+    "Read the worker-visible contract manifest for the active session",
+    &[SESSION_MANIFEST_COMMAND],
+    &[],
+)
+.with_examples(&["silent-critic session manifest"]);
+
+const SESSION_SUBMIT_CAPABILITY: AgentCapability = AgentCapability::new(
+    "session-submit",
+    "Submit evidence for one visible criterion",
+    &[SESSION_SUBMIT_COMMAND],
+    &[SESSION_SUBMIT_CRITERION_FLAG],
+)
+.with_examples(&["silent-critic session submit --criterion <ID>"])
+.with_constraints("requires the runtime SILENT_CRITIC_TOKEN worker token and a visible criterion id");
+
+const AGENT_SURFACE: AgentSurfaceSpec = AgentSurfaceSpec::new(&[
+    SESSION_STATUS_CAPABILITY,
+    SESSION_MANIFEST_CAPABILITY,
+    SESSION_SUBMIT_CAPABILITY,
+]);
 
 fn main() {
-    if let Some(request) = detect_agent_doc_request(std::env::args_os()) {
-        print_agent_doc(request);
-        return;
-    }
-
-    let cli = Cli::parse();
+    let cli = match parse_with_agent_surface::<Cli>(&TOOL_SPEC) {
+        Ok(AgentDispatch::Cli(cli)) => cli,
+        Ok(AgentDispatch::Printed(code)) => std::process::exit(code),
+        Err(error) => error.exit(),
+    };
     let code = run(cli);
     std::process::exit(code);
-}
-
-fn print_agent_doc(request: AgentDocRequest) {
-    let doc = agent_doc();
-    let rendered = match request {
-        AgentDocRequest::Help => render_agent_help_yaml(&doc),
-        AgentDocRequest::Skill => render_agent_skill(&doc),
-    };
-    print!("{rendered}");
 }
 
 fn run(cli: Cli) -> i32 {

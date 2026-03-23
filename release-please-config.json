@@ -54,5 +54,28 @@
       "package-name": "tftio-bsky-comment-extractor"
     }
   },
-  "separate-pull-requests": true
+  "plugins": [
+    {
+      "type": "cargo-workspace",
+      "merge": true,
+      "updateAllPackages": true
+    },
+    {
+      "type": "linked-versions",
+      "groupName": "workspace",
+      "components": [
+        "cli-common",
+        "prompter",
+        "unvenv",
+        "asana-cli",
+        "todoer",
+        "silent-critic",
+        "gator",
+        "bsky-comment-extractor"
+      ],
+      "merge": true
+    }
+  ],
+  "include-component-in-tag": false,
+  "separate-pull-requests": false
 }

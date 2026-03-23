@@ -1,10 +1,10 @@
-# Roadmap: bsky-comment-extractor
+# Project Roadmap
 
 ## Milestones
 
 - [x] **v1.0 Gator Sandbox Hardening** -- Phases 1-2 (shipped 2026-03-18)
 - [x] **v1.1 bsky-comment-extractor** -- Phases 3-4 (shipped 2026-03-22)
-- [ ] **bce-query-mode** -- Phases 5-6 (active)
+- [x] **bce-query-mode** -- Phases 5 and 7 (shipped 2026-03-23)
 
 ## Phases
 
@@ -28,10 +28,15 @@ See: `.planning/milestones/v1.1-ROADMAP.md` for full details.
 
 </details>
 
-### bce-query-mode (Phases 5-6)
+<details>
+<summary>[x] bce-query-mode (Phases 5 and 7) -- SHIPPED 2026-03-23</summary>
 
-- [ ] **Phase 5: Query Subcommand** - `bce query` reads stored posts as paginated JSONL with envelope metadata
-- [ ] **Phase 6: Agent Help** - `--agent-help` outputs structured LLM-consumable reference documentation
+- [x] Phase 5: Query Subcommand (3/3 plans) -- completed 2026-03-22
+- [x] Phase 7: Workspace agent mode in cli-common (6/6 plans) -- completed 2026-03-23
+
+The earlier tool-local agent-help work was absorbed into the shared workspace agent-mode rollout.
+
+</details>
 
 ## Phase Details
 
@@ -51,15 +56,20 @@ Plans:
 - [x] 05-02-PLAN.md — migrate clap parser to fetch/query subcommands with top-level `--agent-help`
 - [x] 05-03-PLAN.md — wire main.rs query JSONL output, structured query errors, and integration tests
 
-### Phase 6: Agent Help
-**Goal**: LLM agents can discover how to use `bce` without reading source code
-**Depends on**: Phase 5
-**Requirements**: AGENT-01
-**Success Criteria** (what must be TRUE):
-  1. `bce --agent-help` prints a structured reference document to stdout
-  2. The document covers capabilities, all flags, output format, pagination usage, and error codes
-  3. The output format is machine-parseable (structured text or JSON suitable for agent consumption)
-**Plans**: TBD
+### Phase 7: Workspace agent mode in cli-common: token-gated restricted capability surface, inspectable agent help, and shared --agent-skill support across tools
+
+**Goal:** Workspace CLIs that depend on `cli-common` expose a shared token-gated agent mode with inspectable `--agent-help` / `--agent-skill` output and no hidden-surface leakage
+**Requirements**: D-01, D-02, D-03, D-04, D-05, D-06, D-07, D-08, D-09, D-10, D-11, D-12, D-13, D-14
+**Depends on:** Phase 5
+**Plans:** 6 plans
+
+Plans:
+- [x] 07-01-PLAN.md — define shared cli-common agent-mode contracts, env vars, and capability policy types
+- [x] 07-02-PLAN.md — implement shared filtered parse/help/completion pipeline plus agent renderers
+- [x] 07-03-PLAN.md — migrate `bce` and `gator` to the shared restricted agent surface
+- [x] 07-04-PLAN.md — migrate `todoer` and `unvenv` to the shared restricted agent surface
+- [x] 07-05-PLAN.md — migrate `asana-cli` and `silent-critic` to the shared restricted agent surface
+- [x] 07-06-PLAN.md — adapt `prompter` and restore workspace-wide agent-mode consistency checks
 
 ## Progress
 
@@ -69,5 +79,5 @@ Plans:
 | 2. YOLO Injection | v1.0 | 1/1 | Complete | 2026-03-18 |
 | 3. Extraction Engine | v1.1 | 2/2 | Complete | 2026-03-22 |
 | 4. CLI Surface | v1.1 | 2/2 | Complete | 2026-03-22 |
-| 5. Query Subcommand | bce-query-mode | 1/3 | In Progress | - |
-| 6. Agent Help | bce-query-mode | 0/? | Not started | - |
+| 5. Query Subcommand | bce-query-mode | 3/3 | Complete | 2026-03-22 |
+| 7. Workspace agent mode in cli-common | bce-query-mode | 6/6 | Complete | 2026-03-23 |

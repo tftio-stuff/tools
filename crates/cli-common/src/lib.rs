@@ -52,7 +52,7 @@ pub use license::LicenseType;
 pub use types::{DoctorCheck, RepoInfo};
 
 // Public modules
-pub mod agent_docs;
+pub mod agent;
 pub mod app;
 pub mod command;
 pub mod completions;
@@ -67,20 +67,22 @@ pub mod types;
 pub mod update;
 
 // Re-export commonly used items
-pub use agent_docs::{
-    AgentArgument, AgentCommand, AgentConfigFile, AgentDoc, AgentDocRequest, AgentEnvironmentVar,
-    AgentExample, AgentFailureMode, AgentOperatorMistake, AgentOutputShape, AgentPath,
-    AgentSection, AgentTool, AgentUsage, detect_agent_doc_request, render_agent_help_yaml,
-    render_agent_skill,
+pub use agent::{
+    AGENT_TOKEN_ENV, AGENT_TOKEN_EXPECTED_ENV, AgentCapability, AgentDispatch,
+    AgentModeContext, AgentSkillError, AgentSurfaceSpec, CommandSelector, FlagSelector,
+    apply_agent_surface, parse_with_agent_surface, parse_with_agent_surface_from,
+    render_agent_help, render_agent_skill,
 };
 pub use app::{ToolSpec, workspace_tool};
 pub use command::{
     NoDoctor, StandardCommand, StandardCommandMap, map_standard_command,
     maybe_run_standard_command, maybe_run_standard_command_no_doctor,
-    run_standard_command_no_doctor,
+    parse_command_ref_with_agent_surface_from, parse_command_with_agent_surface,
+    parse_command_with_agent_surface_from, run_standard_command_no_doctor,
 };
 pub use completions::{
-    CompletionOutput, generate_completions, render_completion, render_completion_instructions,
+    CompletionOutput, generate_completions, generate_completions_from_command,
+    render_completion, render_completion_from_command, render_completion_instructions,
     write_completion,
 };
 pub use doctor::{DoctorReport, print_doctor_report_json, print_doctor_report_text, run_doctor};
@@ -94,6 +96,20 @@ pub use runner::{
     FatalCliError, parse_and_exit, parse_and_run, run_with_display_error_handler,
     run_with_fatal_handler,
 };
+
+#[cfg(test)]
+pub(crate) mod test_support {
+    use std::sync::{Mutex, MutexGuard, OnceLock};
+
+    static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+
+    pub(crate) fn env_lock() -> MutexGuard<'static, ()> {
+        ENV_LOCK
+            .get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+}
 
 #[cfg(test)]
 mod tests {

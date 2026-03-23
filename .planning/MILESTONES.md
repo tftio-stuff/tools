@@ -1,5 +1,17 @@
 # Milestones
 
+## bce-query-mode (Shipped: 2026-03-23)
+
+**Phases completed:** 2 phases, 9 plans, 0 tasks
+
+**Key accomplishments:**
+
+- `bce query` ships read-only envelope-first JSONL pagination over the local SQLite store
+- BCE agent-facing inspection is now provided by the shared `cli-common` restricted surface
+- Workspace CLIs share one token-gated agent mode with consistent redaction, help, and skill output
+
+---
+
 ## v1.1 bsky-comment-extractor (Shipped: 2026-03-22)
 
 **Phases completed:** 2 phases, 4 plans, 0 tasks

@@ -20,10 +20,6 @@ EXAMPLES:
   bce query --limit 25 --offset 50
   bce --agent-help")]
 pub struct Cli {
-    /// Show top-level agent reference help instead of running a subcommand.
-    #[arg(long, global = true, hide = true)]
-    pub agent_help: bool,
-
     /// Select the networked fetch path or the local read-only query path.
     #[command(subcommand)]
     pub command: Option<Command>,
@@ -36,28 +32,6 @@ pub enum Command {
     Fetch(FetchArgs),
     /// Query posts from the local database without making network requests.
     Query(QueryArgs),
-    /// Shared metadata commands.
-    Meta {
-        /// Metadata subcommand.
-        #[command(subcommand)]
-        command: MetaCommand,
-    },
-}
-
-/// Shared metadata commands for the `bce` binary.
-#[derive(Subcommand, Debug)]
-pub enum MetaCommand {
-    /// Show version information.
-    Version,
-    /// Show license information.
-    License,
-    /// Generate shell completions.
-    Completions {
-        /// Shell to generate completions for.
-        shell: clap_complete::Shell,
-    },
-    /// Run health checks.
-    Doctor,
 }
 
 /// Arguments for the networked extractor path.
@@ -118,7 +92,6 @@ mod tests {
         ])
         .unwrap();
 
-        assert!(!cli.agent_help);
         match cli.command {
             Some(Command::Fetch(args)) => {
                 assert_eq!(args.handle, "alice.bsky.social");
@@ -127,7 +100,6 @@ mod tests {
                 assert!(args.quiet);
             }
             Some(Command::Query(_)) => panic!("expected Fetch subcommand, got Query"),
-            Some(Command::Meta { .. }) => panic!("expected Fetch subcommand, got Meta"),
             None => panic!("expected Fetch subcommand, got no subcommand"),
         }
     }
@@ -136,7 +108,6 @@ mod tests {
     fn test_cli_parse_query_defaults() {
         let cli = Cli::try_parse_from(["bce", "query"]).unwrap();
 
-        assert!(!cli.agent_help);
         match cli.command {
             Some(Command::Query(args)) => {
                 assert!(args.db.is_none());
@@ -144,7 +115,6 @@ mod tests {
                 assert_eq!(args.offset, 0);
             }
             Some(Command::Fetch(_)) => panic!("expected Query subcommand, got Fetch"),
-            Some(Command::Meta { .. }) => panic!("expected Query subcommand, got Meta"),
             None => panic!("expected Query subcommand, got no subcommand"),
         }
     }
@@ -170,17 +140,8 @@ mod tests {
                 assert_eq!(args.offset, 75);
             }
             Some(Command::Fetch(_)) => panic!("expected Query subcommand, got Fetch"),
-            Some(Command::Meta { .. }) => panic!("expected Query subcommand, got Meta"),
             None => panic!("expected Query subcommand, got no subcommand"),
         }
-    }
-
-    #[test]
-    fn test_cli_parse_top_level_agent_help() {
-        let cli = Cli::try_parse_from(["bce", "--agent-help"]).unwrap();
-
-        assert!(cli.agent_help);
-        assert!(cli.command.is_none());
     }
 
     #[test]
@@ -194,7 +155,7 @@ mod tests {
     }
 
     #[test]
-    fn test_query_help_hides_agent_help_flag() {
+    fn test_query_help_shows_query_flags() {
         let mut command = Cli::command();
         let query = command
             .find_subcommand_mut("query")
@@ -208,18 +169,5 @@ mod tests {
         assert!(help.contains("--db"));
         assert!(help.contains("--limit"));
         assert!(help.contains("--offset"));
-        assert!(!help.contains("--agent-help"));
-    }
-
-    #[test]
-    fn test_cli_parse_meta_version() {
-        let cli = Cli::try_parse_from(["bce", "meta", "version"]).unwrap();
-
-        match cli.command {
-            Some(Command::Meta {
-                command: MetaCommand::Version,
-            }) => {}
-            other => panic!("expected Meta Version, got {other:?}"),
-        }
     }
 }

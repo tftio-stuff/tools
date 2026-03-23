@@ -44,11 +44,16 @@ pub fn render_completion_instructions(shell: Shell, bin_name: &str) -> String {
 /// Render shell completions fully in memory.
 #[must_use]
 pub fn render_completion<T: CommandFactory>(shell: Shell) -> CompletionOutput {
-    let mut cmd = T::command();
-    let bin_name = cmd.get_name().to_string();
+    render_completion_from_command(shell, T::command())
+}
+
+/// Render shell completions from a pre-built clap command tree.
+#[must_use]
+pub fn render_completion_from_command(shell: Shell, mut command: clap::Command) -> CompletionOutput {
+    let bin_name = command.get_name().to_string();
     let mut buffer = Vec::new();
 
-    clap_complete::generate(shell, &mut cmd, bin_name.clone(), &mut buffer);
+    clap_complete::generate(shell, &mut command, bin_name.clone(), &mut buffer);
 
     CompletionOutput {
         instructions: render_completion_instructions(shell, &bin_name),
@@ -90,14 +95,24 @@ pub fn write_completion(mut writer: impl Write, output: &CompletionOutput) -> io
 /// generate_completions::<Cli>(clap_complete::Shell::Bash);
 /// ```
 pub fn generate_completions<T: CommandFactory>(shell: Shell) {
-    let output = render_completion::<T>(shell);
+    generate_completions_from_command(shell, T::command());
+}
+
+/// Generate shell completion scripts from a pre-built clap command tree.
+pub fn generate_completions_from_command(shell: Shell, command: clap::Command) {
+    let output = render_completion_from_command(shell, command);
     write_completion(io::stdout(), &output).expect("failed to write completions");
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use clap::{Parser, Subcommand};
+    use clap::{Arg, Parser, Subcommand};
+    use crate::{
+        AgentCapability, AgentModeContext, AgentSurfaceSpec, CommandSelector, FlagSelector,
+        LicenseType, RepoInfo, ToolSpec,
+    };
+    use crate::agent::apply_agent_surface;
 
     #[derive(Parser)]
     #[command(name = "test-cli")]
@@ -110,6 +125,30 @@ mod tests {
     enum TestCommands {
         Version,
         Test { arg: String },
+    }
+
+    const QUERY_COMMAND: CommandSelector = CommandSelector::new(&["query"]);
+    const QUERY_LIMIT_FLAG: FlagSelector = FlagSelector::new(&["query"], "limit");
+    const QUERY_CAPABILITY: AgentCapability = AgentCapability::new(
+        "query-posts",
+        "Read paginated post records",
+        &[QUERY_COMMAND],
+        &[QUERY_LIMIT_FLAG],
+    );
+    const AGENT_SURFACE: AgentSurfaceSpec = AgentSurfaceSpec::new(&[QUERY_CAPABILITY]);
+
+    fn agent_spec() -> ToolSpec {
+        ToolSpec::new(
+            "test-cli",
+            "Test CLI",
+            "1.2.3",
+            LicenseType::MIT,
+            RepoInfo::new("owner", "repo"),
+            true,
+            false,
+            true,
+        )
+        .with_agent_surface(&AGENT_SURFACE)
     }
 
     #[test]
@@ -163,5 +202,24 @@ mod tests {
                 .contains("source <(test-cli completions bash)")
         );
         assert!(output.script.contains("complete"));
+    }
+
+    #[test]
+    fn agent_surface_redaction_completion_helper_omits_hidden_entries() {
+        let mut command = clap::Command::new("test-cli")
+            .subcommand(
+                clap::Command::new("query")
+                    .arg(Arg::new("limit").long("limit"))
+                    .arg(Arg::new("secret").long("secret")),
+            )
+            .subcommand(clap::Command::new("admin"));
+
+        apply_agent_surface(&mut command, &agent_spec(), &AgentModeContext { active: true });
+
+        let output = render_completion_from_command(Shell::Bash, command);
+
+        assert!(output.script.contains("query"));
+        assert!(!output.script.contains("admin"));
+        assert!(!output.script.contains("--secret"));
     }
 }

@@ -20,10 +20,11 @@ Complete, reliable extraction of a single BlueSky user's entire post history int
 - [x] CLI interface following workspace conventions (clap, cli-common, indicatif) -- v1.1
 - [x] Query mode reads stored posts from local SQLite and outputs envelope-first JSONL pagination -- validated in Phase 5: Query Subcommand
 - [x] Offset/limit pagination supports page traversal through stored results -- validated in Phase 5: Query Subcommand
+- [x] Agent-facing help is available through the shared `cli-common` restricted agent surface (`--agent-help` / `--agent-skill`) -- validated in Phase 7: Workspace agent mode in cli-common
 
 ### Active
 
-- [ ] `--agent-help` flag: output LLM-agent-consumable reference documentation (skills-style)
+None.
 
 ### Future
 
@@ -40,12 +41,10 @@ Complete, reliable extraction of a single BlueSky user's entire post history int
 
 ## Context
 
-- 1,416 lines of Rust across 7 source files in `crates/bsky-comment-extractor/`
+- Rust workspace member in `tools/`
 - Binary: `bce` (installed via `cargo install tftio-bsky-comment-extractor`)
-- 32 tests (9 db, 14 client, 4 cli parse, 2 main, 3 ignored integration)
-- Dependencies: reqwest (rustls), rusqlite (bundled), clap, tokio, serde, chrono, indicatif, dateparser, directories, anyhow, thiserror
-- AT Protocol collections: `app.bsky.feed.post` (v1); `app.bsky.feed.like`, `app.bsky.feed.repost`, `app.bsky.graph.block` planned for v2
-- Rate limit: ~3,000 requests per 5 minutes; `listRecords` paginated at 100 records per request
+- Query output is envelope-first JSONL over the local SQLite store
+- Shared agent-facing inspection now comes from `tftio-cli-common`, not a tool-local one-off implementation
 
 ## Constraints
 
@@ -65,19 +64,20 @@ Complete, reliable extraction of a single BlueSky user's entire post history int
 | Reply parent in raw_json, not dedicated column | Queryable via `json_extract()`, avoids schema rigidity | Good -- flexible for future query needs |
 | Sync main + RuntimeBuilder (not `#[tokio::main]`) | Matches workspace pattern (asana-cli) | Good -- consistent conventions |
 | XDG default path via `directories` crate | `~/.local/share/bce/bsky-posts.db` with auto-created parent dirs | Good -- follows platform conventions |
+| Shared agent surface in `cli-common` | Keeps agent visibility, help, skill docs, completions, and redaction behavior uniform across workspace CLIs | Good -- BCE participates in the same restricted agent contract as the rest of the workspace |
 
-## Current Milestone: bce-query-mode
+## Latest Completed Milestone: bce-query-mode
 
-**Goal:** Make bce's stored data queryable by LLM agents via JSON output with pagination.
+**Goal:** Make BCE's stored data queryable by LLM agents via JSON output with pagination and a restricted inspectable CLI surface.
 
-**Target features:**
+**Completed features:**
 - `bce query` subcommand: read-only against local SQLite, JSON output
 - Offset/limit pagination for paging through results
-- `--agent-help` flag: structured reference doc for LLM agent consumption
+- Shared `cli-common` agent mode with BCE capability documentation via `--agent-help` and `--agent-skill`
 
 ## Current State
 
-**Phase 5 complete on 2026-03-22.** The `bce` binary now supports authenticated fetch plus read-only `query` output with envelope-first JSONL pagination from the local SQLite store. Remaining milestone work is Phase 6 agent-help documentation.
+**bce-query-mode shipped on 2026-03-23.** There is no active milestone in this repo at the moment.
 
 ---
-*Last updated: 2026-03-22 after Phase 5 query-subcommand completion*
+*Last updated: 2026-03-23 after Phase 7 completion*

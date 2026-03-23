@@ -4,106 +4,72 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
-use clap::{CommandFactory, Parser};
+use clap::CommandFactory;
 use directories::ProjectDirs;
 use tftio_cli_common::{
-    DoctorChecks, FatalCliError, LicenseType, StandardCommand, StandardCommandMap, ToolSpec,
-    command::maybe_run_standard_command, error::fatal_error, parse_and_exit,
-    progress::make_spinner, workspace_tool,
+    AgentCapability, AgentDispatch, AgentSurfaceSpec, CommandSelector, FlagSelector, LicenseType,
+    parse_with_agent_surface, progress::make_spinner, workspace_tool,
 };
 
-use bsky_comment_extractor::cli::{Cli, Command as CliCommand, FetchArgs, MetaCommand, QueryArgs};
+use bsky_comment_extractor::cli::{Cli, Command as CliCommand, FetchArgs, QueryArgs};
 use bsky_comment_extractor::db::{count_posts, open_existing_db, query_posts};
 use bsky_comment_extractor::error::ExtractorError;
 use bsky_comment_extractor::models::QueryEnvelope;
 
-struct BceDoctor;
+const QUERY_COMMAND: CommandSelector = CommandSelector::new(&["query"]);
+const QUERY_DB_FLAG: FlagSelector = FlagSelector::new(&["query"], "db");
+const QUERY_LIMIT_FLAG: FlagSelector = FlagSelector::new(&["query"], "limit");
+const QUERY_OFFSET_FLAG: FlagSelector = FlagSelector::new(&["query"], "offset");
 
-impl DoctorChecks for BceDoctor {
-    fn repo_info() -> tftio_cli_common::RepoInfo {
-        tftio_cli_common::app::WORKSPACE_REPO
-    }
+const QUERY_POSTS_CAPABILITY: AgentCapability = AgentCapability::new(
+    "query-posts",
+    "Read paginated post records from the local SQLite store",
+    &[QUERY_COMMAND],
+    &[QUERY_DB_FLAG, QUERY_LIMIT_FLAG, QUERY_OFFSET_FLAG],
+)
+.with_examples(&[
+    "bce query --limit 25",
+    "bce query --db /tmp/bsky.db --offset 50",
+])
+.with_output("stdout emits one JSON envelope line followed by JSON post lines")
+.with_constraints("local SQLite only; no network; missing DB returns structured stderr JSON");
 
-    fn current_version() -> &'static str {
-        env!("CARGO_PKG_VERSION")
-    }
-}
+const AGENT_SURFACE: AgentSurfaceSpec = AgentSurfaceSpec::new(&[QUERY_POSTS_CAPABILITY]);
 
-const TOOL_SPEC: ToolSpec = workspace_tool(
+const TOOL_SPEC: tftio_cli_common::ToolSpec = workspace_tool(
     "bce",
-    "BlueSky Comment Extractor",
+    "BCE",
     env!("CARGO_PKG_VERSION"),
     LicenseType::MIT,
     false,
-    true,
     false,
-);
+    false,
+)
+.with_agent_surface(&AGENT_SURFACE);
 
 fn main() {
-    parse_and_exit(Cli::parse, run);
+    match parse_with_agent_surface::<Cli>(&TOOL_SPEC) {
+        Ok(AgentDispatch::Cli(cli)) => std::process::exit(run(cli)),
+        Ok(AgentDispatch::Printed(code)) => std::process::exit(code),
+        Err(error) => error.exit(),
+    }
 }
 
-fn run(cli: Cli) -> Result<i32, FatalCliError> {
-    if cli.agent_help {
-        print_agent_help();
-        return Ok(0);
-    }
-
-    let meta_command = metadata_command(cli.command.as_ref());
-    let doctor = BceDoctor;
-    if let Some(exit_code) =
-        maybe_run_standard_command::<Cli, BceDoctor, _>(&TOOL_SPEC, meta_command.as_ref(), false, Some(&doctor))
-    {
-        return Ok(exit_code);
-    }
-
+fn run(cli: Cli) -> i32 {
     let Some(command) = cli.command else {
-        return Ok(print_top_level_help());
+        return print_top_level_help();
     };
 
     match command {
-        CliCommand::Fetch(fetch) => execute_fetch(fetch)
-            .map(|()| 0)
-            .map_err(|error| fatal_error("extract", false, format!("{error:#}"))),
-        CliCommand::Query(query) => {
-            if execute_query(query).is_err() {
-                Ok(1)
-            } else {
-                Ok(0)
+        CliCommand::Fetch(fetch) => match execute_fetch(fetch) {
+            Ok(()) => 0,
+            Err(err) => {
+                eprintln!("Error: {err:#}");
+                1
             }
-        }
-        CliCommand::Meta { .. } => {
-            // Already handled by maybe_run_standard_command above.
-            Ok(0)
-        }
+        },
+        CliCommand::Query(query) => i32::from(execute_query(query).is_err()),
     }
-}
-
-#[derive(Clone, Copy)]
-struct BceMetadataCommand<'a>(&'a MetaCommand);
-
-impl StandardCommandMap for BceMetadataCommand<'_> {
-    fn to_standard_command(&self, _json: bool) -> StandardCommand {
-        match self.0 {
-            MetaCommand::Version => StandardCommand::Version { json: false },
-            MetaCommand::License => StandardCommand::License,
-            MetaCommand::Completions { shell } => StandardCommand::Completions { shell: *shell },
-            MetaCommand::Doctor => StandardCommand::Doctor,
-        }
-    }
-}
-
-fn metadata_command(command: Option<&CliCommand>) -> Option<BceMetadataCommand<'_>> {
-    match command {
-        Some(CliCommand::Meta { command }) => Some(BceMetadataCommand(command)),
-        _ => None,
-    }
-}
-
-fn print_agent_help() {
-    println!(
-        "# bce agent help\nstatus: pending_phase_06\ncommands:\n  - fetch\n  - query\nmessage: Full agent reference lands in Phase 6."
-    );
 }
 
 fn print_top_level_help() -> i32 {
@@ -141,7 +107,7 @@ fn execute_fetch(fetch: FetchArgs) -> Result<()> {
         })
         .transpose()?;
 
-    let spinner = make_spinner(!fetch.quiet, &format!("Fetching posts for {}... 0 records", &fetch.handle));
+    let spinner = make_spinner(fetch.quiet, &fetch.handle);
 
     let progress_cb = |count: u64| {
         if let Some(ref pb) = spinner {
@@ -256,10 +222,24 @@ fn default_db_path() -> Result<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::Parser;
+
+    fn missing_db_path() -> PathBuf {
+        let mut path = std::env::temp_dir();
+        path.push(format!(
+            "bce-missing-db-{}-{}.sqlite",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time should be after unix epoch")
+                .as_nanos()
+        ));
+        path
+    }
 
     #[test]
     fn test_make_spinner_quiet() {
-        assert!(make_spinner(false, "Fetching posts for alice.bsky.social... 0 records").is_none());
+        assert!(make_spinner(true, "alice.bsky.social").is_none());
     }
 
     #[test]
@@ -279,20 +259,31 @@ mod tests {
     }
 
     #[test]
-    fn metadata_commands_map_to_shared_standard_command() {
-        assert_eq!(
-            BceMetadataCommand(&MetaCommand::Doctor).to_standard_command(false),
-            StandardCommand::Doctor
-        );
-        assert_eq!(
-            BceMetadataCommand(&MetaCommand::Version).to_standard_command(false),
-            StandardCommand::Version { json: false }
-        );
+    fn run_returns_success_for_query_command() {
+        let missing_db = missing_db_path();
+        let cli = Cli::parse_from([
+            "bce",
+            "query",
+            "--db",
+            missing_db.to_str().expect("temp path should be valid UTF-8"),
+        ]);
+        assert_eq!(run(cli), 1);
     }
 
     #[test]
-    fn run_returns_success_for_version_command() {
-        let cli = Cli::parse_from(["bce", "meta", "version"]);
-        assert_eq!(run(cli).expect("version command should succeed"), 0);
+    fn tool_spec_declares_only_query_posts_agent_capability() {
+        let capability = TOOL_SPEC
+            .agent_surface
+            .expect("agent surface should be configured")
+            .capabilities
+            .first()
+            .expect("query-posts capability should exist");
+
+        assert_eq!(capability.name, "query-posts");
+        assert_eq!(capability.commands, &[QUERY_COMMAND]);
+        assert_eq!(
+            capability.flags,
+            &[QUERY_DB_FLAG, QUERY_LIMIT_FLAG, QUERY_OFFSET_FLAG]
+        );
     }
 }

@@ -1,6 +1,6 @@
 [package]
 name = "tftio-bsky-comment-extractor"
-version = "0.1.0"
+version = "2.2.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -22,7 +22,6 @@ path = "src/lib.rs"
 anyhow.workspace = true
 chrono = { workspace = true, features = ["std", "clock"] }
 clap.workspace = true
-clap_complete.workspace = true
 dateparser.workspace = true
 directories.workspace = true
 indicatif.workspace = true

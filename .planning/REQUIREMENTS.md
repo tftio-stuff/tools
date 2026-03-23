@@ -14,7 +14,7 @@
 
 ### Agent Interface
 
-- [ ] **AGENT-01**: `--agent-help` outputs structured LLM-agent reference doc (capabilities, flags, output format, pagination examples, error codes)
+- [x] **AGENT-01**: BCE exposes structured LLM-agent reference documentation through the shared restricted agent surface (`--agent-help` and `--agent-skill`)
 - [x] **AGENT-02**: Query output wrapped in JSON envelope with pagination metadata (total, offset, limit, has_more)
 
 ## Future Requirements
@@ -46,7 +46,7 @@
 | QUERY-03 | Phase 5 | Complete |
 | QUERY-04 | Phase 5 | Complete |
 | AGENT-02 | Phase 5 | Complete |
-| AGENT-01 | Phase 6 | Pending |
+| AGENT-01 | Phase 7 | Complete |
 
 **Coverage:**
 - bce-query-mode requirements: 6 total
@@ -55,4 +55,4 @@
 
 ---
 *Requirements defined: 2026-03-22*
-*Last updated: 2026-03-22 after bce-query-mode roadmap creation*
+*Last updated: 2026-03-23 after Phase 7 completion*

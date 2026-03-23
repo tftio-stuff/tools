@@ -1,14 +1,13 @@
-use clap::Parser;
 use serde_json::json;
 use std::io::Read;
 use tftio_cli_common::{
-    AgentDocRequest, LicenseType, StandardCommand, ToolSpec,
-    command::run_standard_command_no_doctor, detect_agent_doc_request, error::print_error,
-    render_agent_help_yaml, render_agent_skill, render_response, render_response_with,
+    AgentCapability, AgentDispatch, AgentSurfaceSpec, CommandSelector, FlagSelector,
+    LicenseType, StandardCommand, ToolSpec, command::run_standard_command_no_doctor,
+    error::print_error, parse_with_agent_surface, render_response, render_response_with,
     workspace_tool,
 };
 
-use todoer::cli::{Cli, Command, MetaCommand, TaskCommand, TaskUpdateCommand, agent_doc};
+use todoer::cli::{Cli, Command, MetaCommand, TaskCommand, TaskUpdateCommand};
 use todoer::commands::{
     init::run_init,
     list::run_list,
@@ -25,6 +24,57 @@ use todoer::project::{
     find_project_file, load_project_name, resolve_init_project, resolve_project,
 };
 
+const INIT_COMMAND: CommandSelector = CommandSelector::new(&["init"]);
+const NEW_COMMAND: CommandSelector = CommandSelector::new(&["new"]);
+const LIST_COMMAND: CommandSelector = CommandSelector::new(&["list"]);
+const TASK_STATUS_COMMAND: CommandSelector = CommandSelector::new(&["task", "status"]);
+const TASK_SHOW_COMMAND: CommandSelector = CommandSelector::new(&["task", "show"]);
+const TASK_NOTE_COMMAND: CommandSelector = CommandSelector::new(&["task", "note"]);
+const TASK_UPDATE_STATUS_COMMAND: CommandSelector =
+    CommandSelector::new(&["task", "update", "status"]);
+
+const INIT_PROJECT_FLAG: FlagSelector = FlagSelector::new(&["init"], "project");
+const NEW_PROJECT_FLAG: FlagSelector = FlagSelector::new(&["new"], "project");
+const NEW_JSON_FLAG: FlagSelector = FlagSelector::new(&["new"], "json");
+const LIST_PROJECT_FLAG: FlagSelector = FlagSelector::new(&["list"], "project");
+const LIST_ALL_FLAG: FlagSelector = FlagSelector::new(&["list"], "all");
+const LIST_JSON_FLAG: FlagSelector = FlagSelector::new(&["list"], "json");
+const TASK_JSON_FLAG: FlagSelector = FlagSelector::new(&["task"], "json");
+
+const INIT_PROJECT_CAPABILITY: AgentCapability =
+    AgentCapability::minimal("init-project", &[INIT_COMMAND], &[INIT_PROJECT_FLAG]);
+const CREATE_TASK_CAPABILITY: AgentCapability = AgentCapability::minimal(
+    "create-task",
+    &[NEW_COMMAND],
+    &[NEW_PROJECT_FLAG, NEW_JSON_FLAG],
+);
+const LIST_TASKS_CAPABILITY: AgentCapability = AgentCapability::minimal(
+    "list-tasks",
+    &[LIST_COMMAND],
+    &[LIST_PROJECT_FLAG, LIST_ALL_FLAG, LIST_JSON_FLAG],
+);
+const TASK_STATUS_CAPABILITY: AgentCapability =
+    AgentCapability::minimal("task-status", &[TASK_STATUS_COMMAND], &[TASK_JSON_FLAG]);
+const TASK_SHOW_CAPABILITY: AgentCapability =
+    AgentCapability::minimal("task-show", &[TASK_SHOW_COMMAND], &[TASK_JSON_FLAG]);
+const TASK_NOTE_CAPABILITY: AgentCapability =
+    AgentCapability::minimal("task-note", &[TASK_NOTE_COMMAND], &[TASK_JSON_FLAG]);
+const UPDATE_TASK_STATUS_CAPABILITY: AgentCapability = AgentCapability::minimal(
+    "update-task-status",
+    &[TASK_UPDATE_STATUS_COMMAND],
+    &[TASK_JSON_FLAG],
+);
+
+const AGENT_SURFACE: AgentSurfaceSpec = AgentSurfaceSpec::new(&[
+    INIT_PROJECT_CAPABILITY,
+    CREATE_TASK_CAPABILITY,
+    LIST_TASKS_CAPABILITY,
+    TASK_STATUS_CAPABILITY,
+    TASK_SHOW_CAPABILITY,
+    TASK_NOTE_CAPABILITY,
+    UPDATE_TASK_STATUS_CAPABILITY,
+]);
+
 const TOOL_SPEC: ToolSpec = workspace_tool(
     "todoer",
     "Todoer",
@@ -33,26 +83,18 @@ const TOOL_SPEC: ToolSpec = workspace_tool(
     true,
     false,
     false,
-);
+)
+.with_agent_surface(&AGENT_SURFACE);
 
 fn main() {
-    if let Some(request) = detect_agent_doc_request(std::env::args_os()) {
-        print_agent_doc(request);
-        return;
+    match parse_with_agent_surface::<Cli>(&TOOL_SPEC) {
+        Ok(AgentDispatch::Cli(cli)) => {
+            let code = run(cli);
+            std::process::exit(code);
+        }
+        Ok(AgentDispatch::Printed(code)) => std::process::exit(code),
+        Err(error) => error.exit(),
     }
-
-    let cli = Cli::parse();
-    let code = run(cli);
-    std::process::exit(code);
-}
-
-fn print_agent_doc(request: AgentDocRequest) {
-    let doc = agent_doc();
-    let rendered = match request {
-        AgentDocRequest::Help => render_agent_help_yaml(&doc),
-        AgentDocRequest::Skill => render_agent_skill(&doc),
-    };
-    print!("{rendered}");
 }
 
 fn run(cli: Cli) -> i32 {

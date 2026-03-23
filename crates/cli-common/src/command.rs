@@ -2,10 +2,16 @@
 
 use std::path::PathBuf;
 
-use clap::CommandFactory;
+use clap::{CommandFactory, FromArgMatches};
 use clap_complete::Shell;
 
-use crate::{DoctorChecks, ToolSpec, display_license, generate_completions, run_doctor, update};
+use crate::{
+    AgentDispatch, AgentModeContext, DoctorChecks, ToolSpec, apply_agent_surface,
+    display_license, generate_completions_from_command, parse_with_agent_surface,
+    parse_with_agent_surface_from, run_doctor, update,
+};
+#[cfg(test)]
+use crate::{CompletionOutput, render_completion_from_command};
 
 /// Shared doctorless adapter for tools that do not expose a doctor command.
 pub struct NoDoctor;
@@ -99,6 +105,59 @@ where
     })
 }
 
+/// Parse a clap CLI against the current normal or agent-filtered surface.
+///
+/// # Errors
+///
+/// Returns a `clap` error when parsing fails.
+pub fn parse_command_with_agent_surface<T>(
+    spec: &ToolSpec,
+) -> Result<AgentDispatch<T>, clap::Error>
+where
+    T: CommandFactory + FromArgMatches,
+{
+    parse_with_agent_surface(spec)
+}
+
+/// Parse argv against the current normal or agent-filtered surface.
+///
+/// # Errors
+///
+/// Returns a `clap` error when parsing fails.
+pub fn parse_command_with_agent_surface_from<T, I>(
+    spec: &ToolSpec,
+    argv: I,
+) -> Result<AgentDispatch<T>, clap::Error>
+where
+    T: CommandFactory + FromArgMatches,
+    I: IntoIterator,
+    I::Item: Into<std::ffi::OsString> + Clone,
+{
+    parse_with_agent_surface_from(spec, argv)
+}
+
+/// Parse argv and hand the typed CLI to a borrowed callback when parsing succeeds.
+///
+/// # Errors
+///
+/// Returns a `clap` error when parsing fails.
+pub fn parse_command_ref_with_agent_surface_from<T, I, R, F>(
+    spec: &ToolSpec,
+    argv: I,
+    run: F,
+) -> Result<AgentDispatch<R>, clap::Error>
+where
+    T: CommandFactory + FromArgMatches,
+    I: IntoIterator,
+    I::Item: Into<std::ffi::OsString> + Clone,
+    F: FnOnce(&T) -> R,
+{
+    match parse_with_agent_surface_from(spec, argv)? {
+        AgentDispatch::Cli(cli) => Ok(AgentDispatch::Cli(run(&cli))),
+        AgentDispatch::Printed(code) => Ok(AgentDispatch::Printed(code)),
+    }
+}
+
 fn render_version(spec: &ToolSpec, json: bool) -> String {
     if json {
         format!(r#"{{"version":"{}"}}"#, spec.version)
@@ -109,6 +168,33 @@ fn render_version(spec: &ToolSpec, json: bool) -> String {
 
 fn render_license(spec: &ToolSpec) -> String {
     display_license(spec.bin_name, spec.license)
+}
+
+fn completion_command_for_spec<T>(spec: &ToolSpec) -> clap::Command
+where
+    T: CommandFactory,
+{
+    let ctx = AgentModeContext::detect();
+    let mut command = T::command();
+    if ctx.active {
+        apply_agent_surface(&mut command, spec, &ctx);
+    }
+    command
+}
+
+#[cfg(test)]
+fn render_standard_completion_for_command<T>(spec: &ToolSpec, shell: Shell) -> CompletionOutput
+where
+    T: CommandFactory,
+{
+    render_completion_from_command(shell, completion_command_for_spec::<T>(spec))
+}
+
+fn generate_standard_completion_for_command<T>(spec: &ToolSpec, shell: Shell)
+where
+    T: CommandFactory,
+{
+    generate_completions_from_command(shell, completion_command_for_spec::<T>(spec));
 }
 
 /// Execute a shared standard command.
@@ -132,7 +218,7 @@ where
             0
         }
         StandardCommand::Completions { shell } => {
-            generate_completions::<T>(*shell);
+            generate_standard_completion_for_command::<T>(spec, *shell);
             0
         }
         StandardCommand::Doctor => {
@@ -286,13 +372,61 @@ macro_rules! impl_standard_command_map {
 
 #[cfg(test)]
 mod tests {
-    use clap::Parser;
+    use clap::{Parser, Subcommand};
 
     use super::*;
-    use crate::{LicenseType, RepoInfo};
+    use crate::{
+        AGENT_TOKEN_ENV, AGENT_TOKEN_EXPECTED_ENV, AgentCapability, AgentDispatch,
+        AgentSurfaceSpec, CommandSelector, FlagSelector, LicenseType, RepoInfo,
+        test_support::env_lock, workspace_tool,
+    };
+
+    const QUERY_COMMAND: CommandSelector = CommandSelector::new(&["query"]);
+    const QUERY_LIMIT_FLAG: FlagSelector = FlagSelector::new(&["query"], "limit");
+    const QUERY_CAPABILITY: AgentCapability = AgentCapability::new(
+        "query-posts",
+        "Read paginated post records",
+        &[QUERY_COMMAND],
+        &[QUERY_LIMIT_FLAG],
+    );
+    const AGENT_SURFACE: AgentSurfaceSpec = AgentSurfaceSpec::new(&[QUERY_CAPABILITY]);
 
     #[derive(Parser)]
     struct TestCli;
+
+    #[derive(Debug, Parser, PartialEq, Eq)]
+    #[command(name = "tool")]
+    struct ParseTestCli {
+        #[command(subcommand)]
+        command: ParseTestCommand,
+    }
+
+    #[derive(Debug, Subcommand, PartialEq, Eq)]
+    enum ParseTestCommand {
+        Query {
+            #[arg(long)]
+            limit: u32,
+        },
+        Admin,
+    }
+
+    #[derive(Debug, Parser, PartialEq, Eq)]
+    #[command(name = "tool")]
+    struct CompletionTestCli {
+        #[command(subcommand)]
+        command: CompletionTestCommand,
+    }
+
+    #[derive(Debug, Subcommand, PartialEq, Eq)]
+    enum CompletionTestCommand {
+        Query {
+            #[arg(long)]
+            limit: Option<u32>,
+            #[arg(long)]
+            secret: bool,
+        },
+        Admin,
+    }
 
     struct TestDoctor;
 
@@ -317,6 +451,25 @@ mod tests {
             true,
             true,
         )
+    }
+
+    fn agent_spec() -> ToolSpec {
+        workspace_tool("tool", "Tool", "1.2.3", LicenseType::MIT, true, true, true)
+            .with_agent_surface(&AGENT_SURFACE)
+    }
+
+    #[allow(unsafe_code)]
+    fn set_tokens(presented: Option<&str>, expected: Option<&str>) {
+        unsafe {
+            std::env::remove_var(AGENT_TOKEN_ENV);
+            std::env::remove_var(AGENT_TOKEN_EXPECTED_ENV);
+            if let Some(presented) = presented {
+                std::env::set_var(AGENT_TOKEN_ENV, presented);
+            }
+            if let Some(expected) = expected {
+                std::env::set_var(AGENT_TOKEN_EXPECTED_ENV, expected);
+            }
+        }
     }
 
     #[test]
@@ -455,5 +608,55 @@ mod tests {
             false,
         );
         assert_eq!(exit_code, None);
+    }
+
+    #[test]
+    fn parse_command_with_agent_surface_from_returns_owned_cli() {
+        let _guard = env_lock();
+        set_tokens(None, None);
+
+        let parsed = parse_command_with_agent_surface_from::<ParseTestCli, _>(
+            &agent_spec(),
+            ["tool", "query", "--limit", "5"],
+        )
+        .expect("parse should succeed");
+
+        assert_eq!(
+            parsed,
+            AgentDispatch::Cli(ParseTestCli {
+                command: ParseTestCommand::Query { limit: 5 },
+            })
+        );
+    }
+
+    #[test]
+    fn parse_command_ref_with_agent_surface_from_borrows_cli() {
+        let _guard = env_lock();
+        set_tokens(Some("shared-token"), Some("shared-token"));
+
+        let parsed = parse_command_ref_with_agent_surface_from::<ParseTestCli, _, _, _>(
+            &agent_spec(),
+            ["tool", "query", "--limit", "7"],
+            |cli| match cli.command {
+                ParseTestCommand::Query { limit } => limit,
+                ParseTestCommand::Admin => 0,
+            },
+        )
+        .expect("parse should succeed");
+
+        assert_eq!(parsed, AgentDispatch::Cli(7));
+    }
+
+    #[test]
+    fn agent_surface_redaction_completion_metadata_path_omits_hidden_entries() {
+        let _guard = env_lock();
+        set_tokens(Some("shared-token"), Some("shared-token"));
+
+        let output =
+            render_standard_completion_for_command::<CompletionTestCli>(&agent_spec(), Shell::Bash);
+
+        assert!(output.script.contains("query"));
+        assert!(!output.script.contains("admin"));
+        assert!(!output.script.contains("--secret"));
     }
 }

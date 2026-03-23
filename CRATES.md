@@ -4,7 +4,7 @@ This file is a reference to CLAUDE.md and contains expanded crate documentation 
 
 ## Workspace Crate Reference
 
-For the overview, see [`CLAUDE.md`](/Users/jfb/Projects/tools/feature/gator/CLAUDE.md).
+For the overview, see [`CLAUDE.md`](/Users/jfb/Projects/tools/feature-agent-mode/CLAUDE.md).
 
 This file provides detailed documentation for each crate in the workspace.
 
@@ -15,6 +15,9 @@ This file provides detailed documentation for each crate in the workspace.
 - **`unvenv`** (`tftio-unvenv`): Detect Python virtual environments not ignored by Git
 - **`asana-cli`** (`tftio-asana-cli`): Interface to the Asana API
 - **`todoer`** (`tftio-todoer`): Global todo list manager for LLM agents
+- **`silent-critic`** (`tftio-silent-critic`): Supervision framework for agentic software development
+- **`gator`** (`tftio-gator`): Agent sandbox harness and launcher
+- **`bsky-comment-extractor`** (`tftio-bsky-comment-extractor`): BlueSky extraction and query CLI
 
 ## Crate-Specific Details
 
@@ -46,7 +49,7 @@ This file provides detailed documentation for each crate in the workspace.
 **Location**: `crates/prompter/`
 **Type**: Binary + Library
 **Binary name**: `prompter`
-**Version**: 2.1.0
+**Version**: 2.2.0
 **License**: MIT
 
 **Purpose**: Compose prompt snippets from TOML profiles
@@ -76,7 +79,7 @@ prompter load <profile>    # Load a profile
 **Location**: `crates/unvenv/`
 **Type**: Binary
 **Binary name**: `unvenv`
-**Version**: 1.8.0
+**Version**: 2.2.0
 **License**: MIT
 
 **Purpose**: Detect Python virtual environments not ignored by Git
@@ -103,7 +106,7 @@ unvenv              # Scan and report unignored venvs
 **Location**: `crates/asana-cli/`
 **Type**: Binary + Library
 **Binary name**: `asana-cli`
-**Version**: 1.2.0
+**Version**: 2.2.0
 **License**: MIT
 
 **Purpose**: Interface to the Asana API
@@ -149,7 +152,7 @@ asana-cli create task --project <id> --summary <summary>
 **Location**: `crates/todoer/`
 **Type**: Binary + Library
 **Binary name**: `todoer`
-**Version**: 1.1.0
+**Version**: 2.2.0
 **License**: CC0-1.0 (exception in workspace)
 
 **Purpose**: Global todo list manager for LLM agents
@@ -177,7 +180,7 @@ todoer list              # List all tasks
 
 ## Version Management
 
-Each crate is independently versioned via release-please. Release PRs are created on push to `main`. Tags follow the format `{crate}-v{version}` (e.g., `prompter-v2.0.1`, `todoer-v1.1.0`).
+The workspace uses a shared repo-wide release version via release-please. Release PRs are created on push to `main`, and one repo tag (for example `v2.2.0`) drives the full workspace release wave.
 
 ## License Information
 
