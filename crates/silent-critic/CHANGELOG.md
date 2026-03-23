@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/tftio-stuff/tools/compare/silent-critic-v0.2.1...silent-critic-v0.3.0) (2026-03-23)
+
+
+### Features
+
+* add shared --agent-help and --agent-skill support across all CLI crates ([#26](https://github.com/tftio-stuff/tools/issues/26)) ([1b41005](https://github.com/tftio-stuff/tools/commit/1b41005c4a60db93c3afd6985f38dc63772c1e22))
+
 ## [0.2.1](https://github.com/tftio-stuff/tools/compare/silent-critic-v0.2.0...silent-critic-v0.2.1) (2026-03-21)
 
 
