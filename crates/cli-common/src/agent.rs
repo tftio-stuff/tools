@@ -55,12 +55,18 @@ impl AgentSurfaceSpec {
 pub struct AgentCapability {
     /// Stable capability name.
     pub name: &'static str,
-    /// Human-readable summary for the capability.
-    pub summary: &'static str,
+    /// Optional human-readable summary for the capability.
+    pub summary: Option<&'static str>,
     /// Command paths exposed by this capability.
     pub commands: &'static [CommandSelector],
     /// Long flags exposed by this capability.
     pub flags: &'static [FlagSelector],
+    /// Optional example invocations.
+    pub examples: Option<&'static [&'static str]>,
+    /// Optional output contract prose.
+    pub output: Option<&'static str>,
+    /// Optional constraints prose.
+    pub constraints: Option<&'static str>,
 }
 
 impl AgentCapability {
@@ -74,9 +80,57 @@ impl AgentCapability {
     ) -> Self {
         Self {
             name,
-            summary,
+            summary: Some(summary),
             commands,
             flags,
+            examples: None,
+            output: None,
+            constraints: None,
+        }
+    }
+
+    /// Create a new [`AgentCapability`] without optional prose metadata.
+    #[must_use]
+    pub const fn minimal(
+        name: &'static str,
+        commands: &'static [CommandSelector],
+        flags: &'static [FlagSelector],
+    ) -> Self {
+        Self {
+            name,
+            summary: None,
+            commands,
+            flags,
+            examples: None,
+            output: None,
+            constraints: None,
+        }
+    }
+
+    /// Attach example invocations.
+    #[must_use]
+    pub const fn with_examples(self, examples: &'static [&'static str]) -> Self {
+        Self {
+            examples: Some(examples),
+            ..self
+        }
+    }
+
+    /// Attach output contract prose.
+    #[must_use]
+    pub const fn with_output(self, output: &'static str) -> Self {
+        Self {
+            output: Some(output),
+            ..self
+        }
+    }
+
+    /// Attach constraints prose.
+    #[must_use]
+    pub const fn with_constraints(self, constraints: &'static str) -> Self {
+        Self {
+            constraints: Some(constraints),
+            ..self
         }
     }
 }
@@ -423,16 +477,24 @@ pub fn render_agent_help(spec: &ToolSpec, ctx: &AgentModeContext) -> String {
     } else {
         capabilities
             .iter()
-            .map(|capability| format!("- {}: {}", capability.name, capability.summary))
+            .map(|capability| {
+                format!(
+                    "- {}: {}",
+                    capability.name,
+                    capability_summary(capability)
+                )
+            })
             .collect::<Vec<_>>()
             .join("\n")
     };
+    let argument_lines = render_surface_arguments(capabilities);
 
     format!(
-        "tool:\n- {}\nmode:\n- {}\ncapabilities:\n{}\narguments:\n- --agent-help\n- --agent-skill <NAME>\noutput:\n- plain text\nconstraints:\n- output is limited to the currently visible surface",
+        "tool:\n- {}\nmode:\n- {}\ncapabilities:\n{}\narguments:\n{}\noutput:\n- structured plain text for the visible command surface\nconstraints:\n- output is limited to the currently visible surface",
         spec.bin_name,
         if ctx.active { "agent" } else { "human" },
         capability_lines,
+        argument_lines,
     )
 }
 
@@ -452,13 +514,94 @@ pub fn render_agent_skill(
         .ok_or_else(|| AgentSkillError::new(format!("unknown agent capability: {name}")))?;
 
     Ok(format!(
-        "tool:\n- {}\ncapability:\n- {}\nsummary:\n- {}\ncommands:\n{}\nflags:\n{}\nexamples:\n- none declared\noutput:\n- output follows the existing CLI contract\nconstraints:\n- existing command validation and auth rules still apply",
+        "tool:\n- {}\ncapability:\n- {}\nsummary:\n- {}\ncommands:\n{}\nflags:\n{}\nexamples:\n{}\noutput:\n- {}\nconstraints:\n- {}",
         spec.bin_name,
         capability.name,
-        capability.summary,
+        capability_summary(capability),
         render_command_lines(capability),
         render_flag_lines(capability),
+        render_example_lines(capability),
+        capability_output(capability),
+        capability_constraints(capability),
     ))
+}
+
+fn capability_summary(capability: &AgentCapability) -> String {
+    if let Some(summary) = capability.summary {
+        return String::from(summary);
+    }
+
+    if let Some(primary_command) = capability.commands.first() {
+        return format!(
+            "Use {} via {}",
+            capability.name.replace('-', " "),
+            primary_command.path.join(" ")
+        );
+    }
+
+    format!("Use {}", capability.name.replace('-', " "))
+}
+
+fn capability_output(capability: &AgentCapability) -> String {
+    capability.output.map_or_else(
+        || {
+            if let Some(primary_command) = capability.commands.first() {
+                format!(
+                    "output follows the existing CLI contract for {}",
+                    primary_command.path.join(" ")
+                )
+            } else {
+                String::from("output follows the existing CLI contract")
+            }
+        },
+        String::from,
+    )
+}
+
+fn capability_constraints(capability: &AgentCapability) -> String {
+    capability.constraints.map_or_else(
+        || String::from("existing command validation and auth rules still apply"),
+        String::from,
+    )
+}
+
+fn render_example_lines(capability: &AgentCapability) -> String {
+    capability.examples.map_or_else(
+        || String::from("- none declared"),
+        |examples| {
+            if examples.is_empty() {
+                String::from("- none declared")
+            } else {
+                examples
+                    .iter()
+                    .map(|example| format!("- {example}"))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            }
+        },
+    )
+}
+
+fn render_surface_arguments(capabilities: &[AgentCapability]) -> String {
+    let mut lines = vec![
+        String::from("- --agent-help"),
+        String::from("- --agent-skill <NAME>"),
+    ];
+
+    for capability in capabilities {
+        for command in capability.commands {
+            lines.push(format!("- command {}", command.path.join(" ")));
+        }
+        for flag in capability.flags {
+            lines.push(format!(
+                "- {} --{}",
+                flag.command_path.join(" "),
+                flag.long
+            ));
+        }
+    }
+
+    lines.join("\n")
 }
 
 fn render_command_lines(capability: &AgentCapability) -> String {
@@ -516,9 +659,13 @@ mod tests {
         &[STATUS_COMMAND],
         &[],
     );
+    const QUERY_MINIMAL_CAPABILITY: AgentCapability =
+        AgentCapability::minimal("query-minimal", &[QUERY_COMMAND], &[QUERY_LIMIT_FLAG]);
 
     const AGENT_SURFACE: AgentSurfaceSpec =
         AgentSurfaceSpec::new(&[QUERY_CAPABILITY, STATUS_CAPABILITY]);
+    const MINIMAL_AGENT_SURFACE: AgentSurfaceSpec =
+        AgentSurfaceSpec::new(&[QUERY_MINIMAL_CAPABILITY]);
 
     fn spec() -> ToolSpec {
         ToolSpec::new(
@@ -532,6 +679,20 @@ mod tests {
             true,
         )
         .with_agent_surface(&AGENT_SURFACE)
+    }
+
+    fn minimal_spec() -> ToolSpec {
+        ToolSpec::new(
+            "tool",
+            "Tool",
+            "1.2.3",
+            LicenseType::MIT,
+            RepoInfo::new("owner", "repo"),
+            true,
+            false,
+            true,
+        )
+        .with_agent_surface(&MINIMAL_AGENT_SURFACE)
     }
 
     fn env_lock() -> std::sync::MutexGuard<'static, ()> {
@@ -815,5 +976,83 @@ mod tests {
         )
         .expect("agent skill should print and exit");
         assert_eq!(skill, AgentDispatch::Printed(0));
+    }
+
+    #[test]
+    fn agent_help_render_sections_are_structured_and_redacted() {
+        let rendered = render_agent_help(&spec(), &AgentModeContext { active: true });
+
+        let section_positions = [
+            rendered.find("tool:\n").expect("tool section"),
+            rendered.find("mode:\n").expect("mode section"),
+            rendered
+                .find("capabilities:\n")
+                .expect("capabilities section"),
+            rendered.find("arguments:\n").expect("arguments section"),
+            rendered.find("output:\n").expect("output section"),
+            rendered
+                .find("constraints:\n")
+                .expect("constraints section"),
+        ];
+        assert!(section_positions.windows(2).all(|pair| pair[0] < pair[1]));
+        assert!(rendered.contains("query-posts"));
+        assert!(rendered.contains("inspect-status"));
+        assert!(!rendered.contains("admin"));
+        assert!(!rendered.contains("--secret"));
+    }
+
+    #[test]
+    fn agent_help_render_skill_output_is_single_capability_only() {
+        let rendered = render_agent_skill(&spec(), &AgentModeContext { active: true }, "query-posts")
+            .expect("capability should render");
+
+        let section_positions = [
+            rendered.find("tool:\n").expect("tool section"),
+            rendered
+                .find("capability:\n")
+                .expect("capability section"),
+            rendered.find("summary:\n").expect("summary section"),
+            rendered.find("commands:\n").expect("commands section"),
+            rendered.find("flags:\n").expect("flags section"),
+            rendered.find("examples:\n").expect("examples section"),
+            rendered.find("output:\n").expect("output section"),
+            rendered
+                .find("constraints:\n")
+                .expect("constraints section"),
+        ];
+        assert!(section_positions.windows(2).all(|pair| pair[0] < pair[1]));
+        assert!(rendered.contains("query-posts"));
+        assert!(!rendered.contains("inspect-status"));
+        assert!(rendered.contains("query"));
+        assert!(rendered.contains("--limit"));
+        assert!(rendered.contains("--offset"));
+    }
+
+    #[test]
+    fn agent_help_render_unknown_skill_is_bounded() {
+        let error = render_agent_skill(&spec(), &AgentModeContext { active: true }, "missing")
+            .expect_err("unknown capability should fail");
+
+        assert_eq!(error.to_string(), "unknown agent capability: missing");
+        assert!(!error.to_string().contains("query-posts"));
+        assert!(!error.to_string().contains("inspect-status"));
+    }
+
+    #[test]
+    fn agent_help_render_fills_missing_prose_metadata() {
+        let rendered = render_agent_skill(
+            &minimal_spec(),
+            &AgentModeContext { active: true },
+            "query-minimal",
+        )
+        .expect("minimal capability should render");
+
+        assert!(rendered.contains("capability:\n- query-minimal"));
+        assert!(rendered.contains("summary:\n-"));
+        assert!(rendered.contains("commands:\n- query"));
+        assert!(rendered.contains("flags:\n- query --limit"));
+        assert!(rendered.contains("examples:\n- none declared"));
+        assert!(rendered.contains("output:\n-"));
+        assert!(rendered.contains("constraints:\n-"));
     }
 }
