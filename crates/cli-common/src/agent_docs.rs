@@ -1,6 +1,7 @@
 //! Shared agent-facing documentation models and renderers.
 
 use std::ffi::OsStr;
+use std::fmt::Write;
 
 /// A top-level request for agent-facing documentation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -183,19 +184,394 @@ where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
 {
-    None
+    let mut args = _args
+        .into_iter()
+        .map(|arg| arg.as_ref().to_string_lossy().into_owned());
+
+    let _program = args.next()?;
+    let request = match args.next()?.as_str() {
+        "--agent-help" => AgentDocRequest::Help,
+        "--agent-skill" => AgentDocRequest::Skill,
+        _ => return None,
+    };
+
+    if args.next().is_some() {
+        return None;
+    }
+
+    Some(request)
 }
 
 /// Render the canonical YAML agent-help document.
 #[must_use]
 pub fn render_agent_help_yaml(_doc: &AgentDoc) -> String {
-    String::new()
+    let mut out = String::new();
+    writeln!(
+        out,
+        "schema_version: {}",
+        yaml_string(&_doc.schema_version)
+    )
+    .expect("writing to String must succeed");
+    out.push_str("tool:\n");
+    write_yaml_field(&mut out, 1, "name", &_doc.tool.name);
+    write_yaml_field(&mut out, 1, "binary", &_doc.tool.binary);
+    write_yaml_field(&mut out, 1, "summary", &_doc.tool.summary);
+    out.push_str("usage:\n");
+    write_yaml_field(&mut out, 1, "invocation", &_doc.usage.invocation);
+    write_yaml_string_list(&mut out, 1, "notes", &_doc.usage.notes);
+    write_yaml_sections(&mut out, "shared_sections", &_doc.shared_sections);
+    write_yaml_commands(&mut out, &_doc.commands);
+    write_yaml_arguments(&mut out, "arguments", &_doc.arguments, 0);
+    write_yaml_environment_variables(&mut out, &_doc.environment_variables);
+    write_yaml_config_files(&mut out, &_doc.config_files);
+    write_yaml_paths(&mut out, "default_paths", &_doc.default_paths);
+    write_yaml_output_shapes(&mut out, "output_shapes", &_doc.output_shapes, 0);
+    write_yaml_examples(&mut out, &_doc.examples);
+    write_yaml_failure_modes(&mut out, &_doc.failure_modes);
+    write_yaml_operator_mistakes(&mut out, &_doc.operator_mistakes);
+    write_yaml_string_list(&mut out, 0, "constraints", &_doc.constraints);
+    out
 }
 
 /// Render the Claude-style agent skill document.
 #[must_use]
 pub fn render_agent_skill(_doc: &AgentDoc) -> String {
-    String::new()
+    let mut out = String::new();
+    out.push_str("---\n");
+    writeln!(out, "name: {}", yaml_string(&_doc.tool.binary))
+        .expect("writing to String must succeed");
+    writeln!(out, "description: {}", yaml_string(&_doc.tool.summary))
+        .expect("writing to String must succeed");
+    out.push_str("---\n\n");
+    writeln!(out, "# {}", _doc.tool.name).expect("writing to String must succeed");
+    out.push('\n');
+
+    out.push_str("## Usage\n");
+    writeln!(out, "- Invocation: `{}`", _doc.usage.invocation)
+        .expect("writing to String must succeed");
+    for note in &_doc.usage.notes {
+        writeln!(out, "- {note}").expect("writing to String must succeed");
+    }
+    out.push('\n');
+
+    out.push_str("## Shared behavior\n");
+    for section in &_doc.shared_sections {
+        writeln!(out, "### {}", section.title).expect("writing to String must succeed");
+        writeln!(out, "{}", section.content).expect("writing to String must succeed");
+        out.push('\n');
+    }
+
+    out.push_str("## Commands\n");
+    for command in &_doc.commands {
+        writeln!(out, "### {}", command.name).expect("writing to String must succeed");
+        writeln!(out, "{}", command.summary).expect("writing to String must succeed");
+        out.push('\n');
+        writeln!(out, "Usage: `{}`", command.usage).expect("writing to String must succeed");
+        out.push('\n');
+
+        out.push_str("Arguments:\n");
+        for argument in &command.arguments {
+            writeln!(out, "- {}", markdown_argument(argument))
+                .expect("writing to String must succeed");
+        }
+        out.push('\n');
+
+        out.push_str("Output shapes:\n");
+        for shape in &command.output_shapes {
+            writeln!(
+                out,
+                "- `{}` (`{}`): {}",
+                shape.name, shape.format, shape.description
+            )
+            .expect("writing to String must succeed");
+        }
+        out.push('\n');
+    }
+
+    out.push_str("## Top-level arguments\n");
+    for argument in &_doc.arguments {
+        writeln!(out, "- {}", markdown_argument(argument))
+            .expect("writing to String must succeed");
+    }
+    out.push('\n');
+
+    out.push_str("## Environment variables\n");
+    for env_var in &_doc.environment_variables {
+        let required = if env_var.required { " (required)" } else { "" };
+        writeln!(out, "- `{}`{}: {}", env_var.name, required, env_var.description)
+            .expect("writing to String must succeed");
+    }
+    out.push('\n');
+
+    out.push_str("## Config files\n");
+    for config_file in &_doc.config_files {
+        writeln!(out, "- `{}`: {}", config_file.path, config_file.purpose)
+            .expect("writing to String must succeed");
+    }
+    out.push('\n');
+
+    out.push_str("## Default paths\n");
+    for path in &_doc.default_paths {
+        writeln!(out, "- `{}`: `{}` — {}", path.name, path.path, path.purpose)
+            .expect("writing to String must succeed");
+    }
+    out.push('\n');
+
+    out.push_str("## Output shapes\n");
+    for shape in &_doc.output_shapes {
+        writeln!(
+            out,
+            "- `{}` (`{}`): {}",
+            shape.name, shape.format, shape.description
+        )
+        .expect("writing to String must succeed");
+    }
+    out.push('\n');
+
+    out.push_str("## Examples\n");
+    for example in &_doc.examples {
+        writeln!(
+            out,
+            "- `{}`: `{}` — {}",
+            example.name, example.command, example.description
+        )
+        .expect("writing to String must succeed");
+    }
+    out.push('\n');
+
+    out.push_str("## Failure modes\n");
+    for failure_mode in &_doc.failure_modes {
+        writeln!(
+            out,
+            "- `{}`: {}. {}",
+            failure_mode.name, failure_mode.symptom, failure_mode.resolution
+        )
+        .expect("writing to String must succeed");
+    }
+    out.push('\n');
+
+    out.push_str("## Operator mistakes\n");
+    for mistake in &_doc.operator_mistakes {
+        let symptom = sentence_without_trailing_period(&mistake.symptom);
+        writeln!(
+            out,
+            "- `{}`: {}. {}",
+            mistake.name, symptom, mistake.correction
+        )
+        .expect("writing to String must succeed");
+    }
+    out.push('\n');
+
+    out.push_str("## Constraints\n");
+    for constraint in &_doc.constraints {
+        writeln!(out, "- {constraint}").expect("writing to String must succeed");
+    }
+
+    out
+}
+
+fn yaml_string(value: &str) -> String {
+    let escaped = value
+        .replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\n', "\\n");
+    format!("\"{escaped}\"")
+}
+
+fn write_yaml_field(out: &mut String, indent_level: usize, key: &str, value: &str) {
+    let indent = "  ".repeat(indent_level);
+    writeln!(out, "{indent}{key}: {}", yaml_string(value))
+        .expect("writing to String must succeed");
+}
+
+fn write_yaml_bool_field(out: &mut String, indent_level: usize, key: &str, value: bool) {
+    let indent = "  ".repeat(indent_level);
+    writeln!(out, "{indent}{key}: {value}").expect("writing to String must succeed");
+}
+
+fn write_yaml_string_list(out: &mut String, indent_level: usize, key: &str, values: &[String]) {
+    let indent = "  ".repeat(indent_level);
+    writeln!(out, "{indent}{key}:").expect("writing to String must succeed");
+    for value in values {
+        writeln!(out, "{indent}  - {}", yaml_string(value))
+            .expect("writing to String must succeed");
+    }
+}
+
+fn write_yaml_sections(out: &mut String, key: &str, sections: &[AgentSection]) {
+    writeln!(out, "{key}:").expect("writing to String must succeed");
+    for section in sections {
+        writeln!(out, "  - title: {}", yaml_string(&section.title))
+            .expect("writing to String must succeed");
+        writeln!(out, "    content: {}", yaml_string(&section.content))
+            .expect("writing to String must succeed");
+    }
+}
+
+fn write_yaml_commands(out: &mut String, commands: &[AgentCommand]) {
+    out.push_str("commands:\n");
+    for command in commands {
+        writeln!(out, "  - name: {}", yaml_string(&command.name))
+            .expect("writing to String must succeed");
+        writeln!(out, "    summary: {}", yaml_string(&command.summary))
+            .expect("writing to String must succeed");
+        writeln!(out, "    usage: {}", yaml_string(&command.usage))
+            .expect("writing to String must succeed");
+        write_yaml_arguments(out, "arguments", &command.arguments, 2);
+        write_yaml_output_shapes(out, "output_shapes", &command.output_shapes, 2);
+    }
+}
+
+fn write_yaml_arguments(
+    out: &mut String,
+    key: &str,
+    arguments: &[AgentArgument],
+    indent_level: usize,
+) {
+    let indent = "  ".repeat(indent_level);
+    writeln!(out, "{indent}{key}:").expect("writing to String must succeed");
+    for argument in arguments {
+        writeln!(out, "{indent}  - name: {}", yaml_string(&argument.name))
+            .expect("writing to String must succeed");
+        let kind = if argument.positional { "positional" } else { "flag" };
+        writeln!(out, "{indent}    kind: {}", yaml_string(kind))
+            .expect("writing to String must succeed");
+        writeln!(
+            out,
+            "{indent}    description: {}",
+            yaml_string(&argument.description)
+        )
+        .expect("writing to String must succeed");
+        write_yaml_bool_field(out, indent_level + 2, "required", argument.required);
+    }
+}
+
+fn write_yaml_environment_variables(out: &mut String, env_vars: &[AgentEnvironmentVar]) {
+    out.push_str("environment_variables:\n");
+    for env_var in env_vars {
+        writeln!(out, "  - name: {}", yaml_string(&env_var.name))
+            .expect("writing to String must succeed");
+        writeln!(
+            out,
+            "    description: {}",
+            yaml_string(&env_var.description)
+        )
+        .expect("writing to String must succeed");
+        write_yaml_bool_field(out, 2, "required", env_var.required);
+    }
+}
+
+fn write_yaml_config_files(out: &mut String, config_files: &[AgentConfigFile]) {
+    out.push_str("config_files:\n");
+    for config_file in config_files {
+        writeln!(out, "  - path: {}", yaml_string(&config_file.path))
+            .expect("writing to String must succeed");
+        writeln!(out, "    purpose: {}", yaml_string(&config_file.purpose))
+            .expect("writing to String must succeed");
+    }
+}
+
+fn write_yaml_paths(out: &mut String, key: &str, paths: &[AgentPath]) {
+    writeln!(out, "{key}:").expect("writing to String must succeed");
+    for path in paths {
+        writeln!(out, "  - name: {}", yaml_string(&path.name))
+            .expect("writing to String must succeed");
+        writeln!(out, "    path: {}", yaml_string(&path.path))
+            .expect("writing to String must succeed");
+        writeln!(out, "    purpose: {}", yaml_string(&path.purpose))
+            .expect("writing to String must succeed");
+    }
+}
+
+fn write_yaml_output_shapes(
+    out: &mut String,
+    key: &str,
+    output_shapes: &[AgentOutputShape],
+    indent_level: usize,
+) {
+    let indent = "  ".repeat(indent_level);
+    writeln!(out, "{indent}{key}:").expect("writing to String must succeed");
+    for output_shape in output_shapes {
+        writeln!(out, "{indent}  - name: {}", yaml_string(&output_shape.name))
+            .expect("writing to String must succeed");
+        writeln!(out, "{indent}    format: {}", yaml_string(&output_shape.format))
+            .expect("writing to String must succeed");
+        writeln!(
+            out,
+            "{indent}    description: {}",
+            yaml_string(&output_shape.description)
+        )
+        .expect("writing to String must succeed");
+    }
+}
+
+fn write_yaml_examples(out: &mut String, examples: &[AgentExample]) {
+    out.push_str("examples:\n");
+    for example in examples {
+        writeln!(out, "  - name: {}", yaml_string(&example.name))
+            .expect("writing to String must succeed");
+        writeln!(out, "    command: {}", yaml_string(&example.command))
+            .expect("writing to String must succeed");
+        writeln!(
+            out,
+            "    description: {}",
+            yaml_string(&example.description)
+        )
+        .expect("writing to String must succeed");
+    }
+}
+
+fn write_yaml_failure_modes(out: &mut String, failure_modes: &[AgentFailureMode]) {
+    out.push_str("failure_modes:\n");
+    for failure_mode in failure_modes {
+        writeln!(out, "  - name: {}", yaml_string(&failure_mode.name))
+            .expect("writing to String must succeed");
+        writeln!(
+            out,
+            "    symptom: {}",
+            yaml_string(&failure_mode.symptom)
+        )
+        .expect("writing to String must succeed");
+        writeln!(
+            out,
+            "    resolution: {}",
+            yaml_string(&failure_mode.resolution)
+        )
+        .expect("writing to String must succeed");
+    }
+}
+
+fn write_yaml_operator_mistakes(
+    out: &mut String,
+    operator_mistakes: &[AgentOperatorMistake],
+) {
+    out.push_str("operator_mistakes:\n");
+    for mistake in operator_mistakes {
+        writeln!(out, "  - name: {}", yaml_string(&mistake.name))
+            .expect("writing to String must succeed");
+        writeln!(out, "    symptom: {}", yaml_string(&mistake.symptom))
+            .expect("writing to String must succeed");
+        writeln!(
+            out,
+            "    correction: {}",
+            yaml_string(&mistake.correction)
+        )
+        .expect("writing to String must succeed");
+    }
+}
+
+fn markdown_argument(argument: &AgentArgument) -> String {
+    let rendered_name = if argument.positional {
+        format!("`{}`", argument.name)
+    } else {
+        format!("`--{}`", argument.name)
+    };
+    let required = if argument.required { " (required)" } else { "" };
+    format!("{rendered_name}{required}: {}", argument.description)
+}
+
+fn sentence_without_trailing_period(value: &str) -> &str {
+    value.strip_suffix('.').unwrap_or(value)
 }
 
 #[cfg(test)]
