@@ -1,8 +1,11 @@
 //! Shared agent-mode capability declarations and filtering helpers.
 
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, ffi::OsString};
 
-use clap::{Arg, Command};
+use clap::{
+    Arg, ArgAction, Command, CommandFactory, FromArgMatches,
+    error::ErrorKind,
+};
 
 use crate::ToolSpec;
 
@@ -110,6 +113,39 @@ impl FlagSelector {
     }
 }
 
+/// Shared parse result for agent-aware entrypoints.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AgentDispatch<T> {
+    /// Continue with the parsed CLI value.
+    Cli(T),
+    /// A shared agent inspection path printed output and chose an exit code.
+    Printed(i32),
+}
+
+/// Error returned when rendering a single agent capability view fails.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentSkillError {
+    message: String,
+}
+
+impl AgentSkillError {
+    /// Create a new [`AgentSkillError`].
+    #[must_use]
+    pub fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+        }
+    }
+}
+
+impl std::fmt::Display for AgentSkillError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for AgentSkillError {}
+
 /// Return the capabilities visible in the current agent-mode context.
 #[must_use]
 pub fn visible_capabilities<'a>(
@@ -129,7 +165,15 @@ pub fn apply_agent_surface(command: &mut Command, spec: &ToolSpec, ctx: &AgentMo
         return;
     }
 
-    let filtered = filter_command(command, spec.bin_name, spec.version, visible_capabilities(spec, ctx), &[]);
+    ensure_agent_inspection_args(command);
+
+    let filtered = filter_command(
+        command,
+        spec.bin_name,
+        spec.version,
+        visible_capabilities(spec, ctx),
+        &[],
+    );
     *command = filtered;
 }
 
@@ -142,12 +186,7 @@ fn filter_command(
 ) -> Command {
     let allowed_flags = allowed_flags(capabilities, current_path);
     let allowed_subcommands = allowed_subcommands(capabilities, current_path);
-
-    let mut filtered = Command::new(name);
-
-    if current_path.is_empty() {
-        filtered = filtered.version(version);
-    }
+    let mut filtered = clone_command_metadata(command, name, version, current_path.is_empty());
 
     for arg in command
         .get_arguments()
@@ -168,6 +207,51 @@ fn filter_command(
                 &next_path,
             ));
         }
+    }
+
+    filtered
+}
+
+fn clone_command_metadata(
+    command: &Command,
+    name: &'static str,
+    version: &'static str,
+    include_version: bool,
+) -> Command {
+    let mut filtered = Command::new(name);
+
+    if let Some(display_name) = command.get_display_name() {
+        filtered = filtered.display_name(display_name.to_owned());
+    }
+    if include_version {
+        filtered = filtered.version(version);
+    }
+    if let Some(about) = command.get_about() {
+        filtered = filtered.about(about.clone());
+    }
+    if let Some(long_about) = command.get_long_about() {
+        filtered = filtered.long_about(long_about.clone());
+    }
+    if let Some(before_help) = command.get_before_help() {
+        filtered = filtered.before_help(before_help.clone());
+    }
+    if let Some(after_help) = command.get_after_help() {
+        filtered = filtered.after_help(after_help.clone());
+    }
+    if command.is_disable_help_flag_set() {
+        filtered = filtered.disable_help_flag(true);
+    }
+    if command.is_disable_help_subcommand_set() {
+        filtered = filtered.disable_help_subcommand(true);
+    }
+    if command.is_disable_colored_help_set() {
+        filtered = filtered.disable_colored_help(true);
+    }
+    if command.is_flatten_help_set() {
+        filtered = filtered.flatten_help(true);
+    }
+    if let Some(bin_name) = command.get_bin_name() {
+        filtered.set_bin_name(bin_name.to_owned());
     }
 
     filtered
@@ -224,17 +308,190 @@ fn is_shared_agent_flag(arg: &Arg) -> bool {
     matches!(arg.get_long(), Some("agent-help" | "agent-skill"))
 }
 
+fn ensure_agent_inspection_args(command: &mut Command) {
+    if !command
+        .get_arguments()
+        .any(|arg| arg.get_long() == Some("agent-help"))
+    {
+        *command = command.clone().arg(
+            Arg::new("agent-help")
+                .long("agent-help")
+                .help("Print the visible agent command surface")
+                .hide(true)
+                .global(true)
+                .action(ArgAction::SetTrue),
+        );
+    }
+
+    if !command
+        .get_arguments()
+        .any(|arg| arg.get_long() == Some("agent-skill"))
+    {
+        *command = command.clone().arg(
+            Arg::new("agent-skill")
+                .long("agent-skill")
+                .help("Print the visible agent capability contract")
+                .hide(true)
+                .global(true)
+                .value_name("NAME"),
+        );
+    }
+}
+
 fn extend_path<'a>(current_path: &[&'a str], segment: &'a str) -> Vec<&'a str> {
     let mut next_path = current_path.to_vec();
     next_path.push(segment);
     next_path
 }
 
+/// Parse argv against the normal or agent-filtered surface for a clap CLI.
+///
+/// # Errors
+///
+/// Returns a `clap` error when parsing fails or when an unknown agent capability is requested.
+pub fn parse_with_agent_surface_from<T, I>(
+    spec: &ToolSpec,
+    argv: I,
+) -> Result<AgentDispatch<T>, clap::Error>
+where
+    T: CommandFactory + FromArgMatches,
+    I: IntoIterator,
+    I::Item: Into<OsString> + Clone,
+{
+    let ctx = AgentModeContext::detect();
+    let mut command = T::command();
+    ensure_agent_inspection_args(&mut command);
+
+    if ctx.active {
+        apply_agent_surface(&mut command, spec, &ctx);
+    }
+
+    match command.try_get_matches_from_mut(argv) {
+        Ok(mut matches) => {
+            if matches.get_flag("agent-help") {
+                println!("{}", render_agent_help(spec, &ctx));
+                return Ok(AgentDispatch::Printed(0));
+            }
+
+            if let Some(name) = matches.get_one::<String>("agent-skill") {
+                let text = render_agent_skill(spec, &ctx, name)
+                    .map_err(|error| command.error(ErrorKind::InvalidValue, error.to_string()))?;
+                println!("{text}");
+                return Ok(AgentDispatch::Printed(0));
+            }
+
+            T::from_arg_matches_mut(&mut matches).map(AgentDispatch::Cli)
+        }
+        Err(error) => Err(sanitize_agent_parse_error(error)),
+    }
+}
+
+/// Parse process argv against the normal or agent-filtered surface for a clap CLI.
+///
+/// # Errors
+///
+/// Returns a `clap` error when parsing fails or when an unknown agent capability is requested.
+pub fn parse_with_agent_surface<T>(spec: &ToolSpec) -> Result<AgentDispatch<T>, clap::Error>
+where
+    T: CommandFactory + FromArgMatches,
+{
+    parse_with_agent_surface_from(spec, std::env::args_os())
+}
+
+fn sanitize_agent_parse_error(mut error: clap::Error) -> clap::Error {
+    let rendered = error.to_string();
+    if rendered.contains("Did you mean") {
+        error = clap::Error::raw(error.kind(), strip_suggestion_lines(&rendered));
+    }
+    error
+}
+
+fn strip_suggestion_lines(rendered: &str) -> String {
+    rendered
+        .lines()
+        .filter(|line| !line.contains("Did you mean"))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// Render the visible agent capability surface as structured text.
+#[must_use]
+pub fn render_agent_help(spec: &ToolSpec, ctx: &AgentModeContext) -> String {
+    let capabilities = visible_capabilities(spec, ctx);
+    let capability_lines = if capabilities.is_empty() {
+        String::from("- none")
+    } else {
+        capabilities
+            .iter()
+            .map(|capability| format!("- {}: {}", capability.name, capability.summary))
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+
+    format!(
+        "tool:\n- {}\nmode:\n- {}\ncapabilities:\n{}\narguments:\n- --agent-help\n- --agent-skill <NAME>\noutput:\n- plain text\nconstraints:\n- output is limited to the currently visible surface",
+        spec.bin_name,
+        if ctx.active { "agent" } else { "human" },
+        capability_lines,
+    )
+}
+
+/// Render the visible contract for one agent capability.
+///
+/// # Errors
+///
+/// Returns [`AgentSkillError`] when the capability name is not visible in the current context.
+pub fn render_agent_skill(
+    spec: &ToolSpec,
+    ctx: &AgentModeContext,
+    name: &str,
+) -> Result<String, AgentSkillError> {
+    let capability = visible_capabilities(spec, ctx)
+        .iter()
+        .find(|capability| capability.name == name)
+        .ok_or_else(|| AgentSkillError::new(format!("unknown agent capability: {name}")))?;
+
+    Ok(format!(
+        "tool:\n- {}\ncapability:\n- {}\nsummary:\n- {}\ncommands:\n{}\nflags:\n{}\nexamples:\n- none declared\noutput:\n- output follows the existing CLI contract\nconstraints:\n- existing command validation and auth rules still apply",
+        spec.bin_name,
+        capability.name,
+        capability.summary,
+        render_command_lines(capability),
+        render_flag_lines(capability),
+    ))
+}
+
+fn render_command_lines(capability: &AgentCapability) -> String {
+    if capability.commands.is_empty() {
+        String::from("- none declared")
+    } else {
+        capability
+            .commands
+            .iter()
+            .map(|selector| format!("- {}", selector.path.join(" ")))
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+}
+
+fn render_flag_lines(capability: &AgentCapability) -> String {
+    if capability.flags.is_empty() {
+        String::from("- none declared")
+    } else {
+        capability
+            .flags
+            .iter()
+            .map(|selector| format!("- {} --{}", selector.command_path.join(" "), selector.long))
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::{Mutex, OnceLock};
 
-    use clap::{Arg, Command};
+    use clap::{Arg, Args, Command, Parser, Subcommand};
 
     use super::*;
     use crate::{LicenseType, RepoInfo, ToolSpec};
@@ -422,5 +679,141 @@ mod tests {
             )
             .subcommand(Command::new("status"))
             .subcommand(Command::new("admin").arg(Arg::new("danger").long("danger")))
+    }
+
+    #[derive(Debug, Parser, PartialEq, Eq)]
+    #[command(name = "tool")]
+    struct AgentTestCli {
+        #[command(subcommand)]
+        command: Option<AgentTestCommand>,
+    }
+
+    #[derive(Debug, Subcommand, PartialEq, Eq)]
+    enum AgentTestCommand {
+        Query(QueryArgs),
+        Status,
+        Admin(AdminArgs),
+    }
+
+    #[derive(Debug, Args, PartialEq, Eq)]
+    struct QueryArgs {
+        #[arg(long)]
+        limit: Option<u32>,
+        #[arg(long)]
+        offset: Option<u32>,
+        #[arg(long)]
+        secret: bool,
+    }
+
+    #[derive(Debug, Args, PartialEq, Eq)]
+    struct AdminArgs {
+        #[arg(long)]
+        danger: bool,
+    }
+
+    #[test]
+    fn agent_surface_redaction_rejects_hidden_command_and_flag() {
+        let _guard = env_lock();
+        set_tokens(Some("shared-token"), Some("shared-token"));
+        let spec = spec();
+
+        let hidden_command_error =
+            parse_with_agent_surface_from::<AgentTestCli, _>(&spec, ["tool", "admin"])
+                .expect_err("hidden subcommand should be rejected")
+                .to_string();
+        assert!(hidden_command_error.contains("unrecognized subcommand"));
+
+        let hidden_command_typo_error =
+            parse_with_agent_surface_from::<AgentTestCli, _>(&spec, ["tool", "admni"])
+                .expect_err("hidden subcommand typo should not leak suggestions")
+                .to_string();
+        assert!(hidden_command_typo_error.contains("unrecognized subcommand"));
+        assert!(!hidden_command_typo_error.contains("Did you mean"));
+
+        let hidden_flag_error = parse_with_agent_surface_from::<AgentTestCli, _>(
+            &spec,
+            ["tool", "query", "--secre"],
+        )
+        .expect_err("hidden flag typo should be rejected")
+        .to_string();
+        assert!(hidden_flag_error.contains("unexpected argument"));
+        assert!(!hidden_flag_error.contains("--secret"));
+        assert!(!hidden_flag_error.contains("Did you mean"));
+    }
+
+    #[test]
+    fn agent_surface_redaction_help_omits_hidden_entries() {
+        let _guard = env_lock();
+        set_tokens(Some("shared-token"), Some("shared-token"));
+        let spec = spec();
+
+        let long_help = parse_with_agent_surface_from::<AgentTestCli, _>(&spec, ["tool", "--help"])
+            .expect_err("help should short-circuit through clap")
+            .to_string();
+        assert!(long_help.contains("query"));
+        assert!(long_help.contains("status"));
+        assert!(!long_help.contains("admin"));
+        assert!(!long_help.contains("--secret"));
+
+        let help_subcommand = parse_with_agent_surface_from::<AgentTestCli, _>(&spec, ["tool", "help"])
+            .expect_err("help subcommand should short-circuit through clap")
+            .to_string();
+        assert!(help_subcommand.contains("query"));
+        assert!(help_subcommand.contains("status"));
+        assert!(!help_subcommand.contains("admin"));
+        assert!(!help_subcommand.contains("--secret"));
+    }
+
+    #[test]
+    fn agent_surface_redaction_preserves_human_mode_surface() {
+        let _guard = env_lock();
+        set_tokens(None, None);
+        let spec = spec();
+
+        let admin = parse_with_agent_surface_from::<AgentTestCli, _>(
+            &spec,
+            ["tool", "admin", "--danger"],
+        )
+        .expect("human mode should keep the full command tree");
+        assert_eq!(
+            admin,
+            AgentDispatch::Cli(AgentTestCli {
+                command: Some(AgentTestCommand::Admin(AdminArgs { danger: true })),
+            })
+        );
+
+        let query = parse_with_agent_surface_from::<AgentTestCli, _>(
+            &spec,
+            ["tool", "query", "--secret"],
+        )
+        .expect("human mode should keep hidden flags available");
+        assert_eq!(
+            query,
+            AgentDispatch::Cli(AgentTestCli {
+                command: Some(AgentTestCommand::Query(QueryArgs {
+                    limit: None,
+                    offset: None,
+                    secret: true,
+                })),
+            })
+        );
+    }
+
+    #[test]
+    fn agent_surface_redaction_agent_flags_short_circuit() {
+        let _guard = env_lock();
+        set_tokens(Some("shared-token"), Some("shared-token"));
+        let spec = spec();
+
+        let help = parse_with_agent_surface_from::<AgentTestCli, _>(&spec, ["tool", "--agent-help"])
+            .expect("agent help should print and exit");
+        assert_eq!(help, AgentDispatch::Printed(0));
+
+        let skill = parse_with_agent_surface_from::<AgentTestCli, _>(
+            &spec,
+            ["tool", "--agent-skill", "query-posts"],
+        )
+        .expect("agent skill should print and exit");
+        assert_eq!(skill, AgentDispatch::Printed(0));
     }
 }
