@@ -185,6 +185,15 @@ pub fn parse_args_from(args: Vec<String>) -> Result<AppMode, String> {
         },
     };
 
+    resolve_app_mode(cli)
+}
+
+/// Resolve a parsed [`Cli`] value into the executable [`AppMode`].
+///
+/// # Errors
+///
+/// Returns an error if command-specific argument normalization fails.
+pub fn resolve_app_mode(cli: Cli) -> Result<AppMode, String> {
     match cli.command {
         Commands::Version => Ok(AppMode::Version { json: cli.json }),
         Commands::License => Ok(AppMode::License),

@@ -2,15 +2,14 @@
 //!
 //! Main entry point for the prompter command-line tool.
 
-use std::env;
-
-use clap::Parser;
 use prompter::{
-    AppMode, Cli, init_scaffold, parse_args_from, run_list_stdout, run_render_stdout,
+    AppMode, Cli, init_scaffold, resolve_app_mode, run_list_stdout, run_render_stdout,
     run_tree_stdout, run_validate_stdout,
 };
 use tftio_cli_common::{
-    LicenseType, StandardCommand, ToolSpec, command::run_standard_command, workspace_tool,
+    AgentCapability, AgentDispatch, AgentSurfaceSpec, CommandSelector, LicenseType,
+    StandardCommand, ToolSpec, command::run_standard_command, parse_with_agent_surface_from,
+    workspace_tool,
 };
 
 mod doctor;
@@ -23,26 +22,45 @@ const TOOL_SPEC: ToolSpec = workspace_tool(
     true,
     true,
     false,
-);
+)
+.with_agent_surface(&AGENT_SURFACE);
 
-fn parse_args() -> Result<AppMode, String> {
-    let args: Vec<String> = env::args().collect();
-    parse_args_from(args)
-}
+const RENDER_PROMPTS_COMMAND: CommandSelector = CommandSelector::new(&["run"]);
+const LIST_PROFILES_COMMAND: CommandSelector = CommandSelector::new(&["list"]);
+const TREE_PROFILES_COMMAND: CommandSelector = CommandSelector::new(&["tree"]);
+const VALIDATE_PROFILES_COMMAND: CommandSelector = CommandSelector::new(&["validate"]);
+
+const RENDER_PROMPTS_CAPABILITY: AgentCapability =
+    AgentCapability::minimal("render-prompts", &[RENDER_PROMPTS_COMMAND], &[]);
+const LIST_PROFILES_CAPABILITY: AgentCapability =
+    AgentCapability::minimal("list-profiles", &[LIST_PROFILES_COMMAND], &[]);
+const TREE_PROFILES_CAPABILITY: AgentCapability =
+    AgentCapability::minimal("tree-profiles", &[TREE_PROFILES_COMMAND], &[]);
+const VALIDATE_PROFILES_CAPABILITY: AgentCapability =
+    AgentCapability::minimal("validate-profiles", &[VALIDATE_PROFILES_COMMAND], &[]);
+
+const AGENT_SURFACE: AgentSurfaceSpec = AgentSurfaceSpec::new(&[
+    RENDER_PROMPTS_CAPABILITY,
+    LIST_PROFILES_CAPABILITY,
+    TREE_PROFILES_CAPABILITY,
+    VALIDATE_PROFILES_CAPABILITY,
+]);
 
 fn main() {
-    let mode = match parse_args() {
-        Ok(m) => m,
-        Err(e) => {
-            eprintln!("{e}");
-            std::process::exit(2);
-        }
+    let mode = match parse_with_agent_surface_from::<Cli, _>(&TOOL_SPEC, std::env::args_os()) {
+        Ok(AgentDispatch::Cli(cli)) => match resolve_app_mode(cli) {
+            Ok(mode) => mode,
+            Err(error) => {
+                eprintln!("{error}");
+                std::process::exit(2);
+            }
+        },
+        Ok(AgentDispatch::Printed(code)) => std::process::exit(code),
+        Err(error) => error.exit(),
     };
 
     match mode {
-        AppMode::Help => {
-            Cli::parse_from(["prompter", "--help"]);
-        }
+        AppMode::Help => unreachable!("help exits during clap parsing"),
         AppMode::Version { json } => {
             let _ = run_standard_command::<Cli, doctor::PrompterDoctor>(
                 &TOOL_SPEC,
