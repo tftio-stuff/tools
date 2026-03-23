@@ -82,7 +82,7 @@ Plans:
 Plans:
 - [x] 07-01-PLAN.md — define shared cli-common agent-mode contracts, env vars, and capability policy types
 - [x] 07-02-PLAN.md — implement shared filtered parse/help/completion pipeline plus agent renderers
-- [ ] 07-03-PLAN.md — migrate `bce` and `gator` to the shared restricted agent surface
+- [x] 07-03-PLAN.md — migrate `bce` and `gator` to the shared restricted agent surface
 - [x] 07-04-PLAN.md — migrate `todoer` and `unvenv` to the shared restricted agent surface
-- [ ] 07-05-PLAN.md — migrate `asana-cli` and `silent-critic` to the shared restricted agent surface
+- [x] 07-05-PLAN.md — migrate `asana-cli` and `silent-critic` to the shared restricted agent surface
 - [ ] 07-06-PLAN.md — adapt `prompter` and restore workspace-wide agent-mode consistency checks

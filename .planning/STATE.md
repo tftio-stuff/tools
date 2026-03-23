@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 07-04-PLAN.md
-last_updated: "2026-03-23T14:05:56.938Z"
+stopped_at: Completed 07-03-PLAN.md
+last_updated: "2026-03-23T14:07:23.079Z"
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 6
-  completed_plans: 3
+  completed_plans: 5
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 ## Current Position
 
 Phase: 07 (workspace-agent-mode-in-cli-common-token-gated-restricted-capability-surface-inspectable-agent-help-and-shared-agent-skill-support-across-tools) — EXECUTING
-Plan: 4 of 6
+Plan: 6 of 6
 
 ## Completed Milestones
 
@@ -112,6 +112,12 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 07]: Todoer declares its agent-visible workflows on TOOL_SPEC and uses parse_with_agent_surface for shared help/skill rendering.
 - [Phase 07]: Unvenv agent mode exposes only scan-venvs; version, license, completions, doctor, and update remain human-only.
 - [Phase 07]: cli-common filtering now owns recursive subcommand path segments before descending into nested filtered commands.
+- [Phase 07]: 07-05: asana-cli exposes only declared operational capability groups through parse_with_agent_surface.
+- [Phase 07]: 07-05: silent-critic agent mode exposes only session-status, session-manifest, and session-submit while SILENT_CRITIC_TOKEN remains the runtime worker auth gate.
+- [Phase 07]: 07-05: cli-common now preserves full descendant subtrees when a capability explicitly selects a grouped command path.
+- [Phase 07]: bce exposes only query-posts in agent mode while fetch stays outside the restricted surface.
+- [Phase 07]: gator models agent mode as a root launch capability and hides meta plus privileged flags.
+- [Phase 07]: cli-common retains root positionals only when a capability explicitly targets the root command path.
 
 ## Performance Metrics
 
@@ -120,6 +126,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 | 07 | 01 | 13m | 2 | 3 | 2026-03-23 |
 | Phase 07 P02 | 3m | 3 tasks | 4 files |
 | Phase 07 P04 | 2m 57s | 3 tasks | 5 files |
+| Phase 07 P05 | 4m17s | 3 tasks | 5 files |
+| Phase 07 P03 | 5m 13s | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -141,6 +149,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-23T14:05:56.936Z
-Stopped at: Completed 07-04-PLAN.md
+Last session: 2026-03-23T14:07:23.076Z
+Stopped at: Completed 07-03-PLAN.md
 Resume file: None
