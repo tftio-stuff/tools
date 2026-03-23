@@ -223,7 +223,6 @@ pub fn apply_agent_surface(command: &mut Command, spec: &ToolSpec, ctx: &AgentMo
 
     let filtered = filter_command(
         command,
-        spec.bin_name,
         spec.version,
         visible_capabilities(spec, ctx),
         &[],
@@ -233,32 +232,48 @@ pub fn apply_agent_surface(command: &mut Command, spec: &ToolSpec, ctx: &AgentMo
 
 fn filter_command(
     command: &Command,
-    name: &'static str,
     version: &'static str,
     capabilities: &[AgentCapability],
     current_path: &[&str],
 ) -> Command {
+    let keep_full_subtree = is_within_explicit_command_subtree(capabilities, current_path);
     let allowed_flags = allowed_flags(capabilities, current_path);
-    let allowed_subcommands = allowed_subcommands(capabilities, current_path);
-    let mut filtered = clone_command_metadata(command, name, version, current_path.is_empty());
+    let mut filtered = clone_command_metadata(command, version, current_path.is_empty());
 
     for arg in command
         .get_arguments()
-        .filter(|arg| should_keep_arg(arg, current_path, &allowed_flags))
+        .filter(|arg| {
+            should_keep_arg(arg, capabilities, current_path, &allowed_flags, keep_full_subtree)
+        })
         .cloned()
     {
         filtered = filtered.arg(arg);
     }
 
-    for subcommand_name in &allowed_subcommands {
-        if let Some(subcommand) = command.find_subcommand(subcommand_name) {
-            let next_path = extend_path(current_path, subcommand_name);
+    if keep_full_subtree {
+        for subcommand in command.get_subcommands() {
+            let subcommand_name = subcommand.get_name();
+            let next_path = extend_path_owned(current_path, subcommand_name);
+            let next_path_refs = next_path.iter().map(String::as_str).collect::<Vec<_>>();
             filtered = filtered.subcommand(filter_command(
                 subcommand,
-                subcommand_name,
                 version,
                 capabilities,
-                &next_path,
+                &next_path_refs,
+            ));
+        }
+        return filtered;
+    }
+
+    for subcommand_name in allowed_subcommands(capabilities, current_path) {
+        if let Some(subcommand) = command.find_subcommand(subcommand_name) {
+            let next_path = extend_path_owned(current_path, subcommand_name);
+            let next_path_refs = next_path.iter().map(String::as_str).collect::<Vec<_>>();
+            filtered = filtered.subcommand(filter_command(
+                subcommand,
+                version,
+                capabilities,
+                &next_path_refs,
             ));
         }
     }
@@ -268,10 +283,10 @@ fn filter_command(
 
 fn clone_command_metadata(
     command: &Command,
-    name: &'static str,
     version: &'static str,
     include_version: bool,
 ) -> Command {
+    let name: &'static str = Box::leak(command.get_name().to_owned().into_boxed_str());
     let mut filtered = Command::new(name);
 
     if let Some(display_name) = command.get_display_name() {
@@ -345,17 +360,50 @@ fn allowed_subcommands(
     subcommands
 }
 
-fn should_keep_arg(arg: &Arg, current_path: &[&str], allowed_flags: &BTreeSet<&str>) -> bool {
+fn is_within_explicit_command_subtree(
+    capabilities: &[AgentCapability],
+    current_path: &[&str],
+) -> bool {
+    capabilities.iter().any(|capability| {
+        capability.commands.iter().any(|selector| {
+            !selector.path.is_empty()
+                && selector.path.len() <= current_path.len()
+                && current_path.starts_with(selector.path)
+        })
+    })
+}
+
+fn should_keep_arg(
+    arg: &Arg,
+    capabilities: &[AgentCapability],
+    current_path: &[&str],
+    allowed_flags: &BTreeSet<&str>,
+    keep_full_subtree: bool,
+) -> bool {
     if is_shared_agent_flag(arg) {
         return true;
     }
 
     if arg.is_positional() {
-        return !current_path.is_empty();
+        return capability_includes_command_path(capabilities, current_path);
+    }
+
+    if keep_full_subtree {
+        return true;
     }
 
     arg.get_long()
         .is_some_and(|long| allowed_flags.contains(long))
+}
+
+fn capability_includes_command_path(
+    capabilities: &[AgentCapability],
+    current_path: &[&str],
+) -> bool {
+    capabilities
+        .iter()
+        .flat_map(|capability| capability.commands.iter())
+        .any(|selector| selector.path == current_path)
 }
 
 fn is_shared_agent_flag(arg: &Arg) -> bool {
@@ -392,9 +440,12 @@ fn ensure_agent_inspection_args(command: &mut Command) {
     }
 }
 
-fn extend_path<'a>(current_path: &[&'a str], segment: &'a str) -> Vec<&'a str> {
-    let mut next_path = current_path.to_vec();
-    next_path.push(segment);
+fn extend_path_owned(current_path: &[&str], segment: &str) -> Vec<String> {
+    let mut next_path = current_path
+        .iter()
+        .map(|part| (*part).to_owned())
+        .collect::<Vec<_>>();
+    next_path.push(segment.to_owned());
     next_path
 }
 
@@ -593,11 +644,12 @@ fn render_surface_arguments(capabilities: &[AgentCapability]) -> String {
             lines.push(format!("- command {}", command.path.join(" ")));
         }
         for flag in capability.flags {
-            lines.push(format!(
-                "- {} --{}",
-                flag.command_path.join(" "),
-                flag.long
-            ));
+            let prefix = if flag.command_path.is_empty() {
+                String::new()
+            } else {
+                format!("{} ", flag.command_path.join(" "))
+            };
+            lines.push(format!("- {prefix}--{}", flag.long));
         }
     }
 
@@ -624,7 +676,13 @@ fn render_flag_lines(capability: &AgentCapability) -> String {
         capability
             .flags
             .iter()
-            .map(|selector| format!("- {} --{}", selector.command_path.join(" "), selector.long))
+            .map(|selector| {
+                if selector.command_path.is_empty() {
+                    format!("- --{}", selector.long)
+                } else {
+                    format!("- {} --{}", selector.command_path.join(" "), selector.long)
+                }
+            })
             .collect::<Vec<_>>()
             .join("\n")
     }
