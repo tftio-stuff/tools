@@ -6,11 +6,12 @@ use clap::{CommandFactory, FromArgMatches};
 use clap_complete::Shell;
 
 use crate::{
-    AgentDispatch, AgentModeContext, CompletionOutput, DoctorChecks, ToolSpec,
-    apply_agent_surface, display_license, generate_completions_from_command,
-    parse_with_agent_surface, parse_with_agent_surface_from, render_completion_from_command,
-    run_doctor, update,
+    AgentDispatch, AgentModeContext, DoctorChecks, ToolSpec, apply_agent_surface,
+    display_license, generate_completions_from_command, parse_with_agent_surface,
+    parse_with_agent_surface_from, run_doctor, update,
 };
+#[cfg(test)]
+use crate::{CompletionOutput, render_completion_from_command};
 
 /// Shared doctorless adapter for tools that do not expose a doctor command.
 pub struct NoDoctor;
@@ -181,6 +182,7 @@ where
     command
 }
 
+#[cfg(test)]
 fn render_standard_completion_for_command<T>(spec: &ToolSpec, shell: Shell) -> CompletionOutput
 where
     T: CommandFactory,
