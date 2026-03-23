@@ -224,6 +224,19 @@ mod tests {
     use super::*;
     use clap::Parser;
 
+    fn missing_db_path() -> PathBuf {
+        let mut path = std::env::temp_dir();
+        path.push(format!(
+            "bce-missing-db-{}-{}.sqlite",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time should be after unix epoch")
+                .as_nanos()
+        ));
+        path
+    }
+
     #[test]
     fn test_make_spinner_quiet() {
         assert!(make_spinner(true, "alice.bsky.social").is_none());
@@ -247,7 +260,13 @@ mod tests {
 
     #[test]
     fn run_returns_success_for_query_command() {
-        let cli = Cli::parse_from(["bce", "query"]);
+        let missing_db = missing_db_path();
+        let cli = Cli::parse_from([
+            "bce",
+            "query",
+            "--db",
+            missing_db.to_str().expect("temp path should be valid UTF-8"),
+        ]);
         assert_eq!(run(cli), 1);
     }
 

@@ -236,7 +236,11 @@ fn filter_command(
     capabilities: &[AgentCapability],
     current_path: &[&str],
 ) -> Command {
-    let keep_full_subtree = is_within_explicit_command_subtree(capabilities, current_path);
+    let keep_full_subtree = is_within_explicit_command_subtree(
+        capabilities,
+        current_path,
+        command.has_subcommands(),
+    );
     let allowed_flags = allowed_flags(capabilities, current_path);
     let mut filtered = clone_command_metadata(command, version, current_path.is_empty());
 
@@ -363,12 +367,14 @@ fn allowed_subcommands(
 fn is_within_explicit_command_subtree(
     capabilities: &[AgentCapability],
     current_path: &[&str],
+    command_has_subcommands: bool,
 ) -> bool {
     capabilities.iter().any(|capability| {
         capability.commands.iter().any(|selector| {
             !selector.path.is_empty()
-                && selector.path.len() <= current_path.len()
                 && current_path.starts_with(selector.path)
+                && (selector.path.len() < current_path.len()
+                    || (selector.path.len() == current_path.len() && command_has_subcommands))
         })
     })
 }
@@ -464,6 +470,7 @@ where
     I::Item: Into<OsString> + Clone,
 {
     let ctx = AgentModeContext::detect();
+    let argv = rewrite_trailing_help_subcommand(argv.into_iter().map(Into::into).collect());
     let mut command = T::command();
     ensure_agent_inspection_args(&mut command);
 
@@ -489,6 +496,15 @@ where
         }
         Err(error) => Err(sanitize_agent_parse_error(error)),
     }
+}
+
+fn rewrite_trailing_help_subcommand(mut argv: Vec<OsString>) -> Vec<OsString> {
+    if argv.last().is_some_and(|arg| arg == "help") {
+        argv.pop();
+        argv.push(OsString::from("--help"));
+    }
+
+    argv
 }
 
 /// Parse process argv against the normal or agent-filtered surface for a clap CLI.
@@ -690,14 +706,10 @@ fn render_flag_lines(capability: &AgentCapability) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{Mutex, OnceLock};
-
     use clap::{Arg, Args, Command, Parser, Subcommand};
 
     use super::*;
-    use crate::{LicenseType, RepoInfo, ToolSpec};
-
-    static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    use crate::{LicenseType, RepoInfo, ToolSpec, test_support::env_lock};
 
     const QUERY_COMMAND: CommandSelector = CommandSelector::new(&["query"]);
     const STATUS_COMMAND: CommandSelector = CommandSelector::new(&["status"]);
@@ -751,13 +763,6 @@ mod tests {
             true,
         )
         .with_agent_surface(&MINIMAL_AGENT_SURFACE)
-    }
-
-    fn env_lock() -> std::sync::MutexGuard<'static, ()> {
-        ENV_LOCK
-            .get_or_init(|| Mutex::new(()))
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     #[allow(unsafe_code)]

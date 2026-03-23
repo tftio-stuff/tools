@@ -370,17 +370,14 @@ macro_rules! impl_standard_command_map {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{Mutex, OnceLock};
-
     use clap::{Parser, Subcommand};
 
     use super::*;
     use crate::{
         AGENT_TOKEN_ENV, AGENT_TOKEN_EXPECTED_ENV, AgentCapability, AgentDispatch,
-        AgentSurfaceSpec, CommandSelector, FlagSelector, LicenseType, RepoInfo, workspace_tool,
+        AgentSurfaceSpec, CommandSelector, FlagSelector, LicenseType, RepoInfo,
+        test_support::env_lock, workspace_tool,
     };
-
-    static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
     const QUERY_COMMAND: CommandSelector = CommandSelector::new(&["query"]);
     const QUERY_LIMIT_FLAG: FlagSelector = FlagSelector::new(&["query"], "limit");
@@ -457,13 +454,6 @@ mod tests {
     fn agent_spec() -> ToolSpec {
         workspace_tool("tool", "Tool", "1.2.3", LicenseType::MIT, true, true, true)
             .with_agent_surface(&AGENT_SURFACE)
-    }
-
-    fn env_lock() -> std::sync::MutexGuard<'static, ()> {
-        ENV_LOCK
-            .get_or_init(|| Mutex::new(()))
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     #[allow(unsafe_code)]
