@@ -14,7 +14,6 @@ use crate::error::Result;
 use anyhow::{Context, anyhow};
 use clap::{Parser, Subcommand};
 use clap_complete::Shell;
-use colored::Colorize;
 use custom_field::CustomFieldCommand;
 use project::ProjectCommand;
 use secrecy::SecretString;
@@ -29,7 +28,8 @@ use tftio_cli_common::{
     AgentArgument, AgentCommand, AgentConfigFile, AgentDoc, AgentDocRequest,
     AgentEnvironmentVar, AgentExample, AgentFailureMode, AgentOperatorMistake, AgentOutputShape,
     AgentPath, AgentSection, AgentTool, AgentUsage, DoctorCheck, DoctorChecks, LicenseType,
-    RepoInfo, render_agent_help_yaml, render_agent_skill,
+    RepoInfo, StandardCommand, ToolSpec, command::run_standard_command, render_agent_help_yaml,
+    render_agent_skill, workspace_tool,
 };
 use tokio::runtime::Builder as RuntimeBuilder;
 use tracing::{debug, info};
@@ -42,6 +42,32 @@ const VERSION: &str = match option_env!("CARGO_PKG_VERSION") {
     Some(version) => version,
     None => "unknown",
 };
+
+struct AsanaCliDoctor;
+
+impl DoctorChecks for AsanaCliDoctor {
+    fn repo_info() -> RepoInfo {
+        RepoInfo::new("tftio-stuff", "tools")
+    }
+
+    fn current_version() -> &'static str {
+        VERSION
+    }
+
+    fn tool_checks(&self) -> Vec<DoctorCheck> {
+        crate::doctor::tool_specific_checks()
+    }
+}
+
+const TOOL_SPEC: ToolSpec = workspace_tool(
+    "asana-cli",
+    "Asana CLI",
+    VERSION,
+    LicenseType::MIT,
+    false,
+    true,
+    true,
+);
 
 #[derive(Parser, Debug)]
 #[command(name = "asana-cli")]
@@ -641,14 +667,16 @@ pub fn run() -> Result<i32> {
     );
 
     let exit_code = match cli.command {
-        Commands::Version => {
-            print_version();
-            0
-        }
-        Commands::License => {
-            print_license();
-            0
-        }
+        Commands::Version => run_standard_command::<Cli, AsanaCliDoctor>(
+            &TOOL_SPEC,
+            &StandardCommand::Version { json: false },
+            Some(&AsanaCliDoctor),
+        ),
+        Commands::License => run_standard_command::<Cli, AsanaCliDoctor>(
+            &TOOL_SPEC,
+            &StandardCommand::License,
+            Some(&AsanaCliDoctor),
+        ),
         Commands::Config { command } => {
             handle_config_command(command, &mut config)?;
             0
@@ -681,61 +709,40 @@ pub fn run() -> Result<i32> {
             handle_user_command(*command, &config)?;
             0
         }
-        Commands::Completions { shell } => {
-            tftio_cli_common::completions::generate_completions::<Cli>(shell);
-            0
-        }
+        Commands::Completions { shell } => run_standard_command::<Cli, AsanaCliDoctor>(
+            &TOOL_SPEC,
+            &StandardCommand::Completions { shell },
+            Some(&AsanaCliDoctor),
+        ),
         Commands::Manpage { dir } => {
             write_manpage(dir)?;
             0
         }
         Commands::Doctor => {
-            struct AsanaCliDoctor;
-
-            impl DoctorChecks for AsanaCliDoctor {
-                fn repo_info() -> RepoInfo {
-                    RepoInfo::new("tftio", "asana-cli")
-                }
-
-                fn current_version() -> &'static str {
-                    VERSION
-                }
-
-                fn tool_checks(&self) -> Vec<DoctorCheck> {
-                    crate::doctor::tool_specific_checks()
-                }
-            }
-
-            let tool = AsanaCliDoctor;
-            let exit = tftio_cli_common::doctor::run_doctor(&tool);
+            let exit = run_standard_command::<Cli, AsanaCliDoctor>(
+                &TOOL_SPEC,
+                &StandardCommand::Doctor,
+                Some(&AsanaCliDoctor),
+            );
             info!(exit_code = exit, "doctor command completed");
             exit
         }
         Commands::Update {
-            version: _,
-            force: _,
-            install_dir: _,
-        } => {
-            eprintln!(
-                "Self-update feature has been removed. Please install the latest version manually."
-            );
-            eprintln!("Visit: https://github.com/tftio/asana-cli/releases");
-            1
-        }
+            version,
+            force,
+            install_dir,
+        } => run_standard_command::<Cli, AsanaCliDoctor>(
+            &TOOL_SPEC,
+            &StandardCommand::Update {
+                version,
+                force,
+                install_dir,
+            },
+            Some(&AsanaCliDoctor),
+        ),
     };
 
     Ok(exit_code)
-}
-
-fn print_version() {
-    println!("{} {}", "asana-cli".green().bold(), VERSION);
-}
-
-fn print_license() {
-    println!(
-        "{}",
-        tftio_cli_common::license::display_license("asana-cli", LicenseType::MIT)
-    );
 }
 
 fn write_manpage(dir: Option<PathBuf>) -> Result<()> {

@@ -50,6 +50,7 @@ path = "src/main.rs"
 anyhow.workspace = true
 chrono = { workspace = true, features = ["serde", "clock"] }
 clap.workspace = true
+clap_complete.workspace = true
 dirs.workspace = true
 rusqlite.workspace = true
 serde.workspace = true

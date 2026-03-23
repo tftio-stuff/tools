@@ -160,7 +160,9 @@ pub fn load_policy(name: &str, workdir: &Path) -> Result<PolicyConfig, String> {
     }
 
     if let Some(home) = dirs::home_dir() {
-        let global_path = home.join(".config/gator/policies").join(format!("{name}.toml"));
+        let global_path = home
+            .join(".config/gator/policies")
+            .join(format!("{name}.toml"));
         if global_path.is_file() {
             let content = fs::read_to_string(&global_path)
                 .map_err(|e| format!("cannot read policy {}: {e}", global_path.display()))?;
@@ -239,7 +241,10 @@ mod tests {
         )
         .unwrap();
         let extras = load_safehouse_config(tmp.path());
-        assert_eq!(extras.rw, vec![PathBuf::from("/a/b"), PathBuf::from("/e/f")]);
+        assert_eq!(
+            extras.rw,
+            vec![PathBuf::from("/a/b"), PathBuf::from("/e/f")]
+        );
         assert_eq!(extras.ro, vec![PathBuf::from("/c/d")]);
     }
 
@@ -261,11 +266,7 @@ mod tests {
             rw: vec![PathBuf::from("/a")],
             ro: vec![PathBuf::from("/b")],
         };
-        let merged = merge_extra_dirs(
-            config,
-            &[PathBuf::from("/c")],
-            &[PathBuf::from("/d")],
-        );
+        let merged = merge_extra_dirs(config, &[PathBuf::from("/c")], &[PathBuf::from("/d")]);
         assert_eq!(merged.rw, vec![PathBuf::from("/a"), PathBuf::from("/c")]);
         assert_eq!(merged.ro, vec![PathBuf::from("/b"), PathBuf::from("/d")]);
     }

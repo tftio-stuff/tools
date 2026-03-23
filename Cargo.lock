@@ -2329,6 +2329,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
+ "clap_complete",
  "dateparser",
  "directories",
  "indicatif",
@@ -2351,7 +2352,9 @@ dependencies = [
  "clap",
  "clap_complete",
  "colored",
+ "indicatif",
  "is-terminal",
+ "serde_json",
 ]
 
 [[package]]
@@ -2359,6 +2362,7 @@ name = "tftio-gator"
 version = "0.2.1"
 dependencies = [
  "clap",
+ "clap_complete",
  "dirs",
  "git2",
  "serde",
@@ -2394,6 +2398,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
+ "clap_complete",
  "colored",
  "directories",
  "git2",
@@ -2415,6 +2420,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
+ "clap_complete",
  "dirs",
  "rusqlite",
  "serde",

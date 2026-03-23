@@ -10,11 +10,21 @@ use prompter::{
     run_tree_stdout, run_validate_stdout,
 };
 use tftio_cli_common::{
-    AgentDocRequest, LicenseType, detect_agent_doc_request, render_agent_help_yaml,
-    render_agent_skill,
+    AgentDocRequest, LicenseType, StandardCommand, ToolSpec, command::run_standard_command,
+    detect_agent_doc_request, render_agent_help_yaml, render_agent_skill, workspace_tool,
 };
 
 mod doctor;
+
+const TOOL_SPEC: ToolSpec = workspace_tool(
+    "prompter",
+    "Prompter",
+    env!("CARGO_PKG_VERSION"),
+    LicenseType::MIT,
+    true,
+    true,
+    false,
+);
 
 enum EntryPoint {
     AgentDoc(AgentDocRequest),
@@ -61,23 +71,32 @@ fn main() {
             Cli::parse_from(["prompter", "--help"]);
         }
         AppMode::Version { json } => {
-            if json {
-                println!(r#"{{"version":"{}"}}"#, env!("CARGO_PKG_VERSION"));
-            } else {
-                println!("prompter {}", env!("CARGO_PKG_VERSION"));
-            }
+            let _ = run_standard_command::<Cli, doctor::PrompterDoctor>(
+                &TOOL_SPEC,
+                &StandardCommand::Version { json },
+                Some(&doctor::PrompterDoctor),
+            );
         }
         AppMode::License => {
-            println!(
-                "{}",
-                tftio_cli_common::license::display_license("prompter", LicenseType::MIT)
+            let _ = run_standard_command::<Cli, doctor::PrompterDoctor>(
+                &TOOL_SPEC,
+                &StandardCommand::License,
+                Some(&doctor::PrompterDoctor),
             );
         }
         AppMode::Completions { shell } => {
             prompter::completions::generate(shell);
         }
         AppMode::Doctor { json } => {
-            let exit_code = doctor::run_doctor_with_json(json);
+            let exit_code = if json {
+                doctor::run_doctor(true)
+            } else {
+                run_standard_command::<Cli, doctor::PrompterDoctor>(
+                    &TOOL_SPEC,
+                    &StandardCommand::Doctor,
+                    Some(&doctor::PrompterDoctor),
+                )
+            };
             std::process::exit(exit_code);
         }
         AppMode::Init => {

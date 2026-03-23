@@ -15,10 +15,11 @@ use std::{
     process,
 };
 use tftio_cli_common::{
-    AgentArgument, AgentCommand, AgentConfigFile, AgentDoc, AgentDocRequest,
-    AgentExample, AgentFailureMode, AgentOperatorMistake, AgentOutputShape, AgentPath,
-    AgentSection, AgentTool, AgentUsage, DoctorCheck, DoctorChecks, LicenseType, RepoInfo,
-    detect_agent_doc_request, render_agent_help_yaml, render_agent_skill,
+    AgentArgument, AgentCommand, AgentConfigFile, AgentDoc, AgentDocRequest, AgentExample,
+    AgentFailureMode, AgentOperatorMistake, AgentOutputShape, AgentPath, AgentSection, AgentTool,
+    AgentUsage, DoctorCheck, DoctorChecks, LicenseType, RepoInfo, StandardCommand, ToolSpec,
+    command::run_standard_command, detect_agent_doc_request, render_agent_help_yaml,
+    render_agent_skill, run_with_display_error_handler, workspace_tool,
 };
 use walkdir::WalkDir;
 
@@ -114,26 +115,29 @@ impl DoctorChecks for UnvenvTool {
     }
 }
 
+const TOOL_SPEC: ToolSpec = workspace_tool(
+    "unvenv",
+    "unvenv",
+    VERSION,
+    LicenseType::MIT,
+    false,
+    true,
+    true,
+);
+
 fn main() {
-    let exit_code = match run() {
-        Ok(code) => code,
-        Err(e) => {
-            eprintln!("{} {}", "Error:".red().bold(), e);
-            1
-        }
-    };
+    if let Some(request) = detect_agent_doc_request(std::env::args_os()) {
+        print_agent_doc(request);
+        process::exit(0);
+    }
+
+    let cli = Cli::parse();
+    let is_tty = tftio_cli_common::output::is_tty();
+    let exit_code = run_with_display_error_handler("unvenv", false, || run(cli, is_tty));
     process::exit(exit_code);
 }
 
-fn run() -> Result<i32> {
-    let raw_args = std::env::args_os().collect::<Vec<_>>();
-    if let Some(request) = detect_agent_doc_request(&raw_args) {
-        print_agent_doc(request);
-        return Ok(0);
-    }
-
-    let cli = Cli::parse_from(raw_args);
-
+fn run(cli: Cli, is_tty: bool) -> Result<i32> {
     if cli.agent_help {
         print_agent_doc(AgentDocRequest::Help);
         return Ok(0);
@@ -144,44 +148,45 @@ fn run() -> Result<i32> {
         return Ok(0);
     }
 
-    // Check if stdout is a TTY for decoration
-    let is_tty = tftio_cli_common::output::is_tty();
+    let tool = UnvenvTool;
 
     match cli.command {
-        Some(Commands::Version) => {
-            if is_tty {
-                println!("{} {}", "unvenv".green().bold(), VERSION);
-            } else {
-                println!("unvenv {VERSION}");
-            }
-            Ok(0)
-        }
-        Some(Commands::License) => {
-            println!(
-                "{}",
-                tftio_cli_common::license::display_license("unvenv", LicenseType::MIT)
-            );
-            Ok(0)
-        }
+        Some(Commands::Version) => Ok(run_standard_command::<Cli, UnvenvTool>(
+            &TOOL_SPEC,
+            &StandardCommand::Version { json: false },
+            Some(&tool),
+        )),
+        Some(Commands::License) => Ok(run_standard_command::<Cli, UnvenvTool>(
+            &TOOL_SPEC,
+            &StandardCommand::License,
+            Some(&tool),
+        )),
         Some(Commands::Scan) | None => {
             // Default behavior: scan for venv files
             scan_for_venvs(is_tty)
         }
-        Some(Commands::Completions { shell }) => {
-            tftio_cli_common::completions::generate_completions::<Cli>(shell);
-            Ok(0)
-        }
-        Some(Commands::Doctor) => Ok(tftio_cli_common::doctor::run_doctor(&UnvenvTool)),
+        Some(Commands::Completions { shell }) => Ok(run_standard_command::<Cli, UnvenvTool>(
+            &TOOL_SPEC,
+            &StandardCommand::Completions { shell },
+            Some(&tool),
+        )),
+        Some(Commands::Doctor) => Ok(run_standard_command::<Cli, UnvenvTool>(
+            &TOOL_SPEC,
+            &StandardCommand::Doctor,
+            Some(&tool),
+        )),
         Some(Commands::Update {
             version,
             force,
             install_dir,
-        }) => Ok(tftio_cli_common::update::run_update(
-            &UnvenvTool::repo_info(),
-            UnvenvTool::current_version(),
-            version.as_deref(),
-            force,
-            install_dir.as_deref(),
+        }) => Ok(run_standard_command::<Cli, UnvenvTool>(
+            &TOOL_SPEC,
+            &StandardCommand::Update {
+                version,
+                force,
+                install_dir,
+            },
+            Some(&tool),
         )),
     }
 }

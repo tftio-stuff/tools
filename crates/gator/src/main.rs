@@ -1,40 +1,89 @@
 //! Gator CLI entrypoint.
 
 use clap::Parser;
-use gator::cli::Cli;
+use gator::cli::{Cli, Command, MetaCommand};
 use tftio_cli_common::{
     AgentArgument, AgentCommand, AgentConfigFile, AgentDoc, AgentDocRequest,
     AgentEnvironmentVar, AgentExample, AgentFailureMode, AgentOperatorMistake, AgentOutputShape,
-    AgentPath, AgentSection, AgentTool, AgentUsage, detect_agent_doc_request,
-    render_agent_help_yaml, render_agent_skill,
+    AgentPath, AgentSection, AgentTool, AgentUsage, FatalCliError, LicenseType, StandardCommand,
+    StandardCommandMap, ToolSpec, command::maybe_run_standard_command_no_doctor,
+    detect_agent_doc_request, error::fatal_error, parse_and_exit, render_agent_help_yaml,
+    render_agent_skill, workspace_tool,
 };
 
+const TOOL_SPEC: ToolSpec = workspace_tool(
+    "gator",
+    "Gator",
+    env!("CARGO_PKG_VERSION"),
+    LicenseType::MIT,
+    true,
+    false,
+    false,
+);
+
 fn main() {
-    let raw_args = std::env::args_os().collect::<Vec<_>>();
-    if let Some(request) = detect_agent_doc_request(&raw_args) {
+    if let Some(request) = detect_agent_doc_request(std::env::args_os()) {
         print_agent_doc(request);
         std::process::exit(0);
     }
 
-    let cli = Cli::parse_from(raw_args);
-    let json = cli.json;
+    parse_and_exit(Cli::parse, |cli| run(&cli));
+}
 
-    if let Err(e) = cli.validate() {
-        if json {
-            eprintln!(r#"{{"error":"{}"}}"#, e.replace('"', "\\\""));
-        } else {
-            eprintln!("gator: {e}");
-        }
-        std::process::exit(1);
+fn run(cli: &Cli) -> Result<i32, FatalCliError> {
+    let json = cli.json;
+    let meta_command = metadata_command(cli.command.as_ref());
+
+    if let Some(exit_code) =
+        maybe_run_standard_command_no_doctor::<Cli, _>(&TOOL_SPEC, meta_command.as_ref(), json)
+    {
+        return Ok(exit_code);
     }
 
-    if let Err(e) = gator::run(&cli) {
-        if json {
-            eprintln!(r#"{{"error":"{}"}}"#, e.replace('"', "\\\""));
-        } else {
-            eprintln!("gator: {e}");
+    cli.validate()
+        .map_err(|error| fatal_error("error", json, error))?;
+    gator::run(cli).map_err(|error| fatal_error("error", json, error))?;
+    Ok(0)
+}
+
+#[derive(Clone, Copy)]
+struct GatorMetaCommand<'a>(&'a MetaCommand);
+
+impl StandardCommandMap for GatorMetaCommand<'_> {
+    fn to_standard_command(&self, json: bool) -> StandardCommand {
+        match self.0 {
+            MetaCommand::Version => StandardCommand::Version { json },
+            MetaCommand::License => StandardCommand::License,
+            MetaCommand::Completions { shell } => StandardCommand::Completions { shell: *shell },
         }
-        std::process::exit(1);
+    }
+}
+
+fn metadata_command(command: Option<&Command>) -> Option<GatorMetaCommand<'_>> {
+    command.map(|Command::Meta { command }| GatorMetaCommand(command))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn metadata_command_extracts_meta_subcommand() {
+        let command = Command::Meta {
+            command: MetaCommand::Version,
+        };
+        let metadata = metadata_command(Some(&command)).expect("meta command should extract");
+
+        assert!(matches!(metadata.0, MetaCommand::Version));
+    }
+
+    #[test]
+    fn run_returns_fatal_error_for_invalid_cli() {
+        let cli = Cli::parse_from(["gator", "claude", "--session=abc", "--workdir=/tmp"]);
+        let error = run(&cli).expect_err("invalid cli should produce a fatal error");
+
+        assert_eq!(error.command(), "error");
+        assert_eq!(error.message(), "--session is incompatible with: --workdir");
     }
 }
 

@@ -7,7 +7,10 @@ use tftio_cli_common::{
 };
 
 #[derive(Parser, Debug)]
-#[command(name = "silent-critic", about = "Supervision framework for agentic software development")]
+#[command(
+    name = "silent-critic",
+    about = "Supervision framework for agentic software development"
+)]
 pub struct Cli {
     /// Output JSON instead of plain text
     #[arg(long, global = true)]
@@ -19,6 +22,11 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
+    /// Shared metadata commands
+    Meta {
+        #[command(subcommand)]
+        command: MetaCommand,
+    },
     /// Project management
     Project {
         #[command(subcommand)]
@@ -105,7 +113,6 @@ pub enum CriterionCommand {
         /// JSON schema for parameters
         #[arg(long)]
         parameter_schema: Option<String>,
-
     },
     /// List criteria
     List {
@@ -767,9 +774,23 @@ fn router_command(name: &str, summary: &str, usage: &str) -> AgentCommand {
     }
 }
 
+#[derive(Subcommand, Debug)]
+pub enum MetaCommand {
+    /// Show version information
+    Version,
+    /// Show license information
+    License,
+    /// Generate shell completions
+    Completions {
+        /// Shell to generate completions for
+        shell: clap_complete::Shell,
+    },
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::Parser;
     use tftio_cli_common::agent_docs::{assert_argument_coverage, assert_command_coverage};
 
     #[test]
@@ -787,6 +808,10 @@ mod tests {
             "criterion update",
             "decide",
             "log",
+            "meta",
+            "meta completions",
+            "meta license",
+            "meta version",
             "project",
             "project init",
             "session",
@@ -856,5 +881,15 @@ mod tests {
             &[],
         );
         assert_argument_coverage::<Cli>(&["log"], &["format"], &["contract"], &[]);
+    }
+
+    #[test]
+    fn parse_meta_version_with_global_json() {
+        let cli = Cli::parse_from(["silent-critic", "--json", "meta", "version"]);
+        assert!(cli.json);
+        match cli.command {
+            Command::Meta { command } => assert!(matches!(command, MetaCommand::Version)),
+            _ => panic!("expected meta command"),
+        }
     }
 }

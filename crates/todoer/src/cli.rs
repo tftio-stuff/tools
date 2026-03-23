@@ -15,6 +15,10 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
+    Meta {
+        #[command(subcommand)]
+        command: MetaCommand,
+    },
     Init {
         #[arg(long)]
         project: Option<String>,
@@ -488,6 +492,10 @@ mod tests {
         assert_command_coverage::<Cli>(&[
             "init",
             "list",
+            "meta",
+            "meta completions",
+            "meta license",
+            "meta version",
             "new",
             "task",
             "task note",
@@ -526,4 +534,16 @@ mod tests {
             &[],
         );
     }
+}
+
+#[derive(Subcommand, Debug)]
+pub enum MetaCommand {
+    Version {
+        #[arg(long)]
+        json: bool,
+    },
+    License,
+    Completions {
+        shell: clap_complete::Shell,
+    },
 }

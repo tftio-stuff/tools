@@ -12,8 +12,8 @@ pub fn open_db(path: &Path) -> Result<Connection> {
         std::fs::create_dir_all(parent)
             .with_context(|| format!("creating db directory: {}", parent.display()))?;
     }
-    let conn = Connection::open(path)
-        .with_context(|| format!("opening database: {}", path.display()))?;
+    let conn =
+        Connection::open(path).with_context(|| format!("opening database: {}", path.display()))?;
     conn.execute_batch(
         "PRAGMA foreign_keys = ON;
          PRAGMA journal_mode = WAL;",
@@ -134,15 +134,19 @@ pub fn init_db(conn: &Connection) -> Result<()> {
 pub fn insert_project(conn: &Connection, project: &Project) -> Result<()> {
     conn.execute(
         "INSERT INTO projects (id, name, repo_hash, created_at) VALUES (?1, ?2, ?3, ?4)",
-        params![project.id, project.name, project.repo_hash, project.created_at],
+        params![
+            project.id,
+            project.name,
+            project.repo_hash,
+            project.created_at
+        ],
     )?;
     Ok(())
 }
 
 pub fn get_project_by_repo_hash(conn: &Connection, repo_hash: &str) -> Result<Option<Project>> {
-    let mut stmt = conn.prepare(
-        "SELECT id, name, repo_hash, created_at FROM projects WHERE repo_hash = ?1",
-    )?;
+    let mut stmt =
+        conn.prepare("SELECT id, name, repo_hash, created_at FROM projects WHERE repo_hash = ?1")?;
     let mut rows = stmt.query(params![repo_hash])?;
     if let Some(row) = rows.next()? {
         Ok(Some(Project {
@@ -334,19 +338,11 @@ pub fn get_session_by_token(conn: &Connection, token: &str) -> Result<Option<Ses
     }
 }
 
-pub fn transition_session(
-    conn: &Connection,
-    id: &str,
-    new_status: &SessionStatus,
-) -> Result<()> {
-    let session = get_session(conn, id)?
-        .ok_or_else(|| anyhow::anyhow!("session not found: {id}"))?;
+pub fn transition_session(conn: &Connection, id: &str, new_status: &SessionStatus) -> Result<()> {
+    let session =
+        get_session(conn, id)?.ok_or_else(|| anyhow::anyhow!("session not found: {id}"))?;
     if !session.status.can_transition_to(new_status) {
-        bail!(
-            "invalid transition: {} -> {}",
-            session.status,
-            new_status
-        );
+        bail!("invalid transition: {} -> {}", session.status, new_status);
     }
     conn.execute(
         "UPDATE sessions SET status = ?2 WHERE id = ?1",
@@ -355,7 +351,11 @@ pub fn transition_session(
     Ok(())
 }
 
-pub fn update_session_contract(conn: &Connection, session_id: &str, contract_id: &str) -> Result<()> {
+pub fn update_session_contract(
+    conn: &Connection,
+    session_id: &str,
+    contract_id: &str,
+) -> Result<()> {
     conn.execute(
         "UPDATE sessions SET contract_id = ?2 WHERE id = ?1",
         params![session_id, contract_id],
@@ -699,7 +699,10 @@ pub fn list_audit_events(conn: &Connection, session_id: &str) -> Result<Vec<Audi
     Ok(results)
 }
 
-pub fn list_audit_events_by_contract(conn: &Connection, contract_id: &str) -> Result<Vec<AuditEvent>> {
+pub fn list_audit_events_by_contract(
+    conn: &Connection,
+    contract_id: &str,
+) -> Result<Vec<AuditEvent>> {
     let mut stmt = conn.prepare(
         "SELECT id, contract_id, session_id, event_type, payload, created_at
          FROM audit_events WHERE contract_id = ?1 ORDER BY id",

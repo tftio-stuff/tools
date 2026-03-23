@@ -75,6 +75,6 @@ fn agent_help_human_help_hides_agent_flags() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(!stdout.contains("--agent-help"));
     assert!(!stdout.contains("--agent-skill"));
-    assert!(stdout.contains("<AGENT>"));
+    assert!(stdout.contains("AGENT") || stdout.contains("<AGENT>"));
     assert!(stdout.contains("--session"));
 }

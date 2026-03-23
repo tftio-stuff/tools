@@ -4,11 +4,15 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
-use clap::{CommandFactory, Parser};
+use clap::Parser;
 use directories::ProjectDirs;
-use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
+use tftio_cli_common::{
+    DoctorChecks, FatalCliError, LicenseType, StandardCommand, StandardCommandMap, ToolSpec,
+    command::maybe_run_standard_command, error::fatal_error, parse_and_exit,
+    progress::make_spinner, workspace_tool,
+};
 
-use bsky_comment_extractor::cli::{Cli, Command as CliCommand, FetchArgs, QueryArgs};
+use bsky_comment_extractor::cli::{Cli, Command, FetchArgs, QueryArgs};
 use bsky_comment_extractor::db::{count_posts, open_existing_db, query_posts};
 use bsky_comment_extractor::error::ExtractorError;
 use bsky_comment_extractor::models::QueryEnvelope;
@@ -19,42 +23,76 @@ use tftio_cli_common::{
     render_agent_help_yaml, render_agent_skill,
 };
 
+struct BceDoctor;
+
+impl DoctorChecks for BceDoctor {
+    fn repo_info() -> tftio_cli_common::RepoInfo {
+        tftio_cli_common::app::WORKSPACE_REPO
+    }
+
+    fn current_version() -> &'static str {
+        env!("CARGO_PKG_VERSION")
+    }
+}
+
+const TOOL_SPEC: ToolSpec = workspace_tool(
+    "bce",
+    "BlueSky Comment Extractor",
+    env!("CARGO_PKG_VERSION"),
+    LicenseType::MIT,
+    false,
+    true,
+    false,
+);
+
 fn main() {
-    let raw_args = std::env::args_os().collect::<Vec<_>>();
-    if let Some(request) = detect_agent_doc_request(&raw_args) {
+    if let Some(request) = detect_agent_doc_request(std::env::args_os()) {
         print_agent_doc(request);
         std::process::exit(0);
     }
 
-    let cli = Cli::parse_from(raw_args);
-    let code = run(cli);
-    std::process::exit(code);
+    parse_and_exit(Cli::parse, run);
 }
 
-fn run(cli: Cli) -> i32 {
-    if cli.agent_help {
-        print_agent_doc(AgentDocRequest::Help);
-        return 0;
+fn run(cli: Cli) -> Result<i32, FatalCliError> {
+    let doctor = BceDoctor;
+
+    // Check if this is a metadata command and handle it
+    if let Some(ref cmd) = cli.command {
+        if is_metadata_command(cmd) {
+            let metadata_cmd = BceMetadataCommand(cmd);
+            if let Some(exit_code) = maybe_run_standard_command::<Cli, BceDoctor, _>(
+                &TOOL_SPEC,
+                Some(&metadata_cmd),
+                false,
+                Some(&doctor),
+            ) {
+                return Ok(exit_code);
+            }
+        }
     }
 
-    if cli.agent_skill {
-        print_agent_doc(AgentDocRequest::Skill);
-        return 0;
-    }
-
-    let Some(command) = cli.command else {
-        return print_top_level_help();
-    };
-
-    match command {
-        CliCommand::Fetch(fetch) => match execute_fetch(fetch) {
-            Ok(()) => 0,
-            Err(err) => {
-                eprintln!("Error: {err:#}");
-                1
+    // Handle domain commands (fetch/query)
+    match cli.command {
+        Some(Command::Fetch(fetch)) => execute_fetch(fetch)
+            .map(|()| 0)
+            .map_err(|error| fatal_error("fetch", false, format!("{error:#}"))),
+        Some(Command::Query(query)) => match execute_query(query) {
+            Ok(()) => Ok(0),
+            Err(_) => {
+                // Query errors are already written to stderr as JSON
+                // Just return exit code 1
+                Ok(1)
             }
         },
-        CliCommand::Query(query) => i32::from(execute_query(query).is_err()),
+        Some(_) => {
+            // All metadata commands should have been handled above
+            Ok(0)
+        }
+        None => {
+            // No command provided - show help
+            Ok(1)
+        }
     }
 }
 
@@ -67,13 +105,29 @@ fn print_agent_doc(request: AgentDocRequest) {
     print!("{rendered}");
 }
 
-fn print_top_level_help() -> i32 {
-    let mut command = Cli::command();
-    command
-        .print_help()
-        .expect("clap help write to stdout must succeed");
-    println!();
-    0
+fn is_metadata_command(cmd: &Command) -> bool {
+    matches!(
+        cmd,
+        Command::Version | Command::License | Command::Completions { .. } | Command::Doctor
+    )
+}
+
+#[derive(Clone, Copy)]
+struct BceMetadataCommand<'a>(&'a Command);
+
+impl StandardCommandMap for BceMetadataCommand<'_> {
+    fn to_standard_command(&self, _json: bool) -> StandardCommand {
+        match self.0 {
+            Command::Version => StandardCommand::Version { json: false },
+            Command::License => StandardCommand::License,
+            Command::Completions { shell } => StandardCommand::Completions { shell: *shell },
+            Command::Doctor => StandardCommand::Doctor,
+            Command::Fetch(_) | Command::Query(_) => {
+                // Domain commands - not mapped to standard commands
+                unreachable!("domain commands should not be mapped to standard commands")
+            }
+        }
+    }
 }
 
 fn execute_fetch(fetch: FetchArgs) -> Result<()> {
@@ -102,7 +156,10 @@ fn execute_fetch(fetch: FetchArgs) -> Result<()> {
         })
         .transpose()?;
 
-    let spinner = make_spinner(fetch.quiet, &fetch.handle);
+    let spinner = make_spinner(
+        !fetch.quiet,
+        &format!("Fetching posts for {}... 0 records", &fetch.handle),
+    );
 
     let progress_cb = |count: u64| {
         if let Some(ref pb) = spinner {
@@ -182,7 +239,10 @@ fn execute_query(query: QueryArgs) -> Result<()> {
 fn handle_query_error(err: ExtractorError, db_path: &Path) -> Result<()> {
     match &err {
         ExtractorError::Io(io_err) if io_err.kind() == std::io::ErrorKind::NotFound => {
-            write_json_error("db_not_found", &format!("database not found: {}", db_path.display()));
+            write_json_error(
+                "db_not_found",
+                &format!("database not found: {}", db_path.display()),
+            );
         }
         _ => write_json_error("query_failed", &err.to_string()),
     }
@@ -428,32 +488,14 @@ fn default_db_path() -> Result<PathBuf> {
     Ok(dirs.data_dir().join("bsky-posts.db"))
 }
 
-/// Create an `indicatif` spinner for progress display.
-///
-/// Returns `None` if `quiet` is true or stdout is not a terminal.
-fn make_spinner(quiet: bool, handle: &str) -> Option<ProgressBar> {
-    if quiet || !tftio_cli_common::output::is_tty() {
-        return None;
-    }
-    let pb = ProgressBar::with_draw_target(None, ProgressDrawTarget::stderr());
-    pb.set_style(
-        ProgressStyle::default_spinner()
-            .tick_chars("\u{2801}\u{2802}\u{2804}\u{2840}\u{2880}\u{2820}\u{2810}\u{2808} ")
-            .template("{spinner:.green} {msg}")
-            .expect("valid spinner template"),
-    );
-    pb.set_message(format!("Fetching posts for {handle}... 0 records"));
-    pb.enable_steady_tick(std::time::Duration::from_millis(120));
-    Some(pb)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_make_spinner_quiet() {
-        assert!(make_spinner(true, "alice.bsky.social").is_none());
+        // When quiet=true (inverted to false), make_spinner returns None
+        assert!(make_spinner(false, "Fetching posts for alice.bsky.social... 0 records").is_none());
     }
 
     #[test]
@@ -470,5 +512,23 @@ mod tests {
             "path should contain 'bce' directory component: {}",
             path.display()
         );
+    }
+
+    #[test]
+    fn metadata_commands_map_to_shared_standard_command() {
+        assert_eq!(
+            BceMetadataCommand(&Command::Doctor).to_standard_command(false),
+            StandardCommand::Doctor
+        );
+        assert_eq!(
+            BceMetadataCommand(&Command::Version).to_standard_command(false),
+            StandardCommand::Version { json: false }
+        );
+    }
+
+    #[test]
+    fn run_returns_success_for_version_command() {
+        let cli = Cli::parse_from(["bce", "version"]);
+        assert_eq!(run(cli).expect("version command should succeed"), 0);
     }
 }

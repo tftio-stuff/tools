@@ -70,8 +70,8 @@ pub fn run_discover(
 }
 
 pub fn run_status(conn: &rusqlite::Connection) -> Result<SessionStatusReport> {
-    let session = db::get_active_session(conn)?
-        .ok_or_else(|| anyhow::anyhow!("no active session"))?;
+    let session =
+        db::get_active_session(conn)?.ok_or_else(|| anyhow::anyhow!("no active session"))?;
 
     let evidence = db::list_evidence(conn, &session.id)?;
     let contexts = db::list_discovery_contexts(conn, &session.id)?;
@@ -197,8 +197,8 @@ pub struct ResidualReport {
 }
 
 pub fn run_manifest(conn: &rusqlite::Connection, token: &str) -> Result<ManifestReport> {
-    let session = db::get_session_by_token(conn, token)?
-        .ok_or_else(|| anyhow::anyhow!("invalid token"))?;
+    let session =
+        db::get_session_by_token(conn, token)?.ok_or_else(|| anyhow::anyhow!("invalid token"))?;
 
     if session.status != SessionStatus::Executing {
         bail!("session is not in executing state");
@@ -261,8 +261,8 @@ pub fn run_submit(
     token: &str,
     criterion_id: &str,
 ) -> Result<Evidence> {
-    let session = db::get_session_by_token(conn, token)?
-        .ok_or_else(|| anyhow::anyhow!("invalid token"))?;
+    let session =
+        db::get_session_by_token(conn, token)?.ok_or_else(|| anyhow::anyhow!("invalid token"))?;
 
     if session.status != SessionStatus::Executing {
         bail!("session is not in executing state");
@@ -361,8 +361,8 @@ fn get_active_session_in_status(
     conn: &rusqlite::Connection,
     expected: &SessionStatus,
 ) -> Result<Session> {
-    let session = db::get_active_session(conn)?
-        .ok_or_else(|| anyhow::anyhow!("no active session"))?;
+    let session =
+        db::get_active_session(conn)?.ok_or_else(|| anyhow::anyhow!("no active session"))?;
     if &session.status != expected {
         bail!(
             "session is in '{}' state, expected '{}'",
@@ -507,7 +507,9 @@ pub fn run_go_prompt_only(conn: &rusqlite::Connection) -> Result<GoPromptResult>
         "# Task\n\nYou are working on: {}\n\n",
         contract.goal
     ));
-    prompt.push_str("# Acceptance Criteria\n\nYour work will be evaluated against these criteria:\n\n");
+    prompt.push_str(
+        "# Acceptance Criteria\n\nYour work will be evaluated against these criteria:\n\n",
+    );
 
     let mut submit_commands = Vec::new();
     for cc in &contract_criteria {
@@ -547,9 +549,7 @@ pub fn run_go_prompt_only(conn: &rusqlite::Connection) -> Result<GoPromptResult>
     prompt.push_str(
         "- You cannot see the full acceptance surface -- there may be criteria you are not aware of\n",
     );
-    prompt.push_str(
-        "- Do not inspect or modify silent-critic state beyond the submit command\n",
-    );
+    prompt.push_str("- Do not inspect or modify silent-critic state beyond the submit command\n");
 
     let ae = AuditEvent {
         id: 0,
