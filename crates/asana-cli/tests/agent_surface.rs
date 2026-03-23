@@ -68,7 +68,20 @@ fn agent_surface_help_lists_only_declared_capabilities() {
         );
     }
 
-    for hidden in ["doctor", "update", "manpage", "completions", "version", "license"] {
+    for hidden in [
+        "- doctor",
+        "- update",
+        "- manpage",
+        "- completions",
+        "- version",
+        "- license",
+        "command doctor",
+        "command update",
+        "command manpage",
+        "command completions",
+        "command version",
+        "command license",
+    ] {
         assert!(
             !stdout.contains(hidden),
             "unexpected hidden entry {hidden} in output: {stdout}"

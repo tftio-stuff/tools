@@ -25,8 +25,9 @@ use std::path::PathBuf;
 use tag::TagCommand;
 use task::TaskCommand;
 use tftio_cli_common::{
-    DoctorCheck, DoctorChecks, LicenseType, RepoInfo, StandardCommand, ToolSpec,
-    command::run_standard_command, workspace_tool,
+    AgentCapability, AgentDispatch, AgentSurfaceSpec, CommandSelector, DoctorCheck,
+    DoctorChecks, FlagSelector, LicenseType, RepoInfo, StandardCommand, ToolSpec,
+    parse_with_agent_surface, command::run_standard_command, workspace_tool,
 };
 use tokio::runtime::Builder as RuntimeBuilder;
 use tracing::{debug, info};
@@ -39,6 +40,142 @@ const VERSION: &str = match option_env!("CARGO_PKG_VERSION") {
     Some(version) => version,
     None => "unknown",
 };
+
+const CONFIG_COMMAND: CommandSelector = CommandSelector::new(&["config"]);
+const TASK_COMMAND: CommandSelector = CommandSelector::new(&["task"]);
+const PROJECT_COMMAND: CommandSelector = CommandSelector::new(&["project"]);
+const SECTION_COMMAND: CommandSelector = CommandSelector::new(&["section"]);
+const TAG_COMMAND: CommandSelector = CommandSelector::new(&["tag"]);
+const CUSTOM_FIELD_COMMAND: CommandSelector = CommandSelector::new(&["custom-field"]);
+const WORKSPACE_COMMAND: CommandSelector = CommandSelector::new(&["workspace"]);
+const USER_COMMAND: CommandSelector = CommandSelector::new(&["user"]);
+
+const CONFIG_TOKEN_FLAG: FlagSelector = FlagSelector::new(&["config", "set", "token"], "token");
+const CONFIG_WORKSPACE_FLAG: FlagSelector =
+    FlagSelector::new(&["config", "set", "workspace"], "workspace");
+const TASK_WORKSPACE_FLAG: FlagSelector = FlagSelector::new(&["task"], "workspace");
+const PROJECT_WORKSPACE_FLAG: FlagSelector = FlagSelector::new(&["project"], "workspace");
+const SECTION_PROJECT_FLAG: FlagSelector = FlagSelector::new(&["section"], "project");
+const TAG_WORKSPACE_FLAG: FlagSelector = FlagSelector::new(&["tag"], "workspace");
+const CUSTOM_FIELD_WORKSPACE_FLAG: FlagSelector =
+    FlagSelector::new(&["custom-field"], "workspace");
+const WORKSPACE_GID_FLAG: FlagSelector = FlagSelector::new(&["workspace"], "gid");
+const USER_WORKSPACE_FLAG: FlagSelector = FlagSelector::new(&["user"], "workspace");
+
+const MANAGE_CONFIG_CAPABILITY: AgentCapability = AgentCapability::new(
+    "manage-config",
+    "Read or update persisted Asana CLI configuration",
+    &[CONFIG_COMMAND],
+    &[CONFIG_TOKEN_FLAG, CONFIG_WORKSPACE_FLAG],
+)
+.with_examples(&[
+    "asana-cli config get",
+    "asana-cli config set workspace --workspace <GID>",
+])
+.with_output("prints confirmation lines or redacted stored configuration values")
+.with_constraints("writes use the configured config home and config test calls the Asana API");
+
+const MANAGE_TASKS_CAPABILITY: AgentCapability = AgentCapability::new(
+    "manage-tasks",
+    "Create, inspect, and update Asana tasks",
+    &[TASK_COMMAND],
+    &[TASK_WORKSPACE_FLAG],
+)
+.with_examples(&[
+    "asana-cli task list --workspace <GID>",
+    "asana-cli task show <TASK_GID>",
+])
+.with_output("prints task tables, summaries, or JSON payloads produced by task commands")
+.with_constraints("task commands require a stored personal access token and valid task identifiers");
+
+const MANAGE_PROJECTS_CAPABILITY: AgentCapability = AgentCapability::new(
+    "manage-projects",
+    "Inspect and manage Asana projects",
+    &[PROJECT_COMMAND],
+    &[PROJECT_WORKSPACE_FLAG],
+)
+.with_examples(&[
+    "asana-cli project list --workspace <GID>",
+    "asana-cli project show <PROJECT_GID>",
+])
+.with_output("prints project listings, detail blocks, and mutation confirmations")
+.with_constraints("project commands require API-authenticated access to the target workspace");
+
+const MANAGE_SECTIONS_CAPABILITY: AgentCapability = AgentCapability::new(
+    "manage-sections",
+    "List or modify sections within Asana projects",
+    &[SECTION_COMMAND],
+    &[SECTION_PROJECT_FLAG],
+)
+.with_examples(&[
+    "asana-cli section list --project <PROJECT_GID>",
+    "asana-cli section create --project <PROJECT_GID> --name <NAME>",
+])
+.with_output("prints section records and success messages from section operations")
+.with_constraints("section commands operate inside a project and require a resolvable project gid");
+
+const MANAGE_TAGS_CAPABILITY: AgentCapability = AgentCapability::new(
+    "manage-tags",
+    "Inspect and maintain Asana tags",
+    &[TAG_COMMAND],
+    &[TAG_WORKSPACE_FLAG],
+)
+.with_examples(&[
+    "asana-cli tag list --workspace <GID>",
+    "asana-cli tag show <TAG_GID>",
+])
+.with_output("prints tag collections, tag detail records, or mutation confirmations")
+.with_constraints("tag commands require workspace access and valid tag identifiers");
+
+const MANAGE_CUSTOM_FIELDS_CAPABILITY: AgentCapability = AgentCapability::new(
+    "manage-custom-fields",
+    "Inspect and manage Asana custom fields",
+    &[CUSTOM_FIELD_COMMAND],
+    &[CUSTOM_FIELD_WORKSPACE_FLAG],
+)
+.with_examples(&[
+    "asana-cli custom-field list --workspace <GID>",
+    "asana-cli custom-field show <FIELD_GID>",
+])
+.with_output("prints custom field definitions and update confirmations")
+.with_constraints("custom field commands require workspace-scoped API access");
+
+const MANAGE_WORKSPACES_CAPABILITY: AgentCapability = AgentCapability::new(
+    "manage-workspaces",
+    "Inspect available Asana workspaces",
+    &[WORKSPACE_COMMAND],
+    &[WORKSPACE_GID_FLAG],
+)
+.with_examples(&[
+    "asana-cli workspace list",
+    "asana-cli workspace show --gid <GID>",
+])
+.with_output("prints workspace listings or detail records from the API")
+.with_constraints("workspace commands require a valid stored personal access token");
+
+const MANAGE_USERS_CAPABILITY: AgentCapability = AgentCapability::new(
+    "manage-users",
+    "Inspect Asana users and memberships",
+    &[USER_COMMAND],
+    &[USER_WORKSPACE_FLAG],
+)
+.with_examples(&[
+    "asana-cli user me",
+    "asana-cli user list --workspace <GID>",
+])
+.with_output("prints user records, user lists, and membership-related summaries")
+.with_constraints("user commands require API-authenticated access to the target workspace");
+
+const ASANA_AGENT_SURFACE: AgentSurfaceSpec = AgentSurfaceSpec::new(&[
+    MANAGE_CONFIG_CAPABILITY,
+    MANAGE_TASKS_CAPABILITY,
+    MANAGE_PROJECTS_CAPABILITY,
+    MANAGE_SECTIONS_CAPABILITY,
+    MANAGE_TAGS_CAPABILITY,
+    MANAGE_CUSTOM_FIELDS_CAPABILITY,
+    MANAGE_WORKSPACES_CAPABILITY,
+    MANAGE_USERS_CAPABILITY,
+]);
 
 struct AsanaCliDoctor;
 
@@ -64,7 +201,8 @@ const TOOL_SPEC: ToolSpec = workspace_tool(
     false,
     true,
     true,
-);
+)
+.with_agent_surface(&ASANA_AGENT_SURFACE);
 
 #[derive(Parser, Debug)]
 #[command(name = "asana-cli")]
@@ -205,7 +343,11 @@ enum ConfigSetCommand {
 /// # Errors
 /// Returns an error when command execution fails prior to producing an exit code.
 pub fn run() -> Result<i32> {
-    let cli = Cli::parse();
+    let cli = match parse_with_agent_surface::<Cli>(&TOOL_SPEC) {
+        Ok(AgentDispatch::Cli(cli)) => cli,
+        Ok(AgentDispatch::Printed(code)) => return Ok(code),
+        Err(error) => error.exit(),
+    };
     debug!(?cli, "parsed CLI arguments");
 
     let mut config = Config::load()?;
