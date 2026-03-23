@@ -63,6 +63,7 @@ fn agent_help_subcommand_does_not_trigger_top_level_doc_flow() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(!stdout.contains("schema_version:"));
+    assert!(!stdout.contains("name: \"unvenv\""));
     assert!(stderr.contains("--agent-help") || stderr.contains("unexpected argument"));
 }
 
