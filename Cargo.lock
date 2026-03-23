@@ -2286,7 +2286,7 @@ dependencies = [
 
 [[package]]
 name = "tftio-asana-cli"
-version = "1.2.0"
+version = "2.2.0"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -2324,7 +2324,7 @@ dependencies = [
 
 [[package]]
 name = "tftio-bsky-comment-extractor"
-version = "0.1.0"
+version = "2.2.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2346,7 +2346,7 @@ dependencies = [
 
 [[package]]
 name = "tftio-cli-common"
-version = "0.5.0"
+version = "2.2.0"
 dependencies = [
  "clap",
  "clap_complete",
@@ -2358,7 +2358,7 @@ dependencies = [
 
 [[package]]
 name = "tftio-gator"
-version = "0.3.0"
+version = "2.2.0"
 dependencies = [
  "clap",
  "clap_complete",
@@ -2392,7 +2392,7 @@ dependencies = [
 
 [[package]]
 name = "tftio-silent-critic"
-version = "0.2.1"
+version = "2.2.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2414,7 +2414,7 @@ dependencies = [
 
 [[package]]
 name = "tftio-todoer"
-version = "1.1.0"
+version = "2.2.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2432,7 +2432,7 @@ dependencies = [
 
 [[package]]
 name = "tftio-unvenv"
-version = "1.8.0"
+version = "2.2.0"
 dependencies = [
  "anyhow",
  "clap",

@@ -36,7 +36,7 @@ fi
 cat > "$ROOT_DIR/$CRATE_DIR/Cargo.toml" << TOML
 [package]
 name = "$CRATE_NAME"
-version = "0.1.0"
+version = "2.2.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -55,5 +55,6 @@ echo ""
 echo "Next steps:"
 echo "  1. Add \"$CRATE_DIR\" to [workspace.members] in Cargo.toml"
 echo "  2. Add entry to release-please-config.json"
-echo "  3. Add entry to .release-please-manifest.json"
-echo "  4. Run: cargo check -p $CRATE_NAME"
+echo "  3. Add entry to the linked-versions component list"
+echo "  4. Add entry to .release-please-manifest.json"
+echo "  5. Run: cargo check -p $CRATE_NAME"
