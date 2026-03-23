@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/tftio-stuff/tools/compare/gator-v0.3.0...gator-v0.4.0) (2026-03-23)
+
+
+### Features
+
+* add shared --agent-help and --agent-skill support across all CLI crates ([#26](https://github.com/tftio-stuff/tools/issues/26)) ([1b41005](https://github.com/tftio-stuff/tools/commit/1b41005c4a60db93c3afd6985f38dc63772c1e22))
+
+
+### Bug Fixes
+
+* restore missing fn main() in bce binary ([#35](https://github.com/tftio-stuff/tools/issues/35)) ([20fccfa](https://github.com/tftio-stuff/tools/commit/20fccfa021e8f056c4a07bd1945197c3f79ea467))
+
 ## [0.3.0](https://github.com/tftio-stuff/tools/compare/gator-v0.2.1...gator-v0.3.0) (2026-03-22)
 
 
