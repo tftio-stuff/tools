@@ -3,6 +3,8 @@
 use std::ffi::OsStr;
 use std::fmt::Write;
 
+use clap::CommandFactory;
+
 /// A top-level request for agent-facing documentation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AgentDocRequest {
@@ -370,6 +372,24 @@ pub fn render_agent_skill(_doc: &AgentDoc) -> String {
     out
 }
 
+/// Assert that authored command documentation covers the clap subcommand tree.
+pub fn assert_command_coverage<T>(_documented_paths: &[&str])
+where
+    T: CommandFactory,
+{
+}
+
+/// Assert that authored argument documentation covers one clap command context.
+pub fn assert_argument_coverage<T>(
+    _command_path: &[&str],
+    _documented_long_flags: &[&str],
+    _documented_positionals: &[&str],
+    _ignored_long_flags: &[&str],
+) where
+    T: CommandFactory,
+{
+}
+
 fn yaml_string(value: &str) -> String {
     let escaped = value
         .replace('\\', "\\\\")
@@ -577,6 +597,7 @@ fn sentence_without_trailing_period(value: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::{Parser, Subcommand};
 
     fn sample_doc() -> AgentDoc {
         AgentDoc {
@@ -822,5 +843,58 @@ Output shapes:
 "#;
 
         assert_eq!(rendered, expected);
+    }
+
+    #[derive(Parser, Debug)]
+    #[command(name = "coverage")]
+    struct CoverageCli {
+        #[arg(long)]
+        verbose: bool,
+        #[arg(long, hide = true)]
+        agent_help: bool,
+        #[command(subcommand)]
+        command: CoverageCommand,
+    }
+
+    #[derive(Subcommand, Debug)]
+    enum CoverageCommand {
+        Sync {
+            #[arg(long)]
+            project: String,
+            target: Option<String>,
+        },
+        Config {
+            #[command(subcommand)]
+            command: CoverageConfigCommand,
+        },
+    }
+
+    #[derive(Subcommand, Debug)]
+    enum CoverageConfigCommand {
+        Show {
+            #[arg(long)]
+            json: bool,
+        },
+    }
+
+    #[test]
+    fn coverage_helpers_fail_when_documented_commands_or_arguments_are_missing() {
+        let missing_commands = std::panic::catch_unwind(|| {
+            assert_command_coverage::<CoverageCli>(&["sync", "config"]);
+        });
+        assert!(missing_commands.is_err());
+
+        let missing_arguments = std::panic::catch_unwind(|| {
+            assert_argument_coverage::<CoverageCli>(&["sync"], &["project"], &[], &[]);
+        });
+        assert!(missing_arguments.is_err());
+    }
+
+    #[test]
+    fn coverage_helpers_allow_hidden_agent_doc_flags_to_be_ignored() {
+        assert_command_coverage::<CoverageCli>(&["sync", "config", "config show"]);
+        assert_argument_coverage::<CoverageCli>(&[], &["verbose"], &[], &["agent-help"]);
+        assert_argument_coverage::<CoverageCli>(&["sync"], &["project"], &["target"], &[]);
+        assert_argument_coverage::<CoverageCli>(&["config", "show"], &["json"], &[], &[]);
     }
 }
