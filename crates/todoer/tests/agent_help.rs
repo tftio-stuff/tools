@@ -27,7 +27,7 @@ fn agent_help_top_level_request_succeeds_without_subcommand() {
 }
 
 #[test]
-fn agent_skill_top_level_request_succeeds_without_subcommand() {
+fn agent_help_skill_top_level_request_succeeds_without_subcommand() {
     let output = run_todoer(&["--agent-skill"]);
 
     assert!(
@@ -45,7 +45,7 @@ fn agent_skill_top_level_request_succeeds_without_subcommand() {
 }
 
 #[test]
-fn hidden_agent_doc_flags_stay_out_of_normal_help_output() {
+fn agent_help_hidden_flags_stay_out_of_normal_help_output() {
     let output = run_todoer(&["list", "--help"]);
 
     assert!(
@@ -60,7 +60,7 @@ fn hidden_agent_doc_flags_stay_out_of_normal_help_output() {
 }
 
 #[test]
-fn agent_doc_flags_are_rejected_when_placed_after_a_subcommand() {
+fn agent_help_flags_are_rejected_when_placed_after_a_subcommand() {
     let output = run_todoer(&["task", "--agent-help"]);
 
     assert!(!output.status.success());
