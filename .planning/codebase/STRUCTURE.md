@@ -1,192 +1,198 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-03-23
+**Analysis Date:** 2026-03-17
 
 ## Directory Layout
 
-```text
-tools/
-├── Cargo.toml                         # Workspace members, shared dependencies, lint policy
-├── justfile                           # Common build/test/lint entrypoints
-├── .github/workflows/                 # CI, release, and release-please automation
-├── crates/                            # One directory per Rust crate
-│   ├── cli-common/                    # Shared library crate
-│   ├── prompter/                      # Prompt composition CLI + library
-│   ├── unvenv/                        # Python venv scanner CLI
-│   ├── asana-cli/                     # Asana API CLI with layered modules
-│   ├── todoer/                        # SQLite-backed todo manager
-│   ├── silent-critic/                 # Supervision/session framework
-│   ├── gator/                         # Agent sandbox harness
-│   └── bsky-comment-extractor/        # BlueSky extractor/query CLI
-├── docs/                              # Product docs and design notes
-├── scripts/                           # Repository maintenance scripts
-└── .planning/                         # GSD planning, roadmap, and codebase maps
+```
+tools/main/
+├── Cargo.toml                  # Workspace root; all shared deps under [workspace.dependencies]
+├── Cargo.lock                  # Committed (binary workspace)
+├── justfile                    # Task runner (dev, build, ci, lint, audit, deny)
+├── deny.toml                   # cargo-deny license + dependency compliance
+├── rustfmt.toml                # Formatting config (requires nightly fmt)
+├── CLAUDE.md                   # Claude Code workspace instructions
+├── CRATES.md                   # Expanded crate reference documentation
+├── README.md                   # Project introduction
+├── .github/
+│   └── workflows/
+│       ├── ci.yml              # Format, lint, test matrix, MSRV, audit, deny
+│       ├── release-please.yml  # Creates release PRs on push to main
+│       └── release.yml         # Tag-triggered binary builds + crates.io publish
+├── docs/
+│   ├── plans/                  # Phase/implementation planning documents
+│   └── *.md                    # Design documents (silent-critic framework)
+├── scripts/
+│   └── new-crate.sh            # Scaffold a new crate in the workspace
+├── .planning/
+│   └── codebase/               # GSD codebase mapping documents
+└── crates/
+    ├── cli-common/             # Shared library (not a binary)
+    ├── prompter/               # Binary + lib: TOML profile prompt composition
+    ├── unvenv/                 # Binary only: Python venv git detection
+    ├── asana-cli/              # Binary + lib: Asana API client
+    ├── todoer/                 # Binary + lib: SQLite-backed todo manager
+    ├── silent-critic/          # Binary + lib: Agentic supervision framework
+    └── gator/                  # Binary + lib: Agent sandbox harness
 ```
 
 ## Directory Purposes
 
-**`crates/`:**
-- Purpose: Hold all workspace members declared in `Cargo.toml`.
-- Contains: Per-crate `Cargo.toml`, `src/`, optional `tests/`, optional crate-local `docs/` or `schema/`.
-- Key files: `crates/*/Cargo.toml`, `crates/*/src/main.rs`, `crates/*/src/lib.rs`.
+Each binary crate follows a consistent internal structure:
 
-**`docs/`:**
-- Purpose: Long-form design and concept documents.
-- Contains: Narrative docs such as `docs/the-silent-critic-system-spec.md` and dated plan notes under `docs/plans/`.
-- Key files: `docs/outline.md`, `docs/plans/2026-03-16-gator-agent-harness.md`.
+```
+crates/<name>/
+├── Cargo.toml
+├── src/
+│   ├── lib.rs          # Public API, module declarations, crate-level docs
+│   ├── main.rs         # CLI entrypoint (parses args, dispatches, exits)
+│   ├── cli.rs          # clap CLI definitions (commands, args, flags)
+│   ├── config.rs       # Config struct and loading/resolution logic
+│   ├── models.rs       # Serde data models (or models/ subdir for many types)
+│   ├── output.rs       # Output formatting (or output/ subdir)
+│   └── commands/       # Subcommand handlers (one file per subcommand)
+│       ├── mod.rs
+│       └── <verb>.rs
+└── tests/              # Integration tests (if present)
+```
 
-**`scripts/`:**
-- Purpose: Repository helper scripts that do not belong to a crate binary.
-- Contains: Shell scripts such as `scripts/new-crate.sh`.
-- Key files: `scripts/new-crate.sh`.
+The library-only crate `crates/cli-common` has no `main.rs` or `commands/` directory.
+`crates/unvenv` is a single-file binary (`src/main.rs`) with no separate lib or commands directory.
 
-**`.github/workflows/`:**
-- Purpose: CI and release automation.
-- Contains: `ci.yml`, `release.yml`, and `release-please.yml`.
-- Key files: `.github/workflows/ci.yml`, `.github/workflows/release.yml`.
+## Per-Crate Source Structure
 
-**`.planning/`:**
-- Purpose: Planning artifacts for ongoing product work.
-- Contains: State, milestone documents, phase folders, and generated codebase maps.
-- Key files: `.planning/STATE.md`, `.planning/milestones/v1.1-ROADMAP.md`, `.planning/codebase/`.
+**`crates/cli-common/src/`** - Shared utilities consumed by all binary crates:
+- `lib.rs`, `completions.rs`, `doctor.rs`, `license.rs`, `output.rs`, `types.rs`, `update.rs`
+
+**`crates/prompter/src/`** - TOML profile-driven prompt composition:
+- `lib.rs`, `main.rs`, `completions.rs`, `doctor.rs`
+- Tests: `crates/prompter/tests/`
+
+**`crates/unvenv/src/`** - Single-module binary, no lib:
+- `main.rs` only (all logic self-contained)
+- Tests: `crates/unvenv/tests/`
+
+**`crates/asana-cli/src/`** - Largest crate; uses subdirectories for all major modules:
+- `lib.rs`, `main.rs`, `config.rs`, `error.rs`, `doctor.rs`
+- `api/`: `mod.rs`, `client.rs`, `auth.rs`, `pagination.rs`, `error.rs`, plus one file per resource: `tasks.rs`, `projects.rs`, `sections.rs`, `stories.rs`, `tags.rs`, `users.rs`, `workspaces.rs`, `attachments.rs`, `custom_fields.rs`
+- `cli/`: `mod.rs`, `task.rs`, `project.rs`, `section.rs`, `tag.rs`, `user.rs`, `workspace.rs`, `custom_field.rs`
+- `models/`: `mod.rs`, `task.rs`, `project.rs`, `section.rs`, `story.rs`, `tag.rs`, `user.rs`, `workspace.rs`, `attachment.rs`, `custom_field.rs`
+- `output/`: `mod.rs`, `task.rs`, `project.rs`
+- `filters/mod.rs`, `templates/mod.rs`, `templates/templates/`
+- Man page: `crates/asana-cli/docs/man/asana-cli.1`
+- Tests: `crates/asana-cli/tests/`
+
+**`crates/todoer/src/`** - SQLite-backed todo manager:
+- `lib.rs`, `main.rs`, `cli.rs`, `config.rs`, `db.rs`, `models.rs`, `output.rs`, `project.rs`, `repo.rs`, `input.rs`
+- `commands/`: `mod.rs`, `init.rs`, `list.rs`, `new.rs`, `task.rs`
+- Schema: `crates/todoer/schema/todoer-output.schema.json`
+- Tests: `crates/todoer/tests/`
+
+**`crates/silent-critic/src/`** - Supervision framework:
+- `lib.rs`, `main.rs`, `cli.rs`, `config.rs`, `db.rs`, `discovery.rs`, `models.rs`, `output.rs`, `project.rs`
+- `commands/`: `mod.rs`, `contract.rs`, `criterion.rs`, `decide.rs`, `log.rs`, `project.rs`, `session.rs`
+
+**`crates/gator/src/`** - Agent sandbox harness:
+- `lib.rs`, `main.rs`, `cli.rs`, `config.rs`, `agent.rs`, `sandbox.rs`, `session.rs`, `prompt.rs`, `worktree.rs`
+- No separate tests directory (unit tests co-located in source files)
 
 ## Key File Locations
 
-**Entry Points:**
-- `justfile`: developer-facing root command surface.
-- `crates/asana-cli/src/main.rs`: Asana binary entry point.
-- `crates/bsky-comment-extractor/src/main.rs`: `bce` binary entry point.
-- `crates/gator/src/main.rs`: `gator` binary entry point.
-- `crates/prompter/src/main.rs`: `prompter` binary entry point.
-- `crates/silent-critic/src/main.rs`: `silent-critic` binary entry point.
-- `crates/todoer/src/main.rs`: `todoer` binary entry point.
-- `crates/unvenv/src/main.rs`: `unvenv` binary entry point.
+**Workspace configuration:**
+- `Cargo.toml`: All shared dependency versions under `[workspace.dependencies]`
+- `deny.toml`: Allowed licenses and banned crates
+- `rustfmt.toml`: Formatting rules (nightly)
+- `justfile`: All dev workflow commands (`dev`, `build`, `build-release`, `ci`, `test`, `lint`, `audit`, `deny`)
 
-**Configuration:**
-- `Cargo.toml`: workspace configuration and dependency source of truth.
-- `rustfmt.toml`: rustfmt settings.
-- `deny.toml`: cargo-deny policy.
-- `release-please-config.json` and `.release-please-manifest.json`: per-crate release management.
-- `crates/asana-cli/src/config.rs`, `crates/todoer/src/config.rs`, `crates/silent-critic/src/config.rs`, `crates/gator/src/config.rs`: tool-local runtime config logic.
+**Entry points (per crate):**
+- `crates/<name>/src/main.rs`: CLI binary entrypoint
+- `crates/<name>/src/lib.rs`: Library public API and module declarations
 
-**Core Logic:**
-- `crates/cli-common/src/`: shared CLI infrastructure.
-- `crates/asana-cli/src/api/`: Asana client and endpoint modules.
-- `crates/asana-cli/src/models/`: Asana domain DTOs.
-- `crates/todoer/src/commands/` and `crates/todoer/src/repo.rs`: command handlers and SQLite access.
-- `crates/silent-critic/src/commands/`, `crates/silent-critic/src/db.rs`, `crates/silent-critic/src/models.rs`: session framework internals.
-- `crates/gator/src/agent.rs`, `crates/gator/src/sandbox.rs`, `crates/gator/src/session.rs`: harness composition.
-- `crates/bsky-comment-extractor/src/client.rs` and `crates/bsky-comment-extractor/src/db.rs`: BlueSky fetch/query pipeline.
+**CLI definitions:**
+- `crates/<name>/src/cli.rs`: clap struct/enum definitions (simple crates)
+- `crates/asana-cli/src/cli/mod.rs`: clap subcommand tree for asana-cli (complex crate uses subdir)
 
-**Testing:**
-- `crates/asana-cli/tests/`: integration tests around CLI and API behavior.
-- `crates/bsky-comment-extractor/tests/`: CLI contract tests for query mode.
-- `crates/prompter/tests/`: integration tests for CLI behavior.
-- `crates/todoer/tests/`: extensive integration coverage by feature area.
-- `crates/unvenv/tests/`: integration tests for repository scanning.
-- Inline unit tests appear at the bottom of many source files such as `crates/gator/src/cli.rs` and `crates/bsky-comment-extractor/src/db.rs`.
+**CI/CD:**
+- `.github/workflows/ci.yml`: Full quality gate pipeline
+- `.github/workflows/release-please.yml`: Release PR automation
+- `.github/workflows/release.yml`: Binary builds and publish on tag
 
 ## Naming Conventions
 
-**Files:**
-- Crate roots follow Cargo defaults: `Cargo.toml`, `src/main.rs`, `src/lib.rs`.
-- Rust module files are snake_case, for example `crates/gator/src/worktree.rs` and `crates/asana-cli/src/api/custom_fields.rs`.
-- Command-specific files in nested modules also stay snake_case, for example `crates/todoer/tests/project_resolution.rs`.
+**Crate directories:** `kebab-case` (e.g., `asana-cli`, `cli-common`, `silent-critic`)
 
-**Directories:**
-- Crate directories use kebab-case, for example `crates/asana-cli/` and `crates/bsky-comment-extractor/`.
-- Nested Rust module directories are lowercase or snake_case, for example `crates/asana-cli/src/output/` and `crates/silent-critic/src/commands/`.
-- Planning directories use milestone and phase numbering, for example `.planning/milestones/v1.1-phases/04-cli-surface/`.
+**Package names:** Prefixed with `tftio-` (e.g., `tftio-asana-cli`, `tftio-cli-common`)
 
-## File Organization Examples
+**Binary names:** No prefix (e.g., `prompter`, `asana-cli`, `silent-critic`)
 
-**Binary + library crate pattern:**
-```text
-crates/gator/
-├── Cargo.toml
-└── src/
-    ├── main.rs        # CLI/process boundary
-    ├── lib.rs         # orchestration entrypoint
-    ├── cli.rs         # clap definitions
-    ├── config.rs      # config resolution
-    ├── sandbox.rs     # policy generation
-    └── agent.rs       # child-process execution
-```
+**Library names:** `snake_case` matching crate directory (e.g., `asana_cli`, `silent_critic`)
 
-**Layered domain crate pattern:**
-```text
-crates/asana-cli/
-├── src/api/           # HTTP client + endpoint modules
-├── src/cli/           # clap command families
-├── src/models/        # serde DTOs
-├── src/output/        # renderers/formatters
-└── tests/             # integration tests
-```
+**Source files:** `snake_case.rs` throughout
 
-**SQLite-backed command crate pattern:**
-```text
-crates/todoer/
-├── src/cli.rs         # command definitions
-├── src/commands/      # per-command handlers
-├── src/db.rs          # schema/bootstrap
-├── src/repo.rs        # SQL access helpers
-├── src/models.rs      # task/project types
-└── tests/             # command- and persistence-level integration tests
-```
+**Module directories:** Use `mod.rs` as the module entry (e.g., `api/mod.rs`, `commands/mod.rs`)
+
+**Resource modules:** Named after the domain object, singular (e.g., `task.rs`, `project.rs`, `criterion.rs`)
+
+**Test files:** Descriptive names matching what is tested (e.g., `commands_init.rs`, `db_schema.rs`)
+
+**Git tags:** `{crate}-v{version}` (e.g., `prompter-v2.1.0`, `todoer-v1.1.0`)
 
 ## Where to Add New Code
 
-**New Workspace Tool:**
-- Primary code: `crates/<new-crate>/`
-- Manifest: add `crates/<new-crate>` to `Cargo.toml` `[workspace].members`
-- Release metadata: add `crates/<new-crate>` to `release-please-config.json` and `.release-please-manifest.json`
-- Script reference: `scripts/new-crate.sh` shows the expected scaffold shape
+**New crate:**
+- Run `scripts/new-crate.sh <name>` to scaffold
+- Package name must be `tftio-<name>`
+- Add to `members` array in root `Cargo.toml`
+- Add to `release-please-config.json`
 
-**New CLI Subcommand in an Existing Tool:**
-- `asana-cli`: add clap definitions under `crates/asana-cli/src/cli/`, endpoint logic in `crates/asana-cli/src/api/`, DTOs in `crates/asana-cli/src/models/`, and renderers in `crates/asana-cli/src/output/`.
-- `todoer`: add command enum variants in `crates/todoer/src/cli.rs`, handler modules in `crates/todoer/src/commands/`, and persistence helpers in `crates/todoer/src/repo.rs` or `src/db.rs`.
-- `silent-critic`: add the CLI variant in `crates/silent-critic/src/cli.rs` and implementation in `crates/silent-critic/src/commands/`.
-- `bce`: add subcommand args in `crates/bsky-comment-extractor/src/cli.rs` and route in `crates/bsky-comment-extractor/src/main.rs`.
+**New subcommand in an existing crate:**
+- Add handler: `crates/<crate>/src/commands/<verb>.rs`
+- Register in `crates/<crate>/src/commands/mod.rs`
+- Add clap variant to `crates/<crate>/src/cli.rs`
+- Add dispatch match arm in `crates/<crate>/src/main.rs`
 
-**Shared Utilities:**
-- Shared helpers across multiple crates: `crates/cli-common/src/`
-- Tool-local helpers: keep them under that crate’s `src/` tree instead of introducing new root directories.
+**New API resource (asana-cli):**
+- Model: `crates/asana-cli/src/models/<resource>.rs`
+- API methods: `crates/asana-cli/src/api/<resource>.rs`
+- CLI subcommand: `crates/asana-cli/src/cli/<resource>.rs`
+- Output formatter: `crates/asana-cli/src/output/<resource>.rs` (if needed)
 
-**Tests for New Behavior:**
-- Integration tests: `crates/<crate>/tests/`
-- Small unit tests for a single module: append `#[cfg(test)]` modules to the corresponding `src/*.rs` file.
+**New shared utility:**
+- Add to `crates/cli-common/src/` with a descriptive module name
+- Export from `crates/cli-common/src/lib.rs`
+- Add `tftio-cli-common.workspace = true` to consuming crate's `Cargo.toml`
 
-**Docs for New Behavior:**
-- Tool-specific command docs: crate-local directories such as `crates/asana-cli/docs/`
-- Cross-cutting design docs or planning notes: `docs/` or `.planning/milestones/` depending on whether the artifact is permanent product documentation or workflow planning.
+**New dependency:**
+- Add version to `[workspace.dependencies]` in root `Cargo.toml`
+- Reference with `<dep>.workspace = true` in the crate's `Cargo.toml`
+- Per-crate feature overrides are allowed (see `asana-cli` overriding `reqwest` features in `crates/asana-cli/Cargo.toml`)
+
+**New integration test:**
+- Place in `crates/<name>/tests/<what_is_tested>.rs`
+- For `todoer`, use the descriptive `commands_<verb>.rs` naming pattern
 
 ## Special Directories
 
-**`crates/asana-cli/docs/`:**
-- Purpose: crate-local manual page source.
-- Generated: No.
-- Committed: Yes.
-
-**`crates/todoer/schema/`:**
-- Purpose: JSON schema for todoer output contracts.
-- Generated: No.
-- Committed: Yes.
+**`.planning/codebase/`:**
+- GSD codebase mapping documents (STACK, ARCHITECTURE, STRUCTURE, CONVENTIONS, TESTING, CONCERNS, INTEGRATIONS)
+- Committed to repo
 
 **`docs/plans/`:**
-- Purpose: dated design and implementation plans.
-- Generated: No.
-- Committed: Yes.
+- Implementation phase plans from GSD planning commands
+- Committed to repo
 
-**`.planning/milestones/`:**
-- Purpose: phase-by-phase GSD artifacts such as `*-PLAN.md`, `*-SUMMARY.md`, `*-VALIDATION.md`, and `*-VERIFICATION.md`.
-- Generated: Yes, by workflow tools.
-- Committed: Yes.
+**`crates/todoer/schema/`:**
+- `todoer-output.schema.json`: JSON Schema for todoer CLI output format
+- Committed to repo; generated: No
 
-**`.planning/codebase/`:**
-- Purpose: generated repository maps such as `.planning/codebase/ARCHITECTURE.md` and `.planning/codebase/STRUCTURE.md`.
-- Generated: Yes.
-- Committed: Yes.
+**`crates/asana-cli/docs/man/`:**
+- `asana-cli.1`: Man page for asana-cli (static, hand-authored)
+- Committed to repo
+
+**`target/`:**
+- Cargo build output
+- Not committed; excluded from git
 
 ---
 
-*Structure analysis: 2026-03-23*
+*Structure analysis: 2026-03-17*

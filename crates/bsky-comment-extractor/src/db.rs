@@ -116,10 +116,16 @@ pub fn query_posts(
     offset: u64,
 ) -> Result<Vec<QueryPost>, ExtractorError> {
     let limit = i64::try_from(limit).map_err(|_| {
-        std::io::Error::new(std::io::ErrorKind::InvalidInput, "limit exceeds i64::MAX")
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "limit exceeds i64::MAX",
+        )
     })?;
     let offset = i64::try_from(offset).map_err(|_| {
-        std::io::Error::new(std::io::ErrorKind::InvalidInput, "offset exceeds i64::MAX")
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "offset exceeds i64::MAX",
+        )
     })?;
 
     let mut stmt = conn.prepare(
@@ -137,8 +143,7 @@ pub fn query_posts(
         })
     })?;
 
-    rows.collect::<Result<Vec<_>, _>>()
-        .map_err(ExtractorError::from)
+    rows.collect::<Result<Vec<_>, _>>().map_err(ExtractorError::from)
 }
 
 /// Return `true` if a post with the given AT URI exists in the database.

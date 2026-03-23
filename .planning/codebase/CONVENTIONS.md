@@ -5,109 +5,269 @@
 ## Naming Patterns
 
 **Files:**
-- Use `snake_case` for Rust module files such as `crates/gator/src/worktree.rs`, `crates/todoer/src/output.rs`, and `crates/bsky-comment-extractor/src/error.rs`.
-- Use `kebab-case` for crate directories and binary names such as `crates/asana-cli`, `crates/silent-critic`, and the `bce` binary declared in `crates/bsky-comment-extractor/Cargo.toml`.
-- Group command handlers under `src/commands/` when the CLI is multi-command, as in `crates/todoer/src/commands/` and `crates/silent-critic/src/commands/`.
+- `snake_case` for all `.rs` files: `error.rs`, `api_client.rs`, `custom_fields.rs`
+- Module directories `snake_case` with `mod.rs` entry: `crates/asana-cli/src/api/mod.rs`
+- Crate directories use `kebab-case`: `crates/cli-common/`, `crates/asana-cli/`, `crates/silent-critic/`
 
-**Functions:**
-- Use `snake_case` for functions and helpers, including CLI helpers like `print_top_level_help` in `crates/bsky-comment-extractor/src/main.rs`, `run_validate_stdout` in `crates/prompter/src/lib.rs`, and `resolve_workdir` in `crates/gator/src/config.rs`.
-- Keep `main` thin and delegate to `run` or `dispatch`, as in `crates/todoer/src/main.rs`, `crates/silent-critic/src/main.rs`, and `crates/gator/src/main.rs`.
+**Types (structs/enums):**
+- `PascalCase` throughout: `ApiClient`, `SessionStatus`, `ContractSandbox`, `RateLimitInfo`
+- Enum variants `PascalCase`: `SessionStatus::AwaitingAdjudication`, `EvaluatorType::HumanJudgment`
+- Type aliases also `PascalCase`: `pub type Result<T> = anyhow::Result<T>;`
+
+**Functions and methods:**
+- `snake_case` for all functions: `open_db`, `init_db`, `run_new`, `resolve_db_path`, `build_command`
+- Command entry points follow `run_<subcommand>` convention: `run_new`, `run_list`
+- Builder methods: `with_` prefix for optional fields, no prefix for required: `.base_url()`, `.cache_dir()`, `.max_retries()`
+- Boolean-returning predicates use `is_` or `can_` prefix: `is_tty()`, `can_transition_to()`
+- Conversion helpers: `as_str()` for `&'static str`, `to_string()` via `Display`
+
+**Constants:**
+- `SCREAMING_SNAKE_CASE`: `ENV_CONFIG_HOME`, `ENV_DATA_HOME`, `ENV_TOKEN`, `VERSION`
 
 **Variables:**
-- Use descriptive local names over abbreviations in application code (`workdir`, `ungated_siblings`, `config_home`, `data_home` in `crates/gator/src/lib.rs` and `crates/asana-cli/tests/cli.rs`).
-- Use short temporaries only in narrow scopes (`cfg`, `pb`, `out`, `err`) as seen in `crates/asana-cli/src/config.rs`, `crates/bsky-comment-extractor/src/main.rs`, and `crates/prompter/src/main.rs`.
-
-**Types:**
-- Use `PascalCase` for public structs and enums such as `Cli`, `Command`, `FetchArgs`, `ResolvedProject`, and `SessionCommand` in `crates/*/src/cli.rs`.
-- Use ALL_CAPS for env-var constants where present, such as `ENV_CONFIG_HOME` and `ENV_TOKEN` in `crates/asana-cli/src/config.rs`.
+- `snake_case` throughout: `safehouse_extras`, `policy_denies`, `project_key`
 
 ## Code Style
 
-**Formatting:**
-- Format with `rustfmt` using `rustfmt.toml`: `max_width = 100`, spaces not tabs, `tab_spaces = 4`, `force_explicit_abi = true`, `use_field_init_shorthand = true`, and `use_try_shorthand = true`.
-- `cargo +nightly fmt --all` is the canonical formatter entry point in `justfile` and in `.github/workflows/ci.yml`.
+**Formatter:** `rustfmt` (nightly required for formatting)
 
-**Linting:**
-- The workspace root `Cargo.toml` sets strict defaults: `unsafe_code = "warn"`, `missing_docs = "deny"`, `clippy::all = "deny"`, and `clippy::pedantic = "deny"`.
-- Prefer inheriting workspace lints via `[lints] workspace = true`, as in `crates/gator/Cargo.toml`, `crates/prompter/Cargo.toml`, and `crates/bsky-comment-extractor/Cargo.toml`.
-- Local lint escapes are explicit and narrow. Examples: `#[allow(clippy::struct_excessive_bools)]` in `crates/gator/src/cli.rs`, `#[allow(clippy::future_not_send)]` in `crates/bsky-comment-extractor/src/lib.rs`, and per-crate `missing_docs = "allow"` in `crates/todoer/Cargo.toml` and `crates/silent-critic/Cargo.toml`.
-- When unsafe is required, include a nearby safety explanation, as in `crates/gator/src/lib.rs` and `crates/todoer/tests/config_resolution.rs`.
+**Key settings** (`rustfmt.toml`):
+- `edition = "2024"`
+- `max_width = 100`
+- `hard_tabs = false`, `tab_spaces = 4`
+- `force_explicit_abi = true`
+- `use_field_init_shorthand = true`
+- `use_try_shorthand = true`
+
+**Linter:** `clippy` with strict workspace deny configuration
+
+**Active lint levels** (workspace `Cargo.toml`):
+- `clippy::all = "deny"` (priority -1)
+- `clippy::pedantic = "deny"` (priority -1)
+- `clippy::nursery = "warn"` (priority -1)
+- `clippy::enum_glob_use = "deny"` - enum variants must be fully qualified
+- `clippy::wildcard_imports = "deny"` - no `use foo::*`
+- `rust::missing_docs = "deny"` - all public items require doc comments
+- `rust::unsafe_code = "warn"`
+
+**Lint exceptions** (allowed workspace-wide due to pre-existing code, fix incrementally):
+- `missing_errors_doc`, `missing_panics_doc` (doc completeness)
+- `too_many_arguments`, `too_many_lines` (size limits)
+- `uninlined_format_args`, `use_self`, `bool_to_int_with_if`, `collapsible_if`
+
+**Per-crate overrides:**
+- `todoer` and `silent-critic` disable `missing_docs` locally
+- Test modules annotate `#[allow(unsafe_code)]` when manipulating env vars
 
 ## Import Organization
 
-**Order:**
-1. Standard library imports first, e.g. `use std::path::{Path, PathBuf};` in `crates/bsky-comment-extractor/src/main.rs`.
-2. Third-party crates second, e.g. `use anyhow::{Context, Result, bail};` and `use clap::{CommandFactory, Parser};` in `crates/bsky-comment-extractor/src/main.rs`.
-3. Local crate imports last, e.g. `use bsky_comment_extractor::db::{count_posts, open_existing_db, query_posts};` in `crates/bsky-comment-extractor/src/main.rs`.
+**Group order** (standard Rust convention enforced by rustfmt):
+1. Internal crate: `use crate::api::...`, `use crate::models::...`
+2. External crates: `use anyhow::...`, `use serde::...`, `use tokio::...`
+3. Standard library: `use std::...`
 
-**Path Aliases:**
-- Use explicit crate paths instead of relative aliases. Examples: `use todoer::commands::new::run_new` in `crates/todoer/tests/commands_new.rs` and `use silent_critic::commands::{contract, criterion, decide, log, project, session};` in `crates/silent-critic/src/main.rs`.
-- Re-export shared surface area from `src/lib.rs` when a crate is meant to be consumed by others, as in `crates/cli-common/src/lib.rs`.
+**No wildcard imports** (`clippy::wildcard_imports = "deny"`). All symbols must be explicitly named.
+
+**No enum glob use** (`clippy::enum_glob_use = "deny"`). Write `Status::New` not `use Status::*; New`.
+
+**Example** (`crates/asana-cli/src/api/tasks.rs`):
+```rust
+use crate::{
+    api::{ApiClient, ApiError},
+    models::{Task, TaskCreateRequest, TaskListParams},
+};
+use futures_util::{StreamExt, pin_mut};
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
+use tracing::debug;
+```
 
 ## Error Handling
 
-**Patterns:**
-- Use typed error enums when the crate has a meaningful domain model, e.g. `ExtractorError` in `crates/bsky-comment-extractor/src/error.rs`.
-- Use `anyhow::Result` at binary boundaries or orchestration layers, e.g. `crates/asana-cli/src/error.rs`, `crates/silent-critic/src/main.rs`, and `crates/bsky-comment-extractor/src/main.rs`.
-- Add context at I/O and parsing boundaries, as in `with_context` calls in `crates/asana-cli/src/config.rs`.
-- Convert failures into exit codes in `src/main.rs` instead of panicking. Examples: `crates/gator/src/main.rs`, `crates/todoer/src/main.rs`, and `crates/prompter/src/main.rs`.
-- Support structured JSON errors for machine-facing CLIs. Examples: `ok_response` and `err_response` in `crates/todoer/src/output.rs` and `crates/silent-critic/src/output.rs`, plus JSON error lines in `crates/bsky-comment-extractor/src/main.rs`.
+Two distinct strategies - choose based on context:
+
+**Library-facing code: `anyhow` with context**
+
+Define `pub type Result<T> = anyhow::Result<T>;` in `error.rs`:
+```rust
+// crates/asana-cli/src/error.rs
+pub type Result<T> = anyhow::Result<T>;
+```
+
+Use `anyhow::bail!` for early returns with a message:
+```rust
+anyhow::bail!("database not initialized");
+```
+
+Annotate errors with `.context()` or `.with_context()` at callsites:
+```rust
+// crates/silent-critic/src/db.rs
+let conn = Connection::open(path)
+    .with_context(|| format!("opening database: {}", path.display()))?;
+```
+
+**Typed API errors: `thiserror` enums**
+
+Define structured enums in a dedicated `error.rs` (see `crates/asana-cli/src/api/error.rs`):
+```rust
+#[derive(Debug, Error)]
+pub enum ApiError {
+    #[error("network error: {0}")]
+    Network(#[from] reqwest::Error),
+    #[error("HTTP {status}: {message}")]
+    Http { status: StatusCode, message: String, details: Option<Value> },
+    #[error("rate limited after {retry_after:?}: {body}")]
+    RateLimited { retry_after: Duration, body: String },
+}
+```
+- Use `#[from]` for automatic conversion from standard error types
+- Convenience constructors annotated `#[must_use]` and `pub const fn`
+
+**Main binary entry points:**
+```rust
+// crates/asana-cli/src/main.rs
+match cli::run() {
+    Ok(code) => std::process::exit(code),
+    Err(err) => {
+        tracing::error!(error = %err, "command execution failed");
+        eprintln!("{err:?}");
+        std::process::exit(1);
+    }
+}
+```
+
+**`prompter` uses `Result<T, String>`** - pre-existing pattern. Do not propagate to new crates.
+
+## Enums as Typed Strings
+
+All domain enums follow a strict four-trait pattern. Implement all four when adding a new enum:
+
+```rust
+impl MyEnum {
+    pub fn as_str(&self) -> &'static str { match self { ... } }
+}
+impl FromStr for MyEnum {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "value" => Ok(Self::Variant),
+            _ => Err(format!("invalid myenum: {s}")),
+        }
+    }
+}
+impl Serialize for MyEnum {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where S: serde::Serializer {
+        serializer.serialize_str(self.as_str())
+    }
+}
+impl<'de> Deserialize<'de> for MyEnum {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where D: serde::Deserializer<'de> {
+        let s = String::deserialize(deserializer)?;
+        Self::from_str(&s).map_err(serde::de::Error::custom)
+    }
+}
+// Add fmt::Display if the type appears in user-facing output:
+impl fmt::Display for MyEnum {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { f.write_str(self.as_str()) }
+}
+```
+
+Enums serialize as lowercase snake_case strings: `"awaiting_adjudication"`, `"tool_authored"`. Never as integers or capitalized strings.
+
+## Documentation Comments
+
+**Required for all public items** (`missing_docs = "deny"` enforced except in `todoer` and `silent-critic`):
+
+- Module-level: `//!` at file top
+- Functions: single-line summary, then `/// # Errors` section if fallible
+- Struct fields: brief description on each field
+- Mark pure value-returning functions `#[must_use]`
+
+```rust
+/// Check if stdout is a TTY (terminal).
+///
+/// Returns `true` if stdout is connected to a terminal, `false` if piped/redirected.
+#[must_use]
+pub fn is_tty() -> bool { ... }
+```
+
+**SAFETY comments:** Always add `// SAFETY:` comment before `unsafe` blocks explaining the invariant.
+
+## Structs and Data Models
+
+**Standard derives:**
+- Data transfer/storage structs: `#[derive(Debug, Clone, Serialize, Deserialize)]`
+- Enums as flags/state: `#[derive(Debug, Clone, PartialEq, Eq)]`
+- Clap output format enums: `#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, ValueEnum)]`
+
+**Serde attributes:**
+- `#[serde(skip_serializing_if = "Option::is_none")]` on optional fields
+- `#[serde(default)]` on `Vec` fields to allow missing keys in deserialization
+- No renaming attributes - Rust `snake_case` field names match serialized form
+
+## Configuration Pattern
+
+All crates resolve config via XDG with `dirs` fallback:
+```rust
+pub fn resolve_config_path() -> anyhow::Result<PathBuf> {
+    if let Ok(xdg) = std::env::var("XDG_CONFIG_HOME") {
+        Ok(PathBuf::from(xdg).join("crate-name/config.toml"))
+    } else {
+        let home = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("no home dir"))?;
+        Ok(home.join(".config/crate-name/config.toml"))
+    }
+}
+```
+
+Config structs derive `Deserialize` and `Default`. `load_config()` returns `Config::default()` when the file is absent (graceful degradation).
 
 ## Logging
 
-**Framework:** mixed
-- `tracing` is used where API/network diagnostics matter, especially `crates/asana-cli/src/main.rs`.
-- Most other crates use plain `println!`/`eprintln!` output with optional JSON modes, such as `crates/gator/src/main.rs`, `crates/todoer/src/main.rs`, and `crates/silent-critic/src/main.rs`.
+**Framework:** `tracing` crate only (no `println!` for diagnostics in library code)
 
-**Patterns:**
-- Human-readable output goes to stdout; failures go to stderr unless the command explicitly emits structured JSON.
-- JSON modes are exposed as `--json` flags in `crates/todoer/src/cli.rs`, `crates/gator/src/cli.rs`, `crates/prompter/src/lib.rs`, and `crates/silent-critic/src/cli.rs`.
+**Initialization** (once per binary in `main.rs` or `lib.rs`):
+```rust
+pub fn init_tracing() -> Result<()> {
+    let filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("info"));
+    fmt().with_env_filter(filter).with_target(false).try_init()
+        .map_err(|err| anyhow!(err))?;
+    Ok(())
+}
+```
 
-## Comments
+**Usage:** `tracing::debug!(...)`, `tracing::warn!(...)`, `tracing::error!(error = %err, "message")`
 
-**When to Comment:**
-- Use crate-level or module-level `//!` docs on public files, especially in crates that inherit `missing_docs = "deny"`. Examples: `crates/cli-common/src/lib.rs`, `crates/gator/src/lib.rs`, `crates/prompter/src/lib.rs`, and `crates/bsky-comment-extractor/src/cli.rs`.
-- Use `///` on public CLI structs, fields, and functions. `crates/bsky-comment-extractor/src/cli.rs` is the clearest reference pattern.
-- Use inline comments for constraints and safety notes rather than narration. Examples: the PATH mutation comment in `crates/gator/src/lib.rs` and the env-isolation notes in `crates/unvenv/tests/integration_test.rs`.
+## Output Rendering
 
-**JSDoc/TSDoc:**
-- Not applicable. The repository is Rust-only in the inspected workspace.
+**TTY detection:** Use `is_terminal::IsTerminal` via `cli-common`'s `output::is_tty()`. Return colored output for TTY, plain `[OK]`/`[ERROR]`/`[WARNING]`/`[INFO]` prefixed text when piped.
 
-## Function Design
+**Structured output formats:** Commands support `table`, `json`, `csv`, `markdown` via `--format` flag backed by `clap::ValueEnum` enums defined in `output/mod.rs`.
 
-**Size:**
-- Small command routers live in `src/main.rs`; larger business logic lives in `src/lib.rs` or `src/commands/*.rs`.
-- Large functions are tolerated only with explicit lint waivers, such as `#[allow(clippy::too_many_lines)]` in `crates/unvenv/src/main.rs` and `crates/asana-cli/src/api/client.rs`.
-
-**Parameters:**
-- Prefer typed Clap structs (`FetchArgs`, `QueryArgs`, `TaskCommand`) for CLI inputs in `crates/bsky-comment-extractor/src/cli.rs`, `crates/todoer/src/cli.rs`, and `crates/silent-critic/src/cli.rs`.
-- Prefer borrowing references into command-layer functions, e.g. `run(cli: &Cli)` in `crates/gator/src/lib.rs` and `run_new(&config, &project, "do thing")` in `crates/todoer/tests/commands_new.rs`.
-
-**Return Values:**
-- Library functions usually return `Result<T, E>`.
-- Binary `run` functions return exit codes (`i32`) when they need to centralize stdout/stderr policy, as in `crates/todoer/src/main.rs`, `crates/silent-critic/src/main.rs`, and `crates/bsky-comment-extractor/src/main.rs`.
+**Agent-facing JSON envelope** (e.g., `todoer`): `{"ok": true, "data": ...}` wrapper via `output::ok_response(command, payload)`.
 
 ## Module Design
 
-**Exports:**
-- Keep `src/lib.rs` as the module registry and re-export surface, as in `crates/cli-common/src/lib.rs`, `crates/gator/src/lib.rs`, and `crates/silent-critic/src/lib.rs`.
-- Put CLI definitions in `src/cli.rs` or `src/cli/mod.rs`; put execution logic elsewhere.
+**Exports:** `lib.rs` explicitly declares public modules with doc comments. Avoid re-exporting except in `cli-common` where shared types are surfaced at crate root.
 
-**Barrel Files:**
-- `mod.rs` is used selectively for grouped domains such as `crates/todoer/src/commands/mod.rs`, `crates/silent-critic/src/commands/mod.rs`, and `crates/asana-cli/src/cli/mod.rs`.
-- Most crates otherwise favor flat `*.rs` module files over deep barrel hierarchies.
+**No wildcard re-exports.** Consumers import from specific sub-paths.
 
-## Config and CLI Conventions
+**Commands module pattern:**
+- `commands/mod.rs` declares submodules
+- Each subcommand in its own file: `new.rs`, `list.rs`, `task.rs`, `init.rs`
+- Each file exports one `run_<name>` function returning a typed result struct (e.g., `NewResult { task: Task }`)
 
-- Prefer XDG-aware config/data resolution and env overrides, as seen in `crates/todoer/src/config.rs`, `crates/silent-critic/src/config.rs`, and `crates/asana-cli/src/config.rs`.
-- Expose top-level operational recipes through `justfile`: `just format`, `just lint`, `just test`, `just dev`, and `just ci`.
-- Keep repository workflow policy in checked-in automation: `.github/workflows/ci.yml` defines formatting, lint, test, MSRV, audit, and deny gates; `.github/workflows/release-please.yml` and `.github/workflows/release.yml` define release flow from `main` and `*-v*` tags.
-
-## Repository Workflow Conventions
-
-- Treat `main` as the integration branch: `.github/workflows/ci.yml` and `.github/workflows/release-please.yml` trigger on pushes to `main`.
-- Run `just dev` locally before shipping changes and `just ci` when matching the full CI pipeline from `justfile`.
-- Keep dependency policy centralized in `deny.toml` and dependency versions centralized in the workspace root `Cargo.toml`.
+**Builder pattern** (complex config structs like `ApiClient`):
+```rust
+ApiClient::builder(token)
+    .base_url(url)
+    .cache_dir(dir)
+    .max_retries(3)
+    .build()
+    .expect("client initialises")
+```
 
 ---
 

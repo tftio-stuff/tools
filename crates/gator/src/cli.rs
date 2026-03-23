@@ -292,19 +292,6 @@ mod tests {
     }
 
     #[test]
-    fn parse_meta_version_with_global_json() {
-        let cli = Cli::parse_from(["gator", "--json", "meta", "version"]);
-        assert!(cli.json);
-        match cli.command {
-            Some(Command::Meta { command }) => {
-                assert!(matches!(command, MetaCommand::Version));
-            }
-            _ => panic!("expected meta command"),
-        }
-        assert!(cli.agent.is_none());
-    }
-
-    #[test]
     fn validate_no_yolo_with_session() {
         let cli = Cli::parse_from(["gator", "claude", "--no-yolo", "--session=abc"]);
         let err = cli.validate().unwrap_err();

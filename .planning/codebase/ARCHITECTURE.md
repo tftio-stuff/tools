@@ -4,146 +4,180 @@
 
 ## Pattern Overview
 
-**Overall:** Cargo workspace monorepo of independent Rust CLI crates with one shared support library.
+**Overall:** Cargo workspace monorepo of independent CLI tools sharing a common library
 
 **Key Characteristics:**
-- The workspace root in `Cargo.toml` owns dependency versions, lint policy, edition, and Rust version for all member crates under `crates/`.
-- Most tools use a thin binary entry point in `crates/*/src/main.rs` that parses CLI input and delegates to library modules in `crates/*/src/lib.rs` or sibling modules.
-- Shared CLI concerns are centralized in `crates/cli-common/src/`, while each product crate keeps its own domain models, command handlers, storage code, and output formatters.
+- Each tool is an independently versioned, independently deployable binary crate
+- One shared library crate (`cli-common`) provides cross-cutting CLI utilities
+- Tools that expose library APIs provide both `lib.rs` and `main.rs`
+- State persistence uses SQLite (bundled) via `rusqlite` for stateful tools
+- No shared runtime or daemon -- every binary is standalone
 
 ## Layers
 
-**Workspace Layer:**
-- Purpose: Define crate boundaries, shared dependencies, lint settings, release metadata, and developer workflows.
-- Location: `Cargo.toml`, `justfile`, `deny.toml`, `rustfmt.toml`, `release-please-config.json`, `.github/workflows/`.
-- Contains: Workspace members, `[workspace.dependencies]`, task recipes, CI/release configuration.
-- Depends on: Cargo workspace features and GitHub Actions.
-- Used by: Every crate under `crates/`.
+**Shared Library (`cli-common`):**
+- Purpose: Cross-cutting CLI utilities reused by all tools
+- Location: `crates/cli-common/src/`
+- Contains: Shell completions, doctor/health-check framework, license display, terminal output helpers, update checks
+- Depends on: `clap`, `clap_complete`, `colored`, `is-terminal`
+- Used by: `asana-cli`, `unvenv`, and any crate needing standard CLI chrome
 
-**Shared CLI Support Layer:**
-- Purpose: Reusable utilities for completions, doctor checks, license output, terminal detection, and self-update flows.
-- Location: `crates/cli-common/src/lib.rs`, `crates/cli-common/src/completions.rs`, `crates/cli-common/src/doctor.rs`, `crates/cli-common/src/output.rs`, `crates/cli-common/src/update.rs`.
-- Contains: Re-exported helpers such as `generate_completions`, `run_doctor`, and `display_license`.
-- Depends on: `clap`, `clap_complete`, `colored`, `is-terminal`.
-- Used by: `crates/prompter/`, `crates/unvenv/`, `crates/asana-cli/`, `crates/gator/`, and `crates/bsky-comment-extractor/`.
+**CLI Layer (`cli.rs` or `cli/mod.rs`):**
+- Purpose: Argument parsing and command dispatch
+- Location: `crates/<name>/src/cli.rs` or `crates/<name>/src/cli/mod.rs`
+- Contains: `clap` `Parser`/`Subcommand` structs, top-level `run()` dispatcher
+- Depends on: config, commands
+- Used by: `main.rs` only
 
-**Per-Tool CLI Layer:**
-- Purpose: Define clap commands and argument structures, then dispatch to tool-specific operations.
-- Location: `crates/gator/src/cli.rs`, `crates/bsky-comment-extractor/src/cli.rs`, `crates/todoer/src/cli.rs`, `crates/silent-critic/src/cli.rs`, `crates/asana-cli/src/cli/`, `crates/prompter/src/lib.rs`, `crates/unvenv/src/main.rs`.
-- Contains: `Parser`/`Subcommand` structs and enums, flag validation, help text, and command routing.
-- Depends on: clap derive plus the crate’s domain modules.
-- Used by: Binary entry points in each crate’s `src/main.rs`.
+**Command Layer (`commands/`):**
+- Purpose: Business logic for each subcommand, one module per command group
+- Location: `crates/<name>/src/commands/<cmd>.rs`
+- Contains: `run_*` functions that accept parsed inputs and return typed results
+- Depends on: models, db (for stateful tools), config
+- Used by: CLI layer / main.rs dispatch
 
-**Domain/Service Layer:**
-- Purpose: Hold tool behavior behind the CLI surface.
-- Location: `crates/bsky-comment-extractor/src/client.rs` and `src/db.rs`, `crates/gator/src/config.rs` and `src/sandbox.rs`, `crates/todoer/src/commands/` and `src/repo.rs`, `crates/silent-critic/src/commands/` and `src/discovery.rs`, `crates/asana-cli/src/api/`.
-- Contains: API clients, repository functions, session/state logic, sandbox policy builders, and command handlers.
-- Depends on: Models, config modules, external APIs or `rusqlite`.
-- Used by: CLI dispatch code.
+**Data Layer (`db.rs`):**
+- Purpose: SQLite CRUD operations, schema initialization
+- Location: `crates/<name>/src/db.rs`
+- Contains: `open_db`, `init_db`, and typed CRUD functions per model
+- Depends on: `rusqlite`, models
+- Used by: commands, main.rs (for connection management)
 
-**Persistence/Model Layer:**
-- Purpose: Represent structured data and persistence schemas.
-- Location: `crates/bsky-comment-extractor/src/models.rs`, `crates/todoer/src/models.rs`, `crates/todoer/src/db.rs`, `crates/silent-critic/src/models.rs`, `crates/silent-critic/src/db.rs`, `crates/asana-cli/src/models/`.
-- Contains: serde DTOs, SQLite schema setup, enum state machines, row conversion logic.
-- Depends on: `serde`, `rusqlite`, `chrono`, `uuid`.
-- Used by: Service and output layers.
+**Models Layer (`models.rs` or `models/`):**
+- Purpose: Typed data representations with serde serialization
+- Location: `crates/<name>/src/models.rs` or `crates/asana-cli/src/models/`
+- Contains: Domain structs/enums, `Display`/`FromStr` impls for DB round-trips
+- Depends on: `serde`
+- Used by: db, commands, output
+
+**Config Layer (`config.rs`):**
+- Purpose: Load tool configuration from disk, resolve paths
+- Location: `crates/<name>/src/config.rs`
+- Contains: Config struct, `load_config()`, path resolution helpers
+- Depends on: `directories`, `toml`/`serde`, filesystem
+- Used by: main.rs, commands
+
+**Output Layer (`output.rs`):**
+- Purpose: Format results for human (plain text) or machine (JSON) consumption
+- Location: `crates/<name>/src/output.rs`
+- Contains: Render functions, `ok_response`/`err_response` JSON envelope helpers
+- Depends on: `serde_json`, `tabled`, `colored`
+- Used by: main.rs dispatch (after command execution)
+
+**API Layer (`api/`) -- asana-cli only:**
+- Purpose: Async HTTP client abstractions over the Asana REST API
+- Location: `crates/asana-cli/src/api/`
+- Contains: `client.rs` (central `ApiClient`), per-resource modules (tasks, projects, etc.), auth, pagination, error types
+- Depends on: `reqwest`, `tokio`, `tracing`, `secrecy`
+- Used by: CLI command handlers via `build_api_client()`
 
 ## Data Flow
 
-**Generic CLI Flow:**
-1. `crates/<tool>/src/main.rs` parses arguments or calls a `run()` function.
-2. CLI definitions in `crates/<tool>/src/cli.rs` or `crates/<tool>/src/cli/` map subcommands to domain actions.
-3. Service modules perform I/O against local config, local SQLite, Git metadata, or remote APIs.
-4. Output modules or main functions emit human-readable text or JSON and select a process exit code.
+**Standard synchronous tool (todoer, silent-critic):**
 
-**`bce` Extraction Flow (`crates/bsky-comment-extractor/`):**
-1. `crates/bsky-comment-extractor/src/main.rs` matches `Fetch` or `Query`.
-2. `execute_fetch()` builds a single-threaded Tokio runtime, then calls `bsky_comment_extractor::run_extraction()` from `crates/bsky-comment-extractor/src/lib.rs`.
-3. `crates/bsky-comment-extractor/src/client.rs` authenticates or resolves a handle, paginates `com.atproto.repo.listRecords`, and sends records to `crates/bsky-comment-extractor/src/db.rs`.
-4. `crates/bsky-comment-extractor/src/db.rs` persists posts and extraction cursors in SQLite, then `src/main.rs` prints summaries or JSONL query results.
+1. `main()` calls `Cli::parse()` (clap) and dispatches to `run(cli)`
+2. `run()` calls `load_config()` to get config/paths
+3. `run()` opens SQLite DB via `open_db(&path)` (stateful tools)
+4. `run()` delegates to a `commands::<module>::run_<action>(&conn, ...)` function
+5. Command function reads/writes models through `db::*` CRUD functions
+6. `run()` formats result: if `--json` flag, uses `ok_response()`/`err_response()` JSON envelope; otherwise plain text
+7. `main()` calls `std::process::exit(code)`
 
-**`gator` Harness Flow (`crates/gator/`):**
-1. `crates/gator/src/main.rs` parses flags and validates session-specific conflicts.
-2. `crates/gator/src/lib.rs` resolves a workdir from CLI, Git, or `silent-critic` session metadata.
-3. `crates/gator/src/config.rs`, `src/worktree.rs`, and `src/session.rs` assemble directory grants and deny lists.
-4. `crates/gator/src/sandbox.rs` generates SBPL policy text and `crates/gator/src/agent.rs` execs `sandbox-exec` with agent-specific prompt injection.
+**Asana CLI (async tool):**
 
-**`silent-critic` Session Flow (`crates/silent-critic/`):**
-1. `crates/silent-critic/src/main.rs` loads config and dispatches subcommands.
-2. `crates/silent-critic/src/commands/session.rs` advances a session through `Discovering -> Composing -> Ready -> Executing -> AwaitingAdjudication -> Adjudicated`.
-3. `crates/silent-critic/src/discovery.rs` records repository context and `crates/silent-critic/src/db.rs` persists projects, contracts, evidence, and decisions.
-4. Output is serialized through `crates/silent-critic/src/output.rs` as text or structured JSON.
+1. `main()` initializes tracing, calls `cli::run()`
+2. `cli::run()` parses args, loads config, builds `ApiClient` via `build_api_client()`
+3. Command handler creates a `tokio` runtime (`RuntimeBuilder::new_current_thread()`) and calls `block_on(async { client.method().await })`
+4. `ApiClient` streams paginated responses via `async_stream`; handles caching, rate limits, retries
+5. Output rendered via `output/` modules
 
-## State Management
+**Gator (process exec tool):**
+
+1. `main()` calls `Cli::parse()`, validates, calls `lib::run(&cli)`
+2. `run()` resolves workdir (explicit > git root > cwd), loads `.safehouse` config and named policies
+3. Optionally fetches silent-critic session sandbox via `session::fetch_session_sandbox()`
+4. Assembles macOS `sandbox-exec` policy string via `sandbox::assemble_policy()`
+5. Composes prompter prompt via `prompt::compose_prompt()`
+6. Writes policy to tempfile, calls `agent::exec_command()` which replaces the process via `execv`
 
 **State Management:**
-- Workspace-wide state is mostly static configuration in `Cargo.toml`, `justfile`, `.github/workflows/`, and release metadata files at the repository root.
-- Durable runtime state lives in SQLite for `crates/todoer/src/db.rs`, `crates/silent-critic/src/db.rs`, and `crates/bsky-comment-extractor/src/db.rs`.
-- Ephemeral execution state is kept in process memory for `crates/gator/src/lib.rs` and `crates/asana-cli/src/api/client.rs`.
-- Planning state for current product work is tracked outside the crates in `.planning/STATE.md` and `.planning/milestones/`.
+- `asana-cli`: in-memory + on-disk JSON cache for API responses; no persistent app state
+- `todoer`: SQLite at path from `.todoer.toml` config; per-project databases
+- `silent-critic`: SQLite at `~/.local/share/silent-critic/<repo-hash>/db.sqlite`; project identified by SHA-2 hash of repo root path
+- `prompter`: stateless; reads TOML profiles from disk at invocation time
+- `unvenv`, `gator`: stateless
 
 ## Key Abstractions
 
-**Workspace Member as Product Boundary:**
-- Purpose: Each directory in `crates/` is the deployable or reusable boundary.
-- Examples: `crates/cli-common/`, `crates/prompter/`, `crates/unvenv/`, `crates/asana-cli/`, `crates/todoer/`, `crates/silent-critic/`, `crates/gator/`, `crates/bsky-comment-extractor/`.
-- Pattern: One Cargo package per tool, with optional `lib.rs` for reusable internal APIs.
+**`DoctorChecks` trait (`cli-common`):**
+- Purpose: Standard health-check interface implemented by each tool
+- Examples: `crates/cli-common/src/doctor.rs`, inline impl in `crates/asana-cli/src/cli/mod.rs`, `crates/unvenv/src/main.rs`
+- Pattern: Implement `repo_info()`, `current_version()`, `tool_checks()` returning `Vec<DoctorCheck>`; call `run_doctor(&self)`
 
-**Command Enum Dispatch:**
-- Purpose: Model the CLI surface as typed subcommands.
-- Examples: `crates/bsky-comment-extractor/src/cli.rs`, `crates/todoer/src/cli.rs`, `crates/silent-critic/src/cli.rs`, `crates/asana-cli/src/cli/mod.rs`.
-- Pattern: Clap `Parser` + `Subcommand` enums feeding `match` dispatch in `src/main.rs` or `cli::run()`.
+**`ok_response` / `err_response` JSON envelope:**
+- Purpose: Machine-readable output for LLM agent consumption
+- Examples: `crates/todoer/src/output.rs`, `crates/silent-critic/src/output.rs`
+- Pattern: `{"ok": true, "command": "...", "data": {...}}` / `{"ok": false, "error": "...", ...}`
 
-**Repository/Storage Abstraction:**
-- Purpose: Keep SQL and persistence isolated from CLI code.
-- Examples: `crates/todoer/src/repo.rs`, `crates/todoer/src/db.rs`, `crates/silent-critic/src/db.rs`, `crates/bsky-comment-extractor/src/db.rs`.
-- Pattern: Open/init database separately, then use focused functions for row reads/writes.
+**`ApiClient` builder (`asana-cli`):**
+- Purpose: Configurable async HTTP client with auth, caching, rate-limiting
+- Examples: `crates/asana-cli/src/api/client.rs`
+- Pattern: `ApiClient::builder(token).base_url(...).cache_dir(...).build()`
 
-**Remote API Client Abstraction:**
-- Purpose: Encapsulate auth, retries, pagination, and serialization.
-- Examples: `crates/asana-cli/src/api/client.rs`, `crates/bsky-comment-extractor/src/client.rs`.
-- Pattern: Stateful client structs with helper methods rather than inline HTTP calls from command handlers.
+**Session state machine (`silent-critic`):**
+- Purpose: Enforce valid lifecycle transitions for agentic supervision sessions
+- Examples: `crates/silent-critic/src/models.rs` (`SessionStatus`), `crates/silent-critic/src/db.rs` (`transition_session`)
+- Pattern: `SessionStatus::can_transition_to()` checked before every `UPDATE`; states: `discovering -> composing -> ready -> executing -> awaiting_adjudication -> adjudicated`
+
+**Sandbox policy assembly (`gator`):**
+- Purpose: Compose macOS `sandbox-exec` SBPL policy from workdir, worktrees, and extra grants
+- Examples: `crates/gator/src/sandbox.rs`
+- Pattern: `assemble_policy(&workdir, &wt_info, &extras, &denies)` returns policy string written to tempfile before exec
 
 ## Entry Points
 
-**Workspace Build/Test Entrypoints:**
-- Location: `justfile`
-- Triggers: Manual local commands such as `just build`, `just test`, `just ci`.
-- Responsibilities: Wrap workspace-wide Cargo build, lint, test, audit, and release-style checks.
+**`crates/asana-cli/src/main.rs`:**
+- Triggers: `asana-cli <subcommand>`
+- Responsibilities: Initialize tracing, call `cli::run()`, exit with returned code
 
-**Binary Entrypoints:**
-- `crates/asana-cli/src/main.rs`: initializes tracing, then delegates to `asana_cli::cli::run()`.
-- `crates/bsky-comment-extractor/src/main.rs`: parses `Cli`, then routes to `fetch` or `query`.
-- `crates/gator/src/main.rs`: validates CLI invariants, then runs sandbox harness logic.
-- `crates/prompter/src/main.rs`: resolves `AppMode` and dispatches render/list/init/doctor flows.
-- `crates/silent-critic/src/main.rs`: loads config and dispatches project, criterion, session, contract, decide, and log commands.
-- `crates/todoer/src/main.rs`: routes CRUD-style task commands and project discovery.
-- `crates/unvenv/src/main.rs`: handles default scan mode plus doctor/completions/update helpers.
+**`crates/todoer/src/main.rs`:**
+- Triggers: `todoer <subcommand> [--json]`
+- Responsibilities: Parse CLI, load config, open DB, dispatch to command modules, format output
+
+**`crates/silent-critic/src/main.rs`:**
+- Triggers: `silent-critic <subcommand> [--json]`
+- Responsibilities: Parse CLI, dispatch to `commands::*`, open project DB per command, format output
+
+**`crates/gator/src/main.rs`:**
+- Triggers: `gator <agent> [profiles...] [flags]`
+- Responsibilities: Parse and validate CLI, call `lib::run(&cli)` which execs agent process (never returns on success)
+
+**`crates/unvenv/src/main.rs`:**
+- Triggers: `unvenv [scan|doctor|completions|...]`
+- Responsibilities: Single-file tool; scan for unignored `pyvenv.cfg` files via `walkdir` + `git2`
+
+**`crates/prompter/src/main.rs`:**
+- Triggers: `prompter <subcommand>`
+- Responsibilities: Load TOML profiles, resolve recursive dependencies, concatenate markdown snippets
 
 ## Error Handling
 
-**Strategy:** Parse early, centralize domain errors, and convert failures to text or JSON at the final CLI boundary.
+**Strategy:** `anyhow` for application-level errors with context chaining; typed `ApiError` enum for HTTP errors in `asana-cli`
 
 **Patterns:**
-- Typed domain errors live in files such as `crates/bsky-comment-extractor/src/error.rs` and `crates/asana-cli/src/api/error.rs`.
-- CLI binaries usually convert errors into exit code `1` or a domain-specific non-zero status, for example `crates/unvenv/src/main.rs` returns `2` when unignored virtual environments are found.
-- JSON error envelopes are used when machine-readable output is part of the contract, for example `crates/silent-critic/src/output.rs`, `crates/todoer/src/output.rs`, and query error handling in `crates/bsky-comment-extractor/src/main.rs`.
+- All fallible functions return `anyhow::Result<T>` (aliased as `type Result<T> = anyhow::Result<T>` in `crates/asana-cli/src/error.rs`)
+- `.context("description")` and `.with_context(|| ...)` used to add location information
+- `main()` functions convert errors to exit codes: success = 0, error = 1, policy violation = 2 (unvenv)
+- JSON output mode wraps errors in `err_response()` envelope instead of `eprintln!`
+- `silent-critic` enforces state machine validity at the DB layer (`transition_session` bails on invalid transitions)
 
 ## Cross-Cutting Concerns
 
-**Logging:** `crates/asana-cli/src/lib.rs` installs `tracing_subscriber`; `crates/bsky-comment-extractor/src/client.rs` uses `tracing::warn!`; most other crates rely on explicit stdout/stderr output in `src/main.rs`.
+**Logging:** `tracing` + `tracing-subscriber` with `EnvFilter`; initialized in `main()` for `asana-cli`. Other tools use `eprintln!` for errors. Level controlled via `RUST_LOG` env var.
 
-**Validation:** CLI validation sits close to clap structs, such as `Cli::validate()` in `crates/gator/src/cli.rs` and field-specific argument constraints in `crates/bsky-comment-extractor/src/cli.rs`.
+**Validation:** CLI validation via `clap` derive macros (types, required args). Business-rule validation in command modules. `gator` has post-parse `cli.validate()` for mutual-exclusion checks (`--session` vs `--workdir`/`--policy`).
 
-**Authentication:** External-service auth is localized inside client/config modules: Asana token handling in `crates/asana-cli/src/api/auth.rs` and config logic, BlueSky app-password auth in `crates/bsky-comment-extractor/src/client.rs`, and worker/operator token checks in `crates/silent-critic/src/commands/session.rs`.
-
-**Shared Code:** New reusable CLI helpers belong in `crates/cli-common/src/` first; tool-specific code stays inside its crate unless another crate imports it through the workspace dependency graph.
-
-**CLI Design Patterns:**
-- Use `src/main.rs` as a thin boundary and keep real work in library modules.
-- Prefer nested clap enums for command families, as in `crates/silent-critic/src/cli.rs` and `crates/asana-cli/src/cli/mod.rs`.
-- Keep output formatting separate from data retrieval when a tool supports multiple formats, as in `crates/asana-cli/src/output/` and `crates/todoer/src/output.rs`.
-- Use a library crate plus binary pair when the crate exposes reusable functions internally, as in `crates/prompter/`, `crates/asana-cli/`, `crates/gator/`, `crates/todoer/`, `crates/silent-critic/`, and `crates/bsky-comment-extractor/`.
+**Authentication:** `asana-cli` uses `secrecy::SecretString` for PAT; stored in config file or `ASANA_TOKEN` env var. `silent-critic` uses opaque session tokens (`SILENT_CRITIC_TOKEN` env var) to distinguish worker vs operator roles.
 
 ---
 

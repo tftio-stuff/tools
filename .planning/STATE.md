@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Milestone complete
-stopped_at: Completed 07-04-PLAN.md
-last_updated: "2026-03-23T01:36:33.148Z"
+status: Ready to plan
+stopped_at: Completed 05-query-subcommand-03-PLAN.md
+last_updated: "2026-03-22T22:19:51.641Z"
 progress:
-  total_phases: 3
+  total_phases: 2
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 3
+  completed_plans: 3
 ---
 
 # Project State
@@ -19,11 +19,11 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Complete, reliable extraction of a single BlueSky user's entire post and interaction history into a queryable local store.
-**Current focus:** Phase 07 — add-shared-agent-help-and-agent-skill-support-across-cli-crates
+**Current focus:** Phase 05 — query-subcommand
 
 ## Current Position
 
-Phase: 07
+Phase: 6
 Plan: Not started
 
 ## Performance Metrics
@@ -44,10 +44,6 @@ Plan: Not started
 | Phase 05-query-subcommand P02 | 2m | 2 tasks | 2 files |
 | Phase 05-query-subcommand P01 | 0 min | 2 tasks | 3 files |
 | Phase 05-query-subcommand P03 | 3m 23s | 3 tasks | 4 files |
-| Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates P01 | 4 min | 2 tasks | 2 files |
-| Phase 07 P02 | 4 min | 2 tasks | 7 files |
-| Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates P03 | 6m 40s | 2 tasks | 8 files |
-| Phase 07 P04 | 15 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -100,17 +96,6 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 05-query-subcommand]: Query execution stays synchronous and never reads BSKY_APP_PASSWORD or starts tokio.
 - [Phase 05-query-subcommand]: Query failures emit structured stderr JSON with db_not_found for missing databases and query_failed for other runtime errors.
 - [Phase 05-query-subcommand]: The global --agent-help flag remains parseable but hidden from subcommand help so bce query --help exposes only query options.
-- [Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates]: Render both agent-help YAML and agent-skill markdown from one shared AgentDoc model. — A single authored source keeps Phase 7 output formats aligned and avoids schema drift.
-- [Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates]: Detect agent-doc requests from raw argv and accept only exact top-level invocations. — Short-circuiting before clap preserves required subcommands and positional parsing while rejecting subcommand placement.
-- [Phase 07]: Preserve clap-required commands and positionals by handling successful agent-doc requests from raw argv before parser dispatch.
-- [Phase 07]: Name every subprocess regression test with agent_help so filtered cargo verification commands execute the full hidden-help and skill-output contract.
-- [Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates]: todoer and silent-critic now intercept exact top-level agent-doc requests before clap parsing to preserve required subcommand behavior.
-- [Phase 07-add-shared-agent-help-and-agent-skill-support-across-cli-crates]: todoer shares the workspace cli-common agent-doc model so its project-resolution, JSON-envelope, and stdin note semantics stay aligned across YAML and skill output.
-- [Phase 07]: Keep prompter and asana-cli documentation authored per binary, then validate coverage with shared command and argument helpers.
-
-### Roadmap Evolution
-
-- Phase 7 added: Add shared --agent-help and --agent-skill support across CLI crates
 
 ### Pending Todos
 
@@ -123,6 +108,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-23T01:29:31.749Z
-Stopped at: Completed 07-04-PLAN.md
+Last session: 2026-03-22T22:16:28.147Z
+Stopped at: Completed 05-query-subcommand-03-PLAN.md
 Resume file: None

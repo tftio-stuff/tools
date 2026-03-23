@@ -71,18 +71,3 @@ Plans:
 | 4. CLI Surface | v1.1 | 2/2 | Complete | 2026-03-22 |
 | 5. Query Subcommand | bce-query-mode | 1/3 | In Progress | - |
 | 6. Agent Help | bce-query-mode | 0/? | Not started | - |
-| 7. Shared Agent Docs | workspace rollout | 4/4 | Complete | 2026-03-23 |
-
-### Phase 7: Add shared --agent-help and --agent-skill support across CLI crates
-
-**Goal:** All seven workspace binaries expose exhaustive top-level `--agent-help` YAML and `--agent-skill` Claude skill output from a shared `cli-common` contract without changing normal CLI behavior
-**Requirements**: ADOC-01, ADOC-02, ADOC-03, ADOC-04, ADOC-05
-**Depends on:** Phase 6
-**Plans:** 4 plans
-**Completed:** 2026-03-23
-
-Plans:
-- [x] 07-01-PLAN.md — create the shared `cli-common` agent-doc model, renderers, and validation helpers
-- [x] 07-02-PLAN.md — wire `bce`, `unvenv`, and `gator` to the shared top-level agent-doc flow
-- [x] 07-03-PLAN.md — wire `todoer` and `silent-critic` to the shared top-level agent-doc flow
-- [x] 07-04-PLAN.md — wire `prompter` and `asana-cli`, then run the workspace verification sweep
