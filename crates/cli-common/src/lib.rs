@@ -96,12 +96,14 @@ pub use runner::{
 };
 
 #[cfg(test)]
-pub(crate) mod test_support {
+/// Shared test utilities for workspace integration tests.
+pub mod test_support {
     use std::sync::{Mutex, MutexGuard, OnceLock};
 
     static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
-    pub(crate) fn env_lock() -> MutexGuard<'static, ()> {
+    /// Acquire a process-wide lock for tests that mutate environment variables.
+    pub fn env_lock() -> MutexGuard<'static, ()> {
         ENV_LOCK
             .get_or_init(|| Mutex::new(()))
             .lock()
