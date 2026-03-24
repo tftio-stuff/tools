@@ -1,10 +1,10 @@
 {
-  "crates/cli-common": "2.2.0",
-  "crates/prompter": "2.2.0",
-  "crates/unvenv": "2.2.0",
-  "crates/asana-cli": "2.2.0",
-  "crates/todoer": "2.2.0",
-  "crates/silent-critic": "2.2.0",
-  "crates/gator": "2.2.0",
-  "crates/bsky-comment-extractor": "2.2.0"
+  "crates/cli-common": "2.3.0",
+  "crates/prompter": "2.3.0",
+  "crates/unvenv": "2.3.0",
+  "crates/asana-cli": "2.3.0",
+  "crates/todoer": "2.3.0",
+  "crates/silent-critic": "2.3.0",
+  "crates/gator": "2.3.0",
+  "crates/bsky-comment-extractor": "2.3.0"
 }
