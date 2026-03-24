@@ -15,10 +15,9 @@ use std::{
     process,
 };
 use tftio_cli_common::{
-    AgentCapability, AgentDispatch, AgentSurfaceSpec, CommandSelector, DoctorCheck,
-    DoctorChecks, LicenseType, RepoInfo, StandardCommand, ToolSpec,
-    command::run_standard_command, parse_with_agent_surface, run_with_display_error_handler,
-    workspace_tool,
+    AgentCapability, AgentDispatch, AgentSurfaceSpec, CommandSelector, DoctorCheck, DoctorChecks,
+    LicenseType, RepoInfo, StandardCommand, ToolSpec, command::run_standard_command,
+    parse_with_agent_surface, run_with_display_error_handler, workspace_tool,
 };
 use walkdir::WalkDir;
 
@@ -118,13 +117,12 @@ const TOOL_SPEC: ToolSpec = workspace_tool(
 .with_agent_surface(&AGENT_SURFACE);
 
 const SCAN_COMMAND: CommandSelector = CommandSelector::new(&["scan"]);
-const SCAN_VENVS_CAPABILITY: AgentCapability = AgentCapability::minimal(
-    "scan-venvs",
-    &[SCAN_COMMAND],
-    &[],
-)
-.with_output("plain text on stdout with a non-zero exit when unignored pyvenv.cfg files are found")
-.with_constraints("reads the current working tree only");
+const SCAN_VENVS_CAPABILITY: AgentCapability =
+    AgentCapability::minimal("scan-venvs", &[SCAN_COMMAND], &[])
+        .with_output(
+            "plain text on stdout with a non-zero exit when unignored pyvenv.cfg files are found",
+        )
+        .with_constraints("reads the current working tree only");
 const AGENT_SURFACE: AgentSurfaceSpec = AgentSurfaceSpec::new(&[SCAN_VENVS_CAPABILITY]);
 
 fn main() {

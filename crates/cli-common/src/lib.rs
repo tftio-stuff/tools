@@ -68,10 +68,9 @@ pub mod update;
 
 // Re-export commonly used items
 pub use agent::{
-    AGENT_TOKEN_ENV, AGENT_TOKEN_EXPECTED_ENV, AgentCapability, AgentDispatch,
-    AgentModeContext, AgentSkillError, AgentSurfaceSpec, CommandSelector, FlagSelector,
-    apply_agent_surface, parse_with_agent_surface, parse_with_agent_surface_from,
-    render_agent_help, render_agent_skill,
+    AGENT_TOKEN_ENV, AGENT_TOKEN_EXPECTED_ENV, AgentCapability, AgentDispatch, AgentModeContext,
+    AgentSkillError, AgentSurfaceSpec, CommandSelector, FlagSelector, apply_agent_surface,
+    parse_with_agent_surface, parse_with_agent_surface_from, render_agent_help, render_agent_skill,
 };
 pub use app::{ToolSpec, workspace_tool};
 pub use command::{
@@ -81,9 +80,8 @@ pub use command::{
     parse_command_with_agent_surface_from, run_standard_command_no_doctor,
 };
 pub use completions::{
-    CompletionOutput, generate_completions, generate_completions_from_command,
-    render_completion, render_completion_from_command, render_completion_instructions,
-    write_completion,
+    CompletionOutput, generate_completions, generate_completions_from_command, render_completion,
+    render_completion_from_command, render_completion_instructions, write_completion,
 };
 pub use doctor::{DoctorReport, print_doctor_report_json, print_doctor_report_text, run_doctor};
 pub use error::{fatal_error, print_error};

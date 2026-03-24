@@ -49,7 +49,10 @@ pub fn render_completion<T: CommandFactory>(shell: Shell) -> CompletionOutput {
 
 /// Render shell completions from a pre-built clap command tree.
 #[must_use]
-pub fn render_completion_from_command(shell: Shell, mut command: clap::Command) -> CompletionOutput {
+pub fn render_completion_from_command(
+    shell: Shell,
+    mut command: clap::Command,
+) -> CompletionOutput {
     let bin_name = command.get_name().to_string();
     let mut buffer = Vec::new();
 
@@ -107,12 +110,12 @@ pub fn generate_completions_from_command(shell: Shell, command: clap::Command) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use clap::{Arg, Parser, Subcommand};
+    use crate::agent::apply_agent_surface;
     use crate::{
         AgentCapability, AgentModeContext, AgentSurfaceSpec, CommandSelector, FlagSelector,
         LicenseType, RepoInfo, ToolSpec,
     };
-    use crate::agent::apply_agent_surface;
+    use clap::{Arg, Parser, Subcommand};
 
     #[derive(Parser)]
     #[command(name = "test-cli")]
@@ -214,7 +217,11 @@ mod tests {
             )
             .subcommand(clap::Command::new("admin"));
 
-        apply_agent_surface(&mut command, &agent_spec(), &AgentModeContext { active: true });
+        apply_agent_surface(
+            &mut command,
+            &agent_spec(),
+            &AgentModeContext { active: true },
+        );
 
         let output = render_completion_from_command(Shell::Bash, command);
 

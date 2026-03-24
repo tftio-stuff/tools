@@ -1,9 +1,8 @@
 use serde_json::json;
 use tftio_cli_common::{
-    AgentCapability, AgentDispatch, AgentSurfaceSpec, CommandSelector, FlagSelector,
-    LicenseType, StandardCommand, ToolSpec, command::run_standard_command_no_doctor,
-    error::print_error, parse_with_agent_surface, render_response, render_response_parts,
-    workspace_tool,
+    AgentCapability, AgentDispatch, AgentSurfaceSpec, CommandSelector, FlagSelector, LicenseType,
+    StandardCommand, ToolSpec, command::run_standard_command_no_doctor, error::print_error,
+    parse_with_agent_surface, render_response, render_response_parts, workspace_tool,
 };
 
 use silent_critic::cli::{
@@ -52,7 +51,9 @@ const SESSION_SUBMIT_CAPABILITY: AgentCapability = AgentCapability::new(
     &[SESSION_SUBMIT_CRITERION_FLAG],
 )
 .with_examples(&["silent-critic session submit --criterion <ID>"])
-.with_constraints("requires the runtime SILENT_CRITIC_TOKEN worker token and a visible criterion id");
+.with_constraints(
+    "requires the runtime SILENT_CRITIC_TOKEN worker token and a visible criterion id",
+);
 
 const AGENT_SURFACE: AgentSurfaceSpec = AgentSurfaceSpec::new(&[
     SESSION_STATUS_CAPABILITY,

@@ -30,7 +30,10 @@ fn agent_surface_help_lists_declared_todoer_capabilities() {
         "task-note",
         "update-task-status",
     ] {
-        assert!(stdout.contains(capability), "missing capability {capability}");
+        assert!(
+            stdout.contains(capability),
+            "missing capability {capability}"
+        );
     }
 }
 

@@ -181,20 +181,22 @@ mod tests {
     fn build_command_claude_yolo() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
         let (cmd, _) = build_command(&Agent::Claude, tmp.path(), None, &[], true).unwrap();
-        assert!(cmd
-            .get_args()
-            .map(|a| a.to_string_lossy().to_string())
-            .any(|arg| arg == "--dangerously-skip-permissions"));
+        assert!(
+            cmd.get_args()
+                .map(|a| a.to_string_lossy().to_string())
+                .any(|arg| arg == "--dangerously-skip-permissions")
+        );
     }
 
     #[test]
     fn build_command_codex_yolo() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
         let (cmd, _) = build_command(&Agent::Codex, tmp.path(), None, &[], true).unwrap();
-        assert!(cmd
-            .get_args()
-            .map(|a| a.to_string_lossy().to_string())
-            .any(|arg| arg == "--full-auto"));
+        assert!(
+            cmd.get_args()
+                .map(|a| a.to_string_lossy().to_string())
+                .any(|arg| arg == "--full-auto")
+        );
     }
 
     #[test]
@@ -202,24 +204,27 @@ mod tests {
         let tmp = tempfile::NamedTempFile::new().unwrap();
         let (cmd, _) = build_command(&Agent::Gemini, tmp.path(), None, &[], true).unwrap();
         // Gemini has no YOLO flag -- only sandbox-exec plumbing + "gemini"
-        assert!(!cmd
-            .get_args()
-            .map(|a| a.to_string_lossy().to_string())
-            .any(|arg| arg == "--dangerously-skip-permissions"));
-        assert!(!cmd
-            .get_args()
-            .map(|a| a.to_string_lossy().to_string())
-            .any(|arg| arg == "--full-auto"));
+        assert!(
+            !cmd.get_args()
+                .map(|a| a.to_string_lossy().to_string())
+                .any(|arg| arg == "--dangerously-skip-permissions")
+        );
+        assert!(
+            !cmd.get_args()
+                .map(|a| a.to_string_lossy().to_string())
+                .any(|arg| arg == "--full-auto")
+        );
     }
 
     #[test]
     fn build_command_no_yolo_skips_injection() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
         let (cmd, _) = build_command(&Agent::Claude, tmp.path(), None, &[], false).unwrap();
-        assert!(!cmd
-            .get_args()
-            .map(|a| a.to_string_lossy().to_string())
-            .any(|arg| arg == "--dangerously-skip-permissions"));
+        assert!(
+            !cmd.get_args()
+                .map(|a| a.to_string_lossy().to_string())
+                .any(|arg| arg == "--dangerously-skip-permissions")
+        );
     }
 
     #[test]
