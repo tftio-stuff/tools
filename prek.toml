@@ -1,9 +1,113 @@
-#:schema https://www.schemastore.org/prek.json
+# tftio-stuff/tools - Hook Orchestration
+#
+# prek is the single source of truth for all quality checks.
+# The justfile delegates to prek stages; prek does not call the justfile.
+#
+# Stages:
+#   pre-commit  — fast gate, check-only (no file modifications)
+#   pre-push    — full CI pipeline, check-only (no file modifications)
+#   manual      — auto-fix (modifies files)
+#
+# Install hooks: prek install -t pre-commit -t pre-push
+# Run manually:  prek run --hook-stage manual
+# Run CI:        prek run --hook-stage pre-push --all-files
 
+minimum_prek_version = "0.3.0"
+default_stages = ["pre-commit"]
+fail_fast = false
+
+# ---------------------------------------------------------------------------
+# pre-commit: fast check-only gate
+# ---------------------------------------------------------------------------
 [[repos]]
 repo = "local"
 hooks = [
-    { id = "lint", name = "cargo clippy", language = "system", entry = "just lint", pass_filenames = false, stages = ["pre-commit"] },
-    { id = "msrv", name = "MSRV check", language = "system", entry = "cargo +1.94.0 check --workspace --locked", pass_filenames = false, stages = ["pre-push"] },
-    { id = "ci", name = "full CI", language = "system", entry = "just ci", pass_filenames = false, stages = ["pre-push"] },
+  {
+    id = "clippy",
+    name = "cargo clippy (check-only)",
+    entry = "cargo clippy --workspace --all-targets -- -D warnings",
+    language = "system",
+    pass_filenames = false,
+    stages = ["pre-commit"]
+  }
+]
+
+# ---------------------------------------------------------------------------
+# pre-push: full CI pipeline, check-only
+# ---------------------------------------------------------------------------
+[[repos]]
+repo = "local"
+hooks = [
+  {
+    id = "format-check",
+    name = "cargo fmt (check-only)",
+    entry = "cargo +nightly fmt --all -- --check",
+    language = "system",
+    pass_filenames = false,
+    stages = ["pre-push"]
+  },
+  {
+    id = "clippy-push",
+    name = "cargo clippy (check-only)",
+    entry = "cargo clippy --workspace --all-targets -- -D warnings",
+    language = "system",
+    pass_filenames = false,
+    stages = ["pre-push"]
+  },
+  {
+    id = "test",
+    name = "cargo test",
+    entry = "cargo test --workspace --verbose",
+    language = "system",
+    pass_filenames = false,
+    stages = ["pre-push"]
+  },
+  {
+    id = "build-release",
+    name = "cargo build (release)",
+    entry = "cargo build --workspace --release",
+    language = "system",
+    pass_filenames = false,
+    stages = ["pre-push"]
+  },
+  {
+    id = "audit",
+    name = "cargo audit",
+    entry = "cargo audit",
+    language = "system",
+    pass_filenames = false,
+    stages = ["pre-push"]
+  },
+  {
+    id = "deny",
+    name = "cargo deny",
+    entry = "cargo deny check",
+    language = "system",
+    pass_filenames = false,
+    stages = ["pre-push"]
+  }
+]
+
+# ---------------------------------------------------------------------------
+# manual: auto-fix (modifies files)
+# ---------------------------------------------------------------------------
+[[repos]]
+repo = "local"
+hooks = [
+  {
+    id = "format-fix",
+    name = "cargo fmt (auto-fix)",
+    entry = "cargo +nightly fmt --all",
+    language = "system",
+    pass_filenames = false,
+    stages = ["manual"]
+  },
+  {
+    id = "clippy-fix",
+    name = "cargo clippy (auto-fix)",
+    entry = "cargo clippy --workspace --all-targets --fix --allow-dirty -- -D warnings",
+    language = "system",
+    pass_filenames = false,
+    stages = ["manual"]
+  }
 ]

@@ -1,8 +1,23 @@
 # tftio-stuff/tools - Cargo Workspace
+#
+# prek.toml is the source of truth for quality checks.
+# Recipes below delegate to prek stages or provide direct shortcuts.
 
 # Default recipe
 default:
     @just --list
+
+# --- prek-delegated workflows ---
+
+# Auto-fix formatting and lint issues
+dev:
+    prek run --hook-stage manual
+
+# Full CI pipeline (check-only, no file modifications)
+ci:
+    prek run --hook-stage pre-push --all-files
+
+# --- Direct shortcuts (for one-off use) ---
 
 # Build all crates in debug mode
 build:
@@ -26,13 +41,7 @@ test-crate crate:
 
 # Format code (requires nightly)
 format:
-    @if rustup toolchain list | grep -q nightly; then \
-        cargo +nightly fmt --all; \
-        echo "Code formatted"; \
-    else \
-        echo "Nightly toolchain required: rustup install nightly"; \
-        exit 1; \
-    fi
+    cargo +nightly fmt --all
 
 # Check formatting
 format-check:
@@ -68,17 +77,6 @@ audit:
 # Dependency compliance
 deny:
     cargo deny check
-
-# Code quality checks
-quality: format-check lint
-
-# Full CI pipeline
-ci: quality test build-release audit deny
-    @echo "CI pipeline complete"
-
-# Development workflow
-dev: format lint test
-    @echo "Development checks complete"
 
 # Clean build artifacts
 clean:
