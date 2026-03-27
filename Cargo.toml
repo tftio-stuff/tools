@@ -9,6 +9,7 @@ members = [
     "crates/silent-critic",
     "crates/gator",
     "crates/bsky-comment-extractor",
+    "crates/chronicle",
 ]
 
 [workspace.package]
@@ -24,6 +25,7 @@ tftio-prompter = { path = "crates/prompter", version = "2.2.0" }
 
 # External - centralized versions
 anyhow = "1"
+blake3 = "1"
 async-stream = "0.3"
 base64 = "0.22"
 chrono = { version = "0.4", default-features = false }
